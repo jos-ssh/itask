@@ -84,8 +84,15 @@ InitGraphics (
   OUT LOADER_PARAMS  *LoaderParams
   )
 {
-  EFI_STATUS                    Status;
-  EFI_GRAPHICS_OUTPUT_PROTOCOL  *GraphicsOutput;
+  EFI_STATUS                   Status;
+  EFI_GRAPHICS_OUTPUT_PROTOCOL *GraphicsOutput;
+  UINT32                       MaxMode     = 0;
+  UINT32                       ModeId      = 0;
+  UINT32                       FoundWidth  = 0;
+  UINT32                       FoundHeight = 0;
+  UINT32                       FoundId     = 0;
+  CONST UINT32                 MinWidth    = 1000;
+  CONST UINT32                 MaxWidth    = 1500;
 
   ASSERT (LoaderParams != NULL);
 
@@ -113,6 +120,53 @@ InitGraphics (
   //
   // Hint: Use QueryMode/SetMode functions.
   //
+  
+  // Get number of modes
+  MaxMode = GraphicsOutput->Mode->MaxMode;
+  // For each mode
+  for (ModeId = 0; ModeId < MaxMode; ++ModeId) {
+    EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *ModeInfo;
+    UINTN  ModeInfoSize;
+    UINT32 Width  = 0;
+    UINT32 Height = 0;
+
+    // Query mode info
+    Status = GraphicsOutput->QueryMode (
+              GraphicsOutput, ModeId, &ModeInfoSize, &ModeInfo);
+    // If failed to query
+    if (EFI_ERROR (Status)) {
+      // Report error
+      DEBUG ((DEBUG_ERROR, "JOS: Failed to query graphics mode - %r\n", Status));
+      return Status;
+    }
+
+    Width  = ModeInfo->HorizontalResolution;
+    Height = ModeInfo->VerticalResolution;
+
+    if (MinWidth <= Width && Width <= MaxWidth) {
+      if (Width > FoundWidth) {
+        FoundWidth = Width;
+        FoundHeight = Height;
+        FoundId = ModeId;
+      }
+      if (Width == FoundWidth && Height > FoundHeight) {
+        FoundHeight = Height;
+        FoundId = ModeId;
+      }
+    }
+  }
+
+  if (FoundWidth > 0) {
+    Status = GraphicsOutput->SetMode (GraphicsOutput, FoundId);
+    if (EFI_ERROR (Status)) {
+      DEBUG ((DEBUG_ERROR, "JOS: Failed to set graphics mode - %r\n", Status));
+      return Status;
+    }
+
+    DEBUG ((DEBUG_INFO, "JOS: set screen resolution %dx%d\n",
+            FoundWidth, FoundHeight));
+  }
+
 
   //
   // Fill screen with black.
@@ -269,8 +323,11 @@ GetKernelFile (
   // (use gEfiLoadedImageProtocolGuid) from gImageHandle to
   // get loader's containing device.
   //
-  // LAB 1: Your code here
-  (void)LoadedImage;
+  
+  Status = gBS->HandleProtocol (
+      gImageHandle,
+      &gEfiLoadedImageProtocolGuid,
+      (VOID**) &LoadedImage);
 
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "JOS: Cannot find LoadedImage protocol - %r\n", Status));
@@ -287,8 +344,10 @@ GetKernelFile (
   // (use gEfiSimpleFileSystemProtocolGuid) from LoadedImage->DeviceHandle
   // to read the kernel from it later.
   //
-  // LAB 1: Your code here
-  (void)FileSystem;
+  Status = gBS->HandleProtocol (
+      LoadedImage->DeviceHandle,
+      &gEfiSimpleFileSystemProtocolGuid,
+      (VOID**) &FileSystem);
 
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "JOS: Cannot find own FileSystem protocol - %r\n", Status));
@@ -299,8 +358,9 @@ GetKernelFile (
   // Use FileSystem->OpenVolume() to open root directory, in which kernel is stored
   // NOTE: Don't forget to Use ->Close after you've done using it.
   //
-  // LAB 1: Your code here
-  (void)CurrentDriveRoot;
+  Status = FileSystem->OpenVolume (
+      FileSystem,
+      &CurrentDriveRoot);
 
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "JOS: Cannot access own file system - %r\n", Status));
@@ -311,14 +371,19 @@ GetKernelFile (
   // Use ->Open to open kernel file located at KERNEL_PATH
   // for reading (as EFI_FILE_MODE_READ)
   //
-  // LAB 1: Your code here
-  KernelFile = NULL;
+  Status = CurrentDriveRoot->Open (
+      CurrentDriveRoot,
+      &KernelFile,
+      KERNEL_PATH,
+      EFI_FILE_MODE_READ,
+      EFI_FILE_READ_ONLY);
 
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "JOS: Cannot access own file system - %r\n", Status));
     return Status;
   }
 
+  CurrentDriveRoot->Close (CurrentDriveRoot);
   *FileProtocol = KernelFile;
   return EFI_SUCCESS;
 }
@@ -982,7 +1047,7 @@ UefiMain (
   UINTN              EntryPoint;
   VOID               *GateData;
 
-#if 1 ///< Uncomment to await debugging
+#if 0 ///< Uncomment to await debugging
   volatile BOOLEAN   Connected;
   DEBUG ((DEBUG_INFO, "JOS: Awaiting debugger connection\n"));
 
