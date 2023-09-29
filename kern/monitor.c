@@ -19,6 +19,7 @@
 int mon_help(int argc, char **argv, struct Trapframe *tf);
 int mon_kerninfo(int argc, char **argv, struct Trapframe *tf);
 int mon_backtrace(int argc, char **argv, struct Trapframe *tf);
+int mon_echo(int argc, char **argv, struct Trapframe *tf);
 
 struct Command {
     const char *name;
@@ -31,6 +32,7 @@ static struct Command commands[] = {
         {"help", "Display this list of commands", mon_help},
         {"kerninfo", "Display information about the kernel", mon_kerninfo},
         {"backtrace", "Print stack backtrace", mon_backtrace},
+        {"echo", "Print arguments into command-line", mon_echo},
 };
 #define NCOMMANDS (sizeof(commands) / sizeof(commands[0]))
 
@@ -58,8 +60,44 @@ mon_kerninfo(int argc, char **argv, struct Trapframe *tf) {
 }
 
 int
+mon_echo(int argc, char **argv, struct Trapframe *tf)
+{
+  if (argc < 2)
+    return 0;
+
+  cprintf("%s", argv[1]);
+  for (int arg_idx = 2; arg_idx < argc; ++arg_idx)
+  {
+    cprintf(" %s", argv[arg_idx]);
+  }
+  cprintf("\n");
+
+  return 0;
+}
+
+
+int
 mon_backtrace(int argc, char **argv, struct Trapframe *tf) {
     // LAB 2: Your code here
+    unsigned long rbp = read_rbp();
+    unsigned long rip = read_rip();
+    struct Ripdebuginfo debug_info;
+
+    cprintf("Stack backtrace:\n");
+    while (rbp)
+    {
+      unsigned long* base_ptr = (unsigned long*) rbp;
+      debuginfo_rip(rip, &debug_info);
+
+      cprintf("  rbp %016lx  rip %016lx\n", rbp, rip);
+      cprintf("    %.*s:%d: %.*s+%lu\n",
+               RIPDEBUG_BUFSIZ, debug_info.rip_file, debug_info.rip_line,
+               debug_info.rip_fn_namelen, debug_info.rip_fn_name,
+               rip - 5 - debug_info.rip_fn_addr);
+       
+      rbp = base_ptr[0];
+      rip = base_ptr[1];
+    }
 
     return 0;
 }
