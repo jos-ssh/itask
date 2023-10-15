@@ -9,6 +9,7 @@
 #include <inc/x86.h>
 
 #include <kern/console.h>
+#include <kern/cpu.h>
 #include <kern/monitor.h>
 #include <kern/kdebug.h>
 #include <kern/env.h>
@@ -21,6 +22,7 @@ int mon_help(int argc, char **argv, struct Trapframe *tf);
 int mon_kerninfo(int argc, char **argv, struct Trapframe *tf);
 int mon_backtrace(int argc, char **argv, struct Trapframe *tf);
 int mon_echo(int argc, char **argv, struct Trapframe *tf);
+int mon_halt(int argc, char **argv, struct Trapframe *tf);
 
 struct Command {
     const char *name;
@@ -34,6 +36,7 @@ static struct Command commands[] = {
         {"kerninfo", "Display information about the kernel", mon_kerninfo},
         {"backtrace", "Print stack backtrace", mon_backtrace},
         {"echo", "Print arguments into command-line", mon_echo},
+        {"halt", "Halt the processor", mon_halt},
 };
 #define NCOMMANDS (sizeof(commands) / sizeof(commands[0]))
 
@@ -79,7 +82,6 @@ mon_echo(int argc, char **argv, struct Trapframe *tf)
 
 int
 mon_backtrace(int argc, char **argv, struct Trapframe *tf) {
-    // LAB 2: Your code here
     unsigned long rbp = read_rbp();
     unsigned long rip = read_rip();
     struct Ripdebuginfo debug_info;
@@ -101,6 +103,21 @@ mon_backtrace(int argc, char **argv, struct Trapframe *tf) {
     }
 
     return 0;
+}
+
+_Noreturn int
+mon_halt(int argc, char **argv, struct Trapframe *tf) {
+    asm volatile(
+            "movq $0, %%rbp\n"
+            "movq %0, %%rsp\n"
+            "pushq $0\n"
+            "pushq $0\n"
+            "sti\n"
+            "hlt\n" ::"a"(cpu_ts.ts_rsp0));
+
+    /* Unreachable */
+    for (;;)
+        ;
 }
 
 /* Kernel monitor command interpreter */

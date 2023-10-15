@@ -111,16 +111,6 @@ InitGraphics (
     return Status;
   }
 
-  //
-  // LAB 1: Your code here.
-  //
-  // Switch to the maximum or any other resolution of your preference.
-  // Refer to Graphics Output Protocol description in UEFI spec for
-  // more details.
-  //
-  // Hint: Use QueryMode/SetMode functions.
-  //
-  
   // Get number of modes
   MaxMode = GraphicsOutput->Mode->MaxMode;
   // For each mode

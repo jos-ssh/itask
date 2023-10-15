@@ -1,3 +1,4 @@
+#include "inc/env.h"
 #include <inc/assert.h>
 #include <inc/x86.h>
 #include <kern/env.h>
@@ -24,8 +25,22 @@ sched_yield(void) {
      * simply drop through to the code
      * below to halt the cpu */
 
-    // LAB 3: Your code here:
-    env_run(&envs[0]);
+    size_t start_idx = curenv ? (size_t)(curenv - envs) : 0;
+
+    for (size_t i = 0; i < NENV; ++i) {
+        size_t env_idx = (start_idx + i) % NENV;
+
+        if (envs + env_idx == curenv) /* Skip current task while searhing */
+            continue;
+
+        if (envs[env_idx].env_status == ENV_RUNNABLE) {
+            env_run(envs + env_idx);
+        }
+    }
+
+    if (curenv->env_status == ENV_RUNNING) {
+        env_run(curenv);
+    }
 
     cprintf("Halt\n");
 

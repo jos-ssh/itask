@@ -66,7 +66,6 @@ debuginfo_rip(uintptr_t addr, struct Ripdebuginfo *info) {
      * address of the next instruction, so we should substract 5 from it.
      * Hint: use line_for_address from kern/dwarf_lines.c */
 
-    // LAB 2: Your res here:
     int line_no = -1;
     res = line_for_address(&addrs, addr - 5, line_offset, &line_no);
     if (res < 0) goto error;
@@ -79,7 +78,6 @@ debuginfo_rip(uintptr_t addr, struct Ripdebuginfo *info) {
      * Hint: info->rip_fn_name can be not NULL-terminated,
      * string returned by function_by_info will always be */
 
-    // LAB 2: Your res here:
     char *func_name = NULL;
     uintptr_t func_addr = 0;
     res = function_by_info(&addrs, addr - 5, offset, &func_name, &func_addr);
@@ -101,7 +99,39 @@ find_function(const char *const fname) {
      * It may also be useful to look to kernel symbol table for symbols defined
      * in assembly. */
 
-    // LAB 3: Your code here:
+    struct Dwarf_Addrs addrs;
+    load_kernel_dwarf_info(&addrs);
+
+    uintptr_t func_addr = 0;
+    int status = address_by_fname(&addrs, fname, &func_addr);
+    if (status == 0)
+        return func_addr;
+
+    status = naive_address_by_fname(&addrs, fname, &func_addr);
+    if (status == 0)
+        return func_addr;
+
+    uint8_t *symtab = (uint8_t *)uefi_lp->SymbolTableStart;
+    size_t symtab_size = uefi_lp->SymbolTableEnd - uefi_lp->SymbolTableStart;
+    char *strtab = (char *)uefi_lp->StringTableStart;
+    for (size_t sym_offset = 0;
+         sym_offset < symtab_size;
+         sym_offset += sizeof(struct Elf64_Sym)) {
+
+        struct Elf64_Sym *symbol = (struct Elf64_Sym *)(symtab + sym_offset);
+        const char *symbol_name = strtab + symbol->st_name;
+        int symbol_type = ELF64_ST_TYPE(symbol->st_info);
+        int symbol_bind = ELF64_ST_BIND(symbol->st_info);
+
+        if (symbol_type != STT_FUNC ||
+            symbol_bind != STB_GLOBAL) {
+            continue;
+        }
+
+        if (strcmp(symbol_name, fname) == 0) {
+            return symbol->st_value;
+        }
+    }
 
     return 0;
 }
