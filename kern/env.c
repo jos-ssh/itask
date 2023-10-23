@@ -36,8 +36,6 @@ static struct Env *env_free_list;
 /* NOTE: Should be at least LOGNENV */
 #define ENVGENSHIFT 12
 
-#define STACKSIZE 0x2000
-
 #define COND_VERIFY(cond, error) if (!(cond)) return -(error)
 
 /* Converts an envid to an env pointer.
@@ -156,7 +154,7 @@ env_alloc(struct Env **newenv_store, envid_t parent_id, enum EnvType type) {
     static uintptr_t stack_top = 0x2000000;
 
     // Allocate user stack
-    stack_top += STACKSIZE;
+    stack_top += 2*PAGE_SIZE;
     if (stack_top <= 0x2000000)
     {
       panic("Kernel out of stack memory");

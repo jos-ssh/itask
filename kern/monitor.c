@@ -124,7 +124,6 @@ mon_halt(int argc, char **argv, struct Trapframe *tf) {
         ;
 }
 
-// LAB 4: Your code here
 int
 mon_dumpcmos(int argc, char **argv, struct Trapframe *tf) {
     // Dump CMOS memory in the following format:
@@ -132,8 +131,23 @@ mon_dumpcmos(int argc, char **argv, struct Trapframe *tf) {
     // 10: 00 ..
     // Make sure you understand the values read.
     // Hint: Use cmos_read8()/cmos_write8() functions.
-    // LAB 4: Your code here
 
+    // For each address in CMOS memory
+    for (unsigned addr = 0; addr <= CMOS_MAX_ADDR; ++addr) {
+        // If address is divisible by 16
+        if (addr % 0x10 == 0) {
+            // If address is non-zero
+            if (addr) {
+                // Begin new line
+                cputchar('\n');
+            }
+            // Print address
+            cprintf("%02x:", addr);
+        }
+        // Print data at address
+        cprintf(" %02x", cmos_read8(addr));
+    }
+    cputchar('\n');
     return 0;
 }
 

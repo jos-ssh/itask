@@ -18,7 +18,9 @@ entry:
     movq %rcx, uefi_lp(%rip)
 
     # Invoke C code
+    cli
     call i386_init
+    sti
     # Should never reach this place
     jmp .
 
@@ -26,6 +28,7 @@ entry:
 
 .global save_trapframe_trap
 save_trapframe_trap:
+    cli
     popq save_trapframe_ret(%rip)
     popq saved_rip(%rip)
     popq saved_cs(%rip)

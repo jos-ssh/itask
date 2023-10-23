@@ -1,3 +1,4 @@
+#include "inc/trap.h"
 #include <inc/mmu.h>
 #include <inc/x86.h>
 #include <inc/assert.h>
@@ -93,9 +94,15 @@ trapname(int trapno) {
 }
 
 void
+clock_idt_init(void) {
+    extern void clock_thdlr(void);
+    idt[IRQ_OFFSET + IRQ_CLOCK] = GATE(0, GD_KT, clock_thdlr, 0);
+}
+
+void
 trap_init(void) {
     // LAB 4: Your code here
-
+    clock_idt_init();
     /* Per-CPU setup */
     trap_init_percpu();
 }
@@ -211,7 +218,11 @@ trap_dispatch(struct Trapframe *tf) {
         }
         return;
     case IRQ_OFFSET + IRQ_CLOCK:
-        // LAB 4: Your code here
+        if (trace_traps) {
+            cprintf("Clock interrupt on irq 8\n");
+            print_trapframe(tf);
+        }
+        rtc_timer_pic_handle();
         return;
     default:
         print_trapframe(tf);

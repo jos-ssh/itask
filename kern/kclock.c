@@ -4,6 +4,7 @@
 #include <kern/kclock.h>
 #include <kern/trap.h>
 #include <kern/picirq.h>
+#include <kern/sched.h>
 
 /* HINT: Note that selected CMOS
  * register is reset to the first one
@@ -17,21 +18,38 @@
  * constant.
  *
  * Why it is necessary?
+ * The CMOS RTC expects a read from or write to the data port 0x71 after any
+ * write to index port 0x70 or it may go into an undefined state. This means
+ * that we cannot write to CMOS_CMD twice in a row and must select the register
+ * at the same time as disabling NMI
  */
 
 uint8_t
 cmos_read8(uint8_t reg) {
     /* MC146818A controller */
-    // LAB 4: Your code here
-    uint8_t res = 0;
+    
+    // Select register 'reg' and disable NMI
+    outb(CMOS_CMD, reg | CMOS_NMI_LOCK);
+    // Read data from selected register
+    uint8_t res = inb(CMOS_DATA);
+    // Re-enable NMI
     nmi_enable();
+    // Read and discard data (required for CMOS RTC to work)
+    inb(CMOS_DATA);
     return res;
 }
 
 void
 cmos_write8(uint8_t reg, uint8_t value) {
     // LAB 4: Your code here
+    // Select register 'reg' and disable NMI
+    outb(CMOS_CMD, reg | CMOS_NMI_LOCK);
+    // Write data to selected register
+    outb(CMOS_DATA, value);
+    // Re-enable NMI
     nmi_enable();
+    // Read and discard data (required for CMOS RTC to work)
+    inb(CMOS_DATA);
 }
 
 uint16_t
@@ -41,25 +59,28 @@ cmos_read16(uint8_t reg) {
 
 void
 rtc_timer_pic_interrupt(void) {
-    // LAB 4: Your code here
-    // Enable PIC interrupts.
+    pic_irq_unmask(IRQ_CLOCK);
 }
 
 void
 rtc_timer_pic_handle(void) {
     rtc_check_status();
     pic_send_eoi(IRQ_CLOCK);
+
+    sched_yield();
 }
 
 void
 rtc_timer_init(void) {
-    // LAB 4: Your code here
-    // (use cmos_read8()/cmos_write8())
+    uint8_t b_reg = cmos_read8(RTC_BREG);
+    if (!(b_reg & RTC_PIE)) {
+        cmos_write8(RTC_BREG, b_reg | RTC_PIE);
+    }
+    uint8_t a_reg = cmos_read8(RTC_AREG);
+    cmos_write8(RTC_AREG, RTC_SET_NEW_RATE(a_reg, RTC_500MS_RATE));
 }
 
 uint8_t
 rtc_check_status(void) {
-    // LAB 4: Your code here
-    // (use cmos_read8())
-    return 0;
+    return cmos_read8(RTC_CREG);
 }

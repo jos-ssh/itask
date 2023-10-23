@@ -58,6 +58,8 @@ void rtc_timer_pic_handle(void);
 /* CMOS byte 36: current century.  (please increment in Dec99!) */
 #define CMOS_CENTURY (CMOS_START + 36) /* RTC offset 0x32 */
 
+#define CMOS_MAX_ADDR 0x7f
+
 uint8_t cmos_read8(uint8_t reg);
 void cmos_write8(uint8_t reg, uint8_t datum);
 uint16_t cmos_read16(uint8_t reg);
