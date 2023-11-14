@@ -11,6 +11,7 @@
 #include <kern/sched.h>
 #include <kern/kclock.h>
 #include <kern/picirq.h>
+#include <kern/timer.h>
 #include <kern/traceopt.h>
 
 static struct Taskstate ts;
@@ -101,8 +102,9 @@ clock_idt_init(void) {
 
 void
 trap_init(void) {
-    // LAB 4: Your code here
     clock_idt_init();
+    // LAB 5: Your code here
+
     /* Per-CPU setup */
     trap_init_percpu();
 }
@@ -222,7 +224,8 @@ trap_dispatch(struct Trapframe *tf) {
             cprintf("Clock interrupt on irq 8\n");
             print_trapframe(tf);
         }
-        rtc_timer_pic_handle();
+        // rtc_timer_pic_handle();
+        // LAB 5: Your code here
         return;
     default:
         print_trapframe(tf);

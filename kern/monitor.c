@@ -13,6 +13,8 @@
 #include <kern/monitor.h>
 #include <kern/kclock.h>
 #include <kern/kdebug.h>
+#include <kern/tsc.h>
+#include <kern/timer.h>
 #include <kern/env.h>
 #include <kern/trap.h>
 
@@ -26,6 +28,9 @@ int mon_backtrace(int argc, char **argv, struct Trapframe *tf);
 int mon_echo(int argc, char **argv, struct Trapframe *tf);
 int mon_halt(int argc, char **argv, struct Trapframe *tf);
 int mon_dumpcmos(int argc, char **argv, struct Trapframe *tf);
+int mon_start(int argc, char **argv, struct Trapframe *tf);
+int mon_stop(int argc, char **argv, struct Trapframe *tf);
+int mon_frequency(int argc, char **argv, struct Trapframe *tf);
 
 struct Command {
     const char *name;
@@ -41,6 +46,9 @@ static struct Command commands[] = {
         {"echo", "Print arguments into command-line", mon_echo},
         {"halt", "Halt the processor", mon_halt},
         {"dumpcmos", "Display CMOS contents", mon_dumpcmos},
+        {"timer_start", "Start timer", mon_start},
+        {"timer_stop", "Stop timer", mon_stop},
+        {"timer_freq", "Get timer frequency", mon_frequency},
 };
 #define NCOMMANDS (sizeof(commands) / sizeof(commands[0]))
 
@@ -68,19 +76,17 @@ mon_kerninfo(int argc, char **argv, struct Trapframe *tf) {
 }
 
 int
-mon_echo(int argc, char **argv, struct Trapframe *tf)
-{
-  if (argc < 2)
+mon_echo(int argc, char **argv, struct Trapframe *tf) {
+    if (argc < 2)
+        return 0;
+
+    cprintf("%s", argv[1]);
+    for (int arg_idx = 2; arg_idx < argc; ++arg_idx) {
+        cprintf(" %s", argv[arg_idx]);
+    }
+    cprintf("\n");
+
     return 0;
-
-  cprintf("%s", argv[1]);
-  for (int arg_idx = 2; arg_idx < argc; ++arg_idx)
-  {
-    cprintf(" %s", argv[arg_idx]);
-  }
-  cprintf("\n");
-
-  return 0;
 }
 
 
@@ -91,19 +97,18 @@ mon_backtrace(int argc, char **argv, struct Trapframe *tf) {
     struct Ripdebuginfo debug_info;
 
     cprintf("Stack backtrace:\n");
-    while (rbp)
-    {
-      unsigned long* base_ptr = (unsigned long*) rbp;
-      debuginfo_rip(rip, &debug_info);
+    while (rbp) {
+        unsigned long *base_ptr = (unsigned long *)rbp;
+        debuginfo_rip(rip, &debug_info);
 
-      cprintf("  rbp %016lx  rip %016lx\n", rbp, rip);
-      cprintf("    %.*s:%d: %.*s+%lu\n",
-               RIPDEBUG_BUFSIZ, debug_info.rip_file, debug_info.rip_line,
-               debug_info.rip_fn_namelen, debug_info.rip_fn_name,
-               rip - 5 - debug_info.rip_fn_addr);
-       
-      rbp = base_ptr[0];
-      rip = base_ptr[1];
+        cprintf("  rbp %016lx  rip %016lx\n", rbp, rip);
+        cprintf("    %.*s:%d: %.*s+%lu\n",
+                RIPDEBUG_BUFSIZ, debug_info.rip_file, debug_info.rip_line,
+                debug_info.rip_fn_namelen, debug_info.rip_fn_name,
+                rip - 5 - debug_info.rip_fn_addr);
+
+        rbp = base_ptr[0];
+        rip = base_ptr[1];
     }
 
     return 0;
@@ -124,6 +129,25 @@ mon_halt(int argc, char **argv, struct Trapframe *tf) {
         ;
 }
 
+/* Implement timer_start (mon_start), timer_stop (mon_stop), timer_freq (mon_frequency) commands. */
+// LAB 5: Your code here:
+
+int
+mon_start(int argc, char **argv, struct Trapframe *tf) {
+    return 0;
+}
+
+int
+mon_stop(int argc, char **argv, struct Trapframe *tf) {
+    return 0;
+}
+
+int
+mon_frequency(int argc, char **argv, struct Trapframe *tf) {
+    return 0;
+}
+
+// LAB 4: Your code here
 int
 mon_dumpcmos(int argc, char **argv, struct Trapframe *tf) {
     // Dump CMOS memory in the following format:
@@ -196,6 +220,7 @@ monitor(struct Trapframe *tf) {
     if (tf) print_trapframe(tf);
 
     char *buf;
-    do buf = readline("K> ");
+    do
+        buf = readline("K> ");
     while (!buf || runcmd(buf, tf) >= 0);
 }
