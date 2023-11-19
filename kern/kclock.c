@@ -28,7 +28,7 @@
 uint8_t
 cmos_read8(uint8_t reg) {
     /* MC146818A controller */
-    
+
     // Select register 'reg' and disable NMI
     outb(CMOS_CMD, reg | CMOS_NMI_LOCK);
     // Read data from selected register

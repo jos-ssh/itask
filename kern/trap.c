@@ -95,15 +95,16 @@ trapname(int trapno) {
 }
 
 void
-clock_idt_init(void) {
+timer_idt_init(void) {
+    extern void timer_thdlr(void);
     extern void clock_thdlr(void);
+    idt[IRQ_OFFSET + IRQ_TIMER] = GATE(0, GD_KT, timer_thdlr, 0);
     idt[IRQ_OFFSET + IRQ_CLOCK] = GATE(0, GD_KT, clock_thdlr, 0);
 }
 
 void
 trap_init(void) {
-    clock_idt_init();
-    // LAB 5: Your code here
+    timer_idt_init();
 
     /* Per-CPU setup */
     trap_init_percpu();
@@ -219,13 +220,25 @@ trap_dispatch(struct Trapframe *tf) {
             print_trapframe(tf);
         }
         return;
+    case IRQ_OFFSET + IRQ_TIMER:
+        if (trace_traps) {
+            cprintf("Timer interrupt on irq 0\n");
+            print_trapframe(tf);
+        }
+        if (timer_for_schedule == NULL) {
+            panic("No scheduling timer set!");
+        }
+        timer_for_schedule->handle_interrupts();
+        return;
     case IRQ_OFFSET + IRQ_CLOCK:
         if (trace_traps) {
             cprintf("Clock interrupt on irq 8\n");
             print_trapframe(tf);
         }
-        // rtc_timer_pic_handle();
-        // LAB 5: Your code here
+        if (timer_for_schedule == NULL) {
+            panic("No scheduling timer set!");
+        }
+        timer_for_schedule->handle_interrupts();
         return;
     default:
         print_trapframe(tf);

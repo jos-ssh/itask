@@ -17,6 +17,8 @@ enum {
     E_INVALID_EXE = 8, /* Invalid executable */
     E_NO_SYS = 9,      /* Unimplemented syscall */
     E_NO_ENT = 10,     /* Not found */
+
+    E_ACPI_BAD_CHECKSUM = 11, /* ACPI table has wrong checksum */
     MAXERROR
 };
 

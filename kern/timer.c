@@ -1,14 +1,20 @@
+#include <inc/error.h>
 #include <inc/types.h>
 #include <inc/assert.h>
 #include <inc/string.h>
 #include <inc/memlayout.h>
 #include <inc/stdio.h>
 #include <inc/x86.h>
+#include <inc/trap.h>
 #include <inc/uefi.h>
 #include <kern/timer.h>
-#include <kern/kclock.h>
+#include <kern/sched.h>
 #include <kern/picirq.h>
-#include <kern/trap.h>
+
+#define RSDP_FIRST_BYTES        20
+#define ACPI_VERSION_1_0        0
+#define ACPI_VERSION_2_0_higher 2
+#define ACPI_SIGN_LENGTH        4
 
 #define kilo      (1000ULL)
 #define Mega      (kilo * kilo)
@@ -72,6 +78,93 @@ acpi_enable(void) {
         ;
 }
 
+static int
+check_parity(const void *data, unsigned long data_size) {
+    unsigned char sum = 0;
+    for (size_t i = 0; i < data_size; ++i) {
+        sum += ((const char *)data)[i];
+    }
+    return sum == 0;
+}
+
+static int
+try_get_acpi_table(uint64_t phys_addr, void **table) {
+    ACPISDTHeader *table_header = mmio_map_region(phys_addr, sizeof(ACPISDTHeader));
+    table_header = mmio_remap_last_region(
+            phys_addr,
+            table_header,
+            sizeof(ACPISDTHeader),
+            table_header->Length);
+
+    if (!check_parity(table_header, table_header->Length)) {
+        return -E_ACPI_BAD_CHECKSUM;
+    }
+
+    *table = (void *)table_header;
+    return 0;
+}
+
+static void *
+acpi_find_table_xsdt(const char *sign, const XSDT *xsdt) {
+    const size_t xsdt_full_size = xsdt->h.Length;
+    if (xsdt_full_size < sizeof(XSDT)) {
+        panic("XSDT is too small");
+    }
+
+    const size_t xsdt_content_size = xsdt_full_size - sizeof(XSDT);
+    if (xsdt_content_size & 0x7) {
+        panic("XSDT content size is not a multiple of 8");
+    }
+
+    const size_t xsdt_entry_count = xsdt_content_size >> 3;
+    for (size_t i = 0; i < xsdt_entry_count; ++i) {
+        ACPISDTHeader *table = NULL;
+        int status = try_get_acpi_table(xsdt->PointerToOtherSDT[i], (void **)&table);
+        if (status < 0) {
+            panic("Error getting ACPI table: %i", status);
+        }
+
+        if (strncmp(sign, table->Signature, ACPI_SIGN_LENGTH) == 0) {
+            return table;
+        }
+    }
+
+    return NULL;
+}
+
+static void *
+acpi_find_table_rsdt(const char *sign, const RSDT *rsdt) {
+    const size_t rsdt_full_size = rsdt->h.Length;
+    if (rsdt_full_size < sizeof(RSDT)) {
+        panic("RSDT is too small");
+    }
+
+    const size_t rsdt_content_size = rsdt_full_size - sizeof(RSDT);
+    if (rsdt_content_size & 0x3) {
+        panic("RSDT content size is not a multiple of 4");
+    }
+
+    const size_t rsdt_entry_count = rsdt_content_size >> 3;
+    for (size_t i = 0; i < rsdt_entry_count; ++i) {
+        ACPISDTHeader *table = NULL;
+        int status = try_get_acpi_table(rsdt->PointerToOtherSDT[i], (void **)&table);
+        if (status < 0) {
+            panic("Error getting ACPI table: %i", status);
+        }
+
+        if (strncmp(sign, table->Signature, ACPI_SIGN_LENGTH) == 0) {
+            return table;
+        }
+    }
+
+    return NULL;
+}
+
+RSDP *
+get_rsdp(void) {
+    return mmio_map_region(uefi_lp->ACPIRoot, sizeof(RSDP));
+}
+
 static void *
 acpi_find_table(const char *sign) {
     /*
@@ -82,11 +175,58 @@ acpi_find_table(const char *sign) {
      *
      * HINT: Use mmio_map_region/mmio_remap_last_region
      * before accessing table addresses
-     * (Why mmio_remap_last_region is requrired?)
+     * (Why mmio_remap_last_region is required? - Because size of table is
+     * unknown prior to mapping it. We need to first map header, than the rest
+     * of the table)
      * HINT: RSDP address is stored in uefi_lp->ACPIRoot
      * HINT: You may want to distunguish RSDT/XSDT
      */
-    // LAB 5: Your code here:
+
+    RSDP *rsdp = get_rsdp();
+
+    /*
+     * Check parity of RSDP content. ACPI 6.5 specification, section 5.2.5.3
+     * says, that only the first 20 bytes can be checked here
+     */
+    if (!check_parity(rsdp, RSDP_FIRST_BYTES)) {
+        panic("Invalid RSDP");
+    }
+
+    /*
+     * ACPI 1.0
+     */
+    if (rsdp->Revision == ACPI_VERSION_1_0) {
+        RSDT *rsdt = NULL;
+        int status = try_get_acpi_table(rsdp->RsdtAddress, (void **)&rsdt);
+
+        if (status < 0) {
+            panic("Invalid RSDT: %i", status);
+        }
+
+        return acpi_find_table_rsdt(sign, rsdt);
+    }
+    /*
+     * ACPI 2.0 or higher
+     */
+    if (rsdp->Revision == ACPI_VERSION_2_0_higher) {
+        /*
+         * Now we can check the whole RSDP
+         */
+        if (!check_parity(rsdp, sizeof(RSDP))) {
+            panic("Invalid Extended RSDP");
+        }
+
+        XSDT *xsdt = NULL;
+        int status = try_get_acpi_table(rsdp->XsdtAddress, (void **)&xsdt);
+
+        if (status < 0) {
+            panic("Invalid XSDT: %i", status);
+        }
+
+        return acpi_find_table_xsdt(sign, xsdt);
+    }
+
+    panic("Invalid ACPI Version");
 
     return NULL;
 }
@@ -94,21 +234,21 @@ acpi_find_table(const char *sign) {
 /* Obtain and map FADT ACPI table address. */
 FADT *
 get_fadt(void) {
-    // LAB 5: Your code here
-    // (use acpi_find_table)
-    // HINT: ACPI table signatures are
-    //       not always as their names
-
-    return NULL;
+    /*
+     * ACPI Specification Release 6.5
+     * Section 5.2.9
+     */
+    return acpi_find_table("FACP");
 }
 
 /* Obtain and map RSDP ACPI table address. */
 HPET *
 get_hpet(void) {
-    // LAB 5: Your code here
-    // (use acpi_find_table)
-
-    return NULL;
+    /*
+     * IA-PC HPET Specification Revision 1.0a
+     * Section 3.2.4
+     */
+    return acpi_find_table("HPET");
 }
 
 /* Getting physical HPET timer address from its table. */
@@ -165,11 +305,36 @@ hpet_init() {
         hpetReg = hpet_register();
         uint64_t cap = hpetReg->GCAP_ID;
         hpetFemto = (uintptr_t)(cap >> 32);
+
         if (!(cap & HPET_LEG_RT_CAP)) panic("HPET has no LegacyReplacement mode");
 
         // cprintf("hpetFemto = %llu\n", hpetFemto);
         hpetFreq = (1 * Peta) / hpetFemto;
-        // cprintf("HPET: Frequency = %d.%03dMHz\n", (uintptr_t)(hpetFreq / Mega), (uintptr_t)(hpetFreq % Mega));
+        // cprintf("HPET: Frequency = %lu.%03luMHz\n", (uintptr_t)(hpetFreq / Mega), (uintptr_t)(hpetFreq % Mega));
+
+        /* Make interrupts periodic */
+        if (!(hpetReg->TIM0_CONF & HPET_TN_PER_INT_CAP)) panic("HPET0 has no periodic interrupts");
+        if (!(hpetReg->TIM1_CONF & HPET_TN_PER_INT_CAP)) panic("HPET1 has no periodic interrupts");
+
+        hpetReg->TIM0_CONF |= HPET_TN_TYPE_CNF;
+        hpetReg->TIM1_CONF |= HPET_TN_TYPE_CNF;
+
+        const uint64_t half_second = hpetFreq / 2;
+        /* Initialize timer frequencies */
+        hpetReg->TIM0_CONF |= HPET_TN_VAL_SET_CNF;
+        hpetReg->TIM0_COMP = half_second;
+        hpetReg->TIM0_COMP = half_second;
+        hpetReg->TIM1_CONF |= HPET_TN_VAL_SET_CNF;
+        hpetReg->TIM1_COMP = 3 * half_second;
+        hpetReg->TIM1_COMP = 3 * half_second;
+        
+        /* Start timers */
+        hpetReg->TIM0_CONF |= HPET_TN_INT_ENB_CNF;
+        hpetReg->TIM1_CONF |= HPET_TN_INT_ENB_CNF;
+
+        hpet_print_reg();
+
+        hpetReg->GEN_CONF |= HPET_LEG_RT_CNF;
         /* Enable ENABLE_CNF bit to enable timer */
         hpetReg->GEN_CONF |= HPET_ENABLE_CNF;
         nmi_enable();
@@ -208,22 +373,98 @@ hpet_get_main_cnt(void) {
  * HINT Don't forget to unmask interrupt in PIC */
 void
 hpet_enable_interrupts_tim0(void) {
-    // LAB 5: Your code here
+    if (hpetReg == NULL) {
+        panic("Failed to enable timer interrupts: HPET is not initialized!");
+    }
+    const uint64_t period = hpetFreq / 2;
+
+    nmi_disable();
+
+    /* Stop main counter */
+    hpetReg->GEN_CONF &= ~HPET_ENABLE_CNF;
+
+    /* Enable LegacyReplacement mode */
+    hpetReg->GEN_CONF |= HPET_LEG_RT_CNF;
+
+    /* Ensure timer can generate periodic interrupts */
+    if ((hpetReg->TIM0_CONF & HPET_TN_PER_INT_CAP) == 0) {
+      panic("HPET0 has no periodic interrupts");
+    }
+    /* Make interrupts periodic */
+    hpetReg->TIM0_CONF |= HPET_TN_TYPE_CNF;
+
+    /* Set time of first activation */
+    hpetReg->TIM0_CONF |= HPET_TN_VAL_SET_CNF;
+    hpetReg->TIM0_COMP = hpetReg->MAIN_CNT + period;
+
+    /* Set timer period */
+    hpetReg->TIM0_COMP = period;
+
+    /* Start timer */
+    hpetReg->TIM0_CONF |= HPET_TN_INT_ENB_CNF;
+
+    /* Enable main counter back */
+    hpetReg->GEN_CONF |= HPET_ENABLE_CNF;
+
+    /* Unmask interrupt */
+    pic_irq_unmask(IRQ_TIMER);
+
+    nmi_enable();
 }
 
 void
 hpet_enable_interrupts_tim1(void) {
-    // LAB 5: Your code here
+    if (hpetReg == NULL) {
+        panic("Failed to enable clock interrupts: HPET is not initialized!");
+    }
+    const uint64_t period = (hpetFreq / 2) * 3;
+
+    nmi_disable();
+
+    /* Stop main counter */
+    hpetReg->GEN_CONF &= ~HPET_ENABLE_CNF;
+
+    /* Enable LegacyReplacement mode */
+    hpetReg->GEN_CONF |= HPET_LEG_RT_CNF;
+
+    /* Ensure timer can generate periodic interrupts */
+    if ((hpetReg->TIM1_CONF & HPET_TN_PER_INT_CAP) == 0) {
+      panic("HPET1 has no periodic interrupts");
+    }
+    /* Make interrupts periodic */
+    hpetReg->TIM1_CONF |= HPET_TN_TYPE_CNF;
+
+    /* Set time of first activation */
+    hpetReg->TIM1_CONF |= HPET_TN_VAL_SET_CNF;
+    hpetReg->TIM1_COMP = hpetReg->MAIN_CNT + period;
+
+    /* Set timer period */
+    hpetReg->TIM1_COMP = period;
+    
+    /* Start timer */
+    hpetReg->TIM1_CONF |= HPET_TN_INT_ENB_CNF;
+
+    /* Enable main counter back */
+    hpetReg->GEN_CONF |= HPET_ENABLE_CNF;
+
+    /* Unmask interrupt */
+    pic_irq_unmask(IRQ_CLOCK);
+
+    nmi_enable();
 }
 
 void
 hpet_handle_interrupts_tim0(void) {
     pic_send_eoi(IRQ_TIMER);
+
+    sched_yield();
 }
 
 void
 hpet_handle_interrupts_tim1(void) {
     pic_send_eoi(IRQ_CLOCK);
+
+    sched_yield();
 }
 
 /* Calculate CPU frequency in Hz with the help with HPET timer.
