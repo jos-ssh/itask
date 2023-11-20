@@ -134,16 +134,39 @@ mon_halt(int argc, char **argv, struct Trapframe *tf) {
 
 int
 mon_start(int argc, char **argv, struct Trapframe *tf) {
+    if (argc == 1) {
+      /* Use default timer */
+      timer_start(timer_for_schedule->timer_name);
+    }
+    else if (argc == 2) {
+      timer_start(argv[1]);
+    }
+    else {
+      cprintf("Usage:\n%s [TIMER]\n", argv[0]);
+      return 1;
+    }
     return 0;
 }
 
 int
 mon_stop(int argc, char **argv, struct Trapframe *tf) {
+    timer_stop();
     return 0;
 }
 
 int
 mon_frequency(int argc, char **argv, struct Trapframe *tf) {
+    if (argc == 1) {
+      /* Use default timer */
+      timer_cpu_frequency(timer_for_schedule->timer_name);
+    }
+    else if (argc == 2) {
+      timer_cpu_frequency(argv[1]);
+    }
+    else {
+      cprintf("Usage:\n%s [TIMER]\n", argv[0]);
+      return 1;
+    }
     return 0;
 }
 

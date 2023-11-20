@@ -10,6 +10,7 @@
 #include <kern/timer.h>
 #include <kern/sched.h>
 #include <kern/picirq.h>
+#include <stdint.h>
 
 #define RSDP_FIRST_BYTES        20
 #define ACPI_VERSION_1_0        0
@@ -327,7 +328,7 @@ hpet_init() {
         hpetReg->TIM1_CONF |= HPET_TN_VAL_SET_CNF;
         hpetReg->TIM1_COMP = 3 * half_second;
         hpetReg->TIM1_COMP = 3 * half_second;
-        
+
         /* Start timers */
         hpetReg->TIM0_CONF |= HPET_TN_INT_ENB_CNF;
         hpetReg->TIM1_CONF |= HPET_TN_INT_ENB_CNF;
@@ -388,7 +389,7 @@ hpet_enable_interrupts_tim0(void) {
 
     /* Ensure timer can generate periodic interrupts */
     if ((hpetReg->TIM0_CONF & HPET_TN_PER_INT_CAP) == 0) {
-      panic("HPET0 has no periodic interrupts");
+        panic("HPET0 has no periodic interrupts");
     }
     /* Make interrupts periodic */
     hpetReg->TIM0_CONF |= HPET_TN_TYPE_CNF;
@@ -429,7 +430,7 @@ hpet_enable_interrupts_tim1(void) {
 
     /* Ensure timer can generate periodic interrupts */
     if ((hpetReg->TIM1_CONF & HPET_TN_PER_INT_CAP) == 0) {
-      panic("HPET1 has no periodic interrupts");
+        panic("HPET1 has no periodic interrupts");
     }
     /* Make interrupts periodic */
     hpetReg->TIM1_CONF |= HPET_TN_TYPE_CNF;
@@ -440,7 +441,7 @@ hpet_enable_interrupts_tim1(void) {
 
     /* Set timer period */
     hpetReg->TIM1_COMP = period;
-    
+
     /* Start timer */
     hpetReg->TIM1_CONF |= HPET_TN_INT_ENB_CNF;
 
@@ -474,7 +475,45 @@ uint64_t
 hpet_cpu_frequency(void) {
     static uint64_t cpu_freq;
 
-    // LAB 5: Your code here
+    if (cpu_freq != 0) {
+        return cpu_freq;
+    }
+
+    if (hpetReg == NULL) {
+        panic("HPET is not initialized");
+    }
+
+    /* Spend around 100ms on measurements */
+    uint64_t target_delay = hpetFreq / 10;
+    uint64_t current_delay = 0;
+
+    /* Spend at least 1 HPET tick on measurements */
+    if (target_delay == 0) {
+      target_delay = 1;
+    }
+
+    uint64_t hpet_start = hpet_get_main_cnt();
+    uint64_t tsc_start = read_tsc();
+    uint64_t hpet_end = 0;
+
+    do {
+        asm volatile("pause");
+        hpet_end = hpet_get_main_cnt();
+
+        if (hpet_start <= hpet_end) {
+            /* Counter has not rolled over */
+            current_delay = hpet_end - hpet_start;
+        } else {
+            /* 64-bit counter rolled over (very unlikely, but possible) */
+            current_delay = 0xFFFFFFFFFFFFFFFF - hpet_start + hpet_end;
+        }
+    } while (current_delay < target_delay);
+
+    uint64_t tsc_end = read_tsc();
+    if (tsc_end < tsc_start) {
+        panic("Non-monotonic TSC!");
+    }
+    cpu_freq = (tsc_end - tsc_start) * hpetFreq / current_delay;
 
     return cpu_freq;
 }
@@ -492,7 +531,39 @@ uint64_t
 pmtimer_cpu_frequency(void) {
     static uint64_t cpu_freq;
 
-    // LAB 5: Your code here
+    if (cpu_freq != 0) {
+        return cpu_freq;
+    }
+
+    /* Spend around 100ms on measurements */
+    uint64_t target_delay = PM_FREQ / 10;
+    uint64_t current_delay = 0;
+
+    uint64_t pm_start = pmtimer_get_timeval();
+    uint64_t tsc_start = read_tsc();
+    uint64_t pm_end = 0;
+
+    do {
+        asm volatile("pause");
+        pm_end = pmtimer_get_timeval();
+
+        if (pm_start <= pm_end) {
+            /* Counter has not rolled over */
+            current_delay = pm_end - pm_start;
+        } else if (pm_start - pm_end <= 0x00FFFFFF){
+            /* 24-bit counter rolled over */
+            current_delay = 0x00FFFFFF - pm_start + pm_end;
+        } else {
+            /* 32-bit counter rolled over */
+            current_delay = 0xFFFFFFFF - pm_start + pm_end;
+        }
+    } while (current_delay < target_delay);
+
+    uint64_t tsc_end = read_tsc();
+    if (tsc_end < tsc_start) {
+        panic("Non-monotonic TSC!");
+    }
+    cpu_freq = (tsc_end - tsc_start) * PM_FREQ / current_delay;
 
     return cpu_freq;
 }
