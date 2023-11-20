@@ -5,6 +5,13 @@
 
 #define SPACE_SIZE 5 * 0x1000
 
+static struct spinlock g_allocLock = {
+        .locked = 0,
+#if trace_spinlock
+        .name = "alloc_lock"
+#endif
+};
+
 static uint8_t space[SPACE_SIZE];
 
 /* empty list to get started */
@@ -26,11 +33,10 @@ check_list(void) {
 /* malloc: general-purpose storage allocator */
 void *
 test_alloc(uint8_t nbytes) {
-
-    /* Make allocator thread-safe with the help of spin_lock/spin_unlock. */
-    // LAB 5: Your code here:
-
     size_t nunits = (nbytes + sizeof(Header) - 1) / sizeof(Header) + 1;
+
+    /* Enter critical section for alloc */
+    spin_lock(&g_allocLock);
 
     /* no free list yet */
     if (!freep) {
@@ -45,6 +51,8 @@ test_alloc(uint8_t nbytes) {
 
     check_list();
 
+    void *allocated = NULL;
+
     for (Header *p = freep->next;; p = p->next) {
         /* big enough */
         if (p->size >= nunits) {
@@ -58,14 +66,20 @@ test_alloc(uint8_t nbytes) {
                 p += p->size;
                 p->size = nunits;
             }
-            return (void *)(p + 1);
+            allocated = (void *)(p + 1);
+            break;
         }
 
         /* wrapped around free list */
         if (p == freep) {
-            return NULL;
+            break;
         }
     }
+
+    /* Exit critical section */
+    spin_unlock(&g_allocLock);
+
+    return allocated;
 }
 
 /* free: put block ap in free list */
@@ -75,8 +89,8 @@ test_free(void *ap) {
     /* point to block header */
     Header *bp = (Header *)ap - 1;
 
-    /* Make allocator thread-safe with the help of spin_lock/spin_unlock. */
-    // LAB 5: Your code here
+    /* Enter critical section */
+    spin_lock(&g_allocLock);
 
     /* freed block at start or end of arena */
     Header *p = freep;
@@ -104,4 +118,7 @@ test_free(void *ap) {
     freep = p;
 
     check_list();
+
+    /* Exit critical section */
+    spin_unlock(&g_allocLock);
 }
