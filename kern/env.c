@@ -9,11 +9,13 @@
 #include <inc/elf.h>
 
 #include <kern/env.h>
+#include <kern/pmap.h>
 #include <kern/trap.h>
 #include <kern/monitor.h>
 #include <kern/sched.h>
 #include <kern/kdebug.h>
 #include <kern/macro.h>
+#include <kern/pmap.h>
 #include <kern/traceopt.h>
 
 /* Currently active environment */
@@ -335,7 +337,6 @@ verify_elf_header(struct Elf *header) {
  *   'binary + ph->p_offset', should be copied to address
  *   ph->p_va.  Any remaining memory bytes should be cleared to zero.
  *   (The ELF header should have ph->p_filesz <= ph->p_memsz.)
- *   Use functions from the previous labs to allocate and map pages.
  *
  *   All page protection bits should be user read/write for now.
  *   ELF segments are not necessarily page-aligned, but you can

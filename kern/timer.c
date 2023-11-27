@@ -10,7 +10,8 @@
 #include <kern/timer.h>
 #include <kern/sched.h>
 #include <kern/picirq.h>
-#include <stdint.h>
+#include <kern/trap.h>
+#include <kern/pmap.h>
 
 #define RSDP_FIRST_BYTES        20
 #define ACPI_VERSION_1_0        0
