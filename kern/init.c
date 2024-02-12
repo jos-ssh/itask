@@ -169,6 +169,7 @@ i386_init(void) {
 #endif
 #else
 
+
 #if LAB >= 10
     ENV_CREATE(fs_fs, ENV_TYPE_FS);
 #endif
