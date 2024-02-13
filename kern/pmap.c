@@ -639,7 +639,7 @@ propagate_one_pml4(struct AddressSpace *dst, struct AddressSpace *src) {
     /* Dereference old level 3 page tables */
     for (size_t i = NUSERPML4; i < PML4_ENTRY_COUNT; i++) {
         if (dst->pml4[i] & PTE_P && i != PML4_INDEX(UVPT))
-            page_ref(page_lookup(NULL, PTE_ADDR(dst->pml4[i]), 0, PARTIAL_NODE, 0));
+            page_unref(page_lookup(NULL, PTE_ADDR(dst->pml4[i]), 0, PARTIAL_NODE, 0));
     }
 
     pte_t uvpt = dst->pml4[PML4_INDEX(UVPT)];
