@@ -675,7 +675,7 @@ alloc_fill_pt(pte_t *dst, pte_t base, size_t step, size_t i0, size_t i1) {
             if (res < 0)
                 return res;
 
-            res = alloc_fill_pt(dst + i, base, step / PT_ENTRY_COUNT, 0, PT_ENTRY_COUNT);
+            res = alloc_fill_pt(KADDR(PTE_ADDR(dst[i])), base, step / PT_ENTRY_COUNT, 0, PT_ENTRY_COUNT);
             if (res < 0)
                 return res;
 
