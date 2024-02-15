@@ -39,12 +39,10 @@ struct Page root;
 /* Top address for page pools mappings */
 static uintptr_t metaheaptop;
 
-// TODO Test these properly via cpuid
-
 /* Not-executable bit supported by page tables */
-static bool nx_supported = 1;
+static bool nx_supported;
 /* 1GB pages are supported */
-static bool has_1gb_pages = 1;
+static bool has_1gb_pages;
 
 /* Kernel executable end virtual address */
 extern char end[];
@@ -1520,6 +1518,16 @@ init_allocator(void) {
     list_init(&root.head);
     root.class = MAX_CLASS;
     root.state = PARTIAL_NODE;
+
+    /* Query the presence of the utilized features.
+     * We don't need to check availability of CPUID leaf node 0x80000001
+     * since we are in the Long mode, which itself described in that leaf. */
+    uint32_t edx;
+    cpuid(0x80000001, NULL, NULL, NULL, &edx);
+    has_1gb_pages = edx & (1 << 26);
+    nx_supported = edx & (1 << 20);
+    if (trace_init)
+        cprintf("CPUID: 1GB pages: %d, NX: %d\n", has_1gb_pages, nx_supported);
 }
 
 void *
