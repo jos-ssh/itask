@@ -43,12 +43,10 @@ struct Page root;
 /* Top address for page pools mappings */
 static uintptr_t metaheaptop;
 
-// TODO Test these properly via cpuid
-
 /* Not-executable bit supported by page tables */
-static bool nx_supported = 1;
+static bool nx_supported;
 /* 1GB pages are supported */
-static bool has_1gb_pages = 1;
+static bool has_1gb_pages;
 
 /* Kernel executable end virtual address */
 extern char end[];
@@ -810,7 +808,7 @@ propagate_one_pml4(struct AddressSpace *dst, struct AddressSpace *src) {
     /* Dereference old level 3 page tables */
     for (size_t i = NUSERPML4; i < PML4_ENTRY_COUNT; i++) {
         if (dst->pml4[i] & PTE_P && i != PML4_INDEX(UVPT))
-            page_ref(page_lookup(NULL, PTE_ADDR(dst->pml4[i]), 0, PARTIAL_NODE, 0));
+            page_unref(page_lookup(NULL, PTE_ADDR(dst->pml4[i]), 0, PARTIAL_NODE, 0));
     }
 
     pte_t uvpt = dst->pml4[PML4_INDEX(UVPT)];
@@ -846,7 +844,7 @@ alloc_fill_pt(pte_t *dst, pte_t base, size_t step, size_t i0, size_t i1) {
             if (res < 0)
                 return res;
 
-            res = alloc_fill_pt(dst + i, base, step / PT_ENTRY_COUNT, 0, PT_ENTRY_COUNT);
+            res = alloc_fill_pt(KADDR(PTE_ADDR(dst[i])), base, step / PT_ENTRY_COUNT, 0, PT_ENTRY_COUNT);
             if (res < 0)
                 return res;
 
@@ -1767,6 +1765,16 @@ init_allocator(void) {
     list_init(&root.head);
     root.class = MAX_CLASS;
     root.state = PARTIAL_NODE;
+
+    /* Query the presence of the utilized features.
+     * We don't need to check availability of CPUID leaf node 0x80000001
+     * since we are in the Long mode, which itself described in that leaf. */
+    uint32_t edx;
+    cpuid(0x80000001, NULL, NULL, NULL, &edx);
+    has_1gb_pages = edx & (1 << 26);
+    nx_supported = edx & (1 << 20);
+    if (trace_init)
+        cprintf("CPUID: 1GB pages: %d, NX: %d\n", has_1gb_pages, nx_supported);
 }
 
 void *
