@@ -1,3 +1,5 @@
+#include "inc/stdio.h"
+#include <inc/env.h>
 #include <inc/string.h>
 #include <inc/memlayout.h>
 #include <inc/assert.h>
@@ -48,12 +50,38 @@ load_user_dwarf_info(struct Dwarf_Addrs *addrs) {
             {&addrs->pubnames_end, &addrs->pubnames_begin, ".debug_pubnames"},
             {&addrs->pubtypes_end, &addrs->pubtypes_begin, ".debug_pubtypes"},
     };
+    const size_t section_count = sizeof(sections) / sizeof(*sections);
 
     memset(addrs, 0, sizeof(*addrs));
 
-    /* Load debug sections from curenv->binary elf image */
-    // LAB 8: Your code here
-    (void)sections;
+    struct Elf *elf_header = (struct Elf *)binary;
+
+    uint8_t *section_table = binary + elf_header->e_shoff;
+    size_t sheader_count = elf_header->e_shnum;
+    size_t sheader_size = elf_header->e_shentsize;
+
+    struct Secthdr *shstrtab_header =
+            (struct Secthdr *)(section_table +
+                               elf_header->e_shstrndx * sheader_size);
+    char *shstrtab = (char *)(binary + shstrtab_header->sh_offset);
+
+    size_t sh_table_size = sheader_count * sheader_size;
+
+    for (size_t sheader_offset = 0;
+         sheader_offset < sh_table_size;
+         sheader_offset += sheader_size) {
+        struct Secthdr *sheader =
+                (struct Secthdr *)(section_table + sheader_offset);
+
+        const char *sh_name = shstrtab + sheader->sh_name;
+        for (size_t i = 0; i < section_count; ++i) {
+            if (strcmp(sections[i].name, sh_name) == 0) {
+                *sections[i].start = binary + sheader->sh_offset;
+                *sections[i].end = binary + sheader->sh_offset + sheader->sh_size;
+                break;
+            }
+        }
+    }
 }
 
 #define UNKNOWN       "<unknown>"
@@ -80,8 +108,7 @@ debuginfo_rip(uintptr_t addr, struct Ripdebuginfo *info) {
 
     /* Temporarily load kernel cr3 and return back once done.
      * Make sure that you fully understand why it is necessary. */
-
-    // LAB 8: Your code here:
+    struct AddressSpace *cur_space = switch_address_space(&kspace);
 
     /* Load dwarf section pointers from either
      * currently running program binary or use
@@ -89,13 +116,15 @@ debuginfo_rip(uintptr_t addr, struct Ripdebuginfo *info) {
      * depending on whether addr is pointing to userspace
      * or kernel space */
 
-    // LAB 8: Your code here:
-
     struct Dwarf_Addrs addrs;
-    load_kernel_dwarf_info(&addrs);
+    if (addr > MAX_USER_ADDRESS) {
+        load_kernel_dwarf_info(&addrs);
+    } else {
+        load_user_dwarf_info(&addrs);
+    }
 
     Dwarf_Off offset = 0, line_offset = 0;
-    int res = info_by_address(&addrs, addr, &offset);
+    int res = info_by_address(&addrs, addr - 5 + 1, &offset);
     if (res < 0) goto error;
 
     char *tmp_buf = NULL;
@@ -130,6 +159,7 @@ debuginfo_rip(uintptr_t addr, struct Ripdebuginfo *info) {
     info->rip_fn_addr = func_addr;
 
 error:
+    switch_address_space(cur_space);
     return res;
 }
 

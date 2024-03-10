@@ -43,6 +43,7 @@ sched_yield(void) {
     }
 
     cprintf("Halt\n");
+    curenv = NULL;
 
     /* No runnable environments,
      * so just halt the cpu */

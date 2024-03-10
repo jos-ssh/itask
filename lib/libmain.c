@@ -21,12 +21,28 @@ libmain(int argc, char **argv) {
     void (**ctor)() = &__ctors_start;
     while (ctor < &__ctors_end) (*ctor++)();
 
-    /* Set thisenv to point at our Env structure in envs[]. */
-
-    // LAB 8: Your code here
-
     /* Save the name of the program so that panic() can use it */
     if (argc > 0) binaryname = argv[0];
+
+    /* Set thisenv to point at our Env structure in envs[]. */
+    static_assert(UENVS_SIZE / sizeof(*envs), "Not ehough space for envs");
+    const size_t env_count = UENVS_SIZE / sizeof(*envs);
+
+    envid_t envid = sys_getenvid();
+    const volatile struct Env* env = NULL;
+    for (size_t i = 0; i < env_count; ++i)
+    {
+      if (envs[i].env_id == envid)
+      {
+        env = envs + i;
+        break;
+      }
+    }
+    if (!env)
+    {
+      panic("Env not available");
+    }
+    thisenv = env;
 
     /* Call user main routine */
     umain(argc, argv);

@@ -101,18 +101,37 @@ int
 mon_backtrace(int argc, char **argv, struct Trapframe *tf) {
     unsigned long rbp = read_rbp();
     unsigned long rip = read_rip();
+    if (tf) {
+      rbp = tf->tf_regs.reg_rbp;
+      rip = tf->tf_rip;
+    }
     struct Ripdebuginfo debug_info;
 
+    bool is_first_iteration = true;
     cprintf("Stack backtrace:\n");
     while (rbp) {
+        // Trying to read destroyed env
+        if (!curenv && rbp <= MAX_USER_ADDRESS) {
+          break;
+        }
+
         unsigned long *base_ptr = (unsigned long *)rbp;
-        debuginfo_rip(rip, &debug_info);
+        unsigned long offset = 0;
+
+        if (tf && is_first_iteration) {
+          debuginfo_rip(rip + 5 - 1, &debug_info);
+          offset = rip - 1 - debug_info.rip_fn_addr;
+        }
+        else {
+          debuginfo_rip(rip, &debug_info);
+          offset = rip - 5 -debug_info.rip_fn_addr;
+        }
 
         cprintf("  rbp %016lx  rip %016lx\n", rbp, rip);
         cprintf("    %.*s:%d: %.*s+%lu\n",
                 RIPDEBUG_BUFSIZ, debug_info.rip_file, debug_info.rip_line,
                 debug_info.rip_fn_namelen, debug_info.rip_fn_name,
-                rip - 5 - debug_info.rip_fn_addr);
+                offset);
 
         rbp = base_ptr[0];
         rip = base_ptr[1];

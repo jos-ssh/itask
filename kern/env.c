@@ -1,5 +1,6 @@
 /* See COPYRIGHT for copyright information. */
 #include "inc/env.h"
+#include "inc/memlayout.h"
 #include <inc/x86.h>
 #include <inc/mmu.h>
 #include <inc/error.h>
@@ -38,7 +39,8 @@ static struct Env *env_free_list;
 /* NOTE: Should be at least LOGNENV */
 #define ENVGENSHIFT 12
 
-#define COND_VERIFY(cond, error) if (!(cond)) return -(error)
+#define COND_VERIFY(cond, error) \
+    if (!(cond)) return -(error)
 
 /* Converts an envid to an env pointer.
  * If checkperm is set, the specified environment must be either the
@@ -91,24 +93,36 @@ envid2env(envid_t envid, struct Env **env_store, bool need_check_perm) {
  */
 void
 env_init(void) {
+#ifdef CONFIG_KSPACE
+    const size_t env_count = NENV;
+#else
     /* kzalloc_region only works with current_space != NULL */
+    struct AddressSpace *cur_space = switch_address_space(&kspace);
 
     /* Allocate envs array with kzalloc_region().
      * Don't forget about rounding.
      * kzalloc_region() only works with current_space != NULL */
-    // LAB 8: Your code here
+    envs = kzalloc_region(UENVS_SIZE);
+    assert(envs);
+    switch_address_space(cur_space);
 
     /* Map envs to UENVS read-only,
      * but user-accessible (with PROT_USER_ set) */
-    // LAB 8: Your code here
+    map_region(&kspace, UENVS, &kspace, (uintptr_t)envs,
+               UENVS_SIZE, PROT_R | PROT_USER_);
+
+    static_assert(UENVS_SIZE / sizeof(*envs), "Not ehough space for envs");
+    const size_t env_count = UENVS_SIZE / sizeof(*envs);
+#endif // CONFIG_KSPACE
 
     /* Set up envs array */
-
-    for (size_t env_idx = 0; env_idx < NENV; ++env_idx) {
-        env_array[env_idx].env_link = env_idx + 1 < NENV ? env_array + env_idx + 1 : NULL;
-        env_array[env_idx].env_status = ENV_FREE;
+    for (size_t env_idx = 0; env_idx < env_count; ++env_idx) {
+        envs[env_idx].env_link =
+                env_idx + 1 < env_count ? envs + env_idx + 1 : NULL;
+        envs[env_idx].env_status = ENV_FREE;
     }
-    env_free_list = env_array;
+    env_free_list = envs;
+
 }
 
 /* Allocates and initializes a new environment.
@@ -171,10 +185,9 @@ env_alloc(struct Env **newenv_store, envid_t parent_id, enum EnvType type) {
     static uintptr_t stack_top = 0x2000000;
 
     // Allocate user stack
-    stack_top += 2*PAGE_SIZE;
-    if (stack_top <= 0x2000000)
-    {
-      panic("Kernel out of stack memory");
+    stack_top += 2 * PAGE_SIZE;
+    if (stack_top <= 0x2000000) {
+        panic("Kernel out of stack memory");
     }
 
     env->env_tf.tf_rsp = stack_top;
@@ -184,6 +197,15 @@ env_alloc(struct Env **newenv_store, envid_t parent_id, enum EnvType type) {
     env->env_tf.tf_ss = GD_UD | 3;
     env->env_tf.tf_cs = GD_UT | 3;
     env->env_tf.tf_rsp = USER_STACK_TOP;
+
+    // Allocate stack
+    int stack_status = map_region(
+            &env->address_space, USER_STACK_TOP - PAGE_SIZE,
+            NULL, 0,
+            PAGE_SIZE, PROT_R | PROT_W | PROT_USER_ | ALLOC_ZERO);
+    if (stack_status < 0) {
+        return stack_status;
+    }
 #endif
 
     /* For now init trapframe with IF set */
@@ -193,7 +215,9 @@ env_alloc(struct Env **newenv_store, envid_t parent_id, enum EnvType type) {
     env_free_list = env->env_link;
     *newenv_store = env;
 
-    if (trace_envs) cprintf("[%08x] new env %08x\n", curenv ? curenv->env_id : 0, env->env_id);
+    if (trace_envs_more) {
+      cprintf("[%08x] allocated env %08x\n", curenv ? curenv->env_id : 0, env->env_id);
+    }
     return 0;
 }
 
@@ -240,8 +264,7 @@ bind_functions(struct Env *env, uint8_t *binary, size_t size, uintptr_t image_st
             COND_VERIFY(sheader->sh_link < sheader_count, E_INVALID_EXE);
 
             size_t strtab_header_offset = sheader->sh_link * sheader_size;
-            struct Secthdr *strtab_header = (struct Secthdr *)
-                                            (section_table + strtab_header_offset);
+            struct Secthdr *strtab_header = (struct Secthdr *)(section_table + strtab_header_offset);
             strtab = (char *)(binary + strtab_header->sh_offset);
             strtab_size = strtab_header->sh_size;
 
@@ -412,16 +435,43 @@ load_icode(struct Env *env, uint8_t *binary, size_t size) {
         COND_VERIFY(seg_offset + real_size > seg_offset, E_INVALID_EXE);
         COND_VERIFY(seg_offset + real_size <= size, E_INVALID_EXE);
 
+        int map_res = map_region(
+                &env->address_space,
+                (uintptr_t)virt_addr,
+                NULL, 0,
+                mapped_size, PROT_RWX | PROT_USER_ | ALLOC_ZERO);
+        if (map_res < 0) {
+            return map_res;
+        }
+
+        struct AddressSpace *current_space = switch_address_space(
+                &env->address_space);
+
+
+        /*for (size_t i = 0; i < real_size; ++i)
+        {
+          virt_addr[i] = binary[seg_offset + i];
+        }*/
         memcpy(virt_addr, binary + seg_offset, real_size);
-        if (real_size < mapped_size)
-            memset(virt_addr + real_size, 0, mapped_size - real_size);
+
+        switch_address_space(current_space);
     }
 
     env->binary = binary;
     env->env_tf.tf_rip = elf_header->e_entry;
 
-    // LAB 8: Your code here
-    return bind_functions(env, binary, size, image_start, image_end);
+#ifdef CONFIG_KSPACE
+    struct AddressSpace *current_space = switch_address_space(
+            &env->address_space);
+
+    int bind_result = bind_functions(env, binary, size, image_start, image_end);
+
+    switch_address_space(current_space);
+
+    return bind_result;
+#else
+    return 0;
+#endif // CONFIG_KSPACE
 }
 
 /* Allocates a new env with env_alloc, loads the named elf
@@ -441,14 +491,13 @@ env_create(uint8_t *binary, size_t size, enum EnvType type) {
 
     status = load_icode(env, binary, size);
     if (status < 0)
-        panic("env alloc: %i", status);
+        panic("load icode: %i", status);
 
     if (trace_envs) {
-        cprintf("[%08x] create env %08x\n",
+        cprintf("[%08x] new env %08x\n",
                 curenv ? curenv->env_id : 0,
                 env->env_id);
     }
-    // LAB 8: Your code here
 }
 
 
@@ -489,12 +538,11 @@ env_destroy(struct Env *env) {
 
     env_free(env);
     if (env == curenv) {
+        /* Reset in_page_fault flags in case *current* environment
+         * is getting destroyed after performing invalid memory access. */
+        in_page_fault = false;
         sched_yield();
     }
-
-    /* Reset in_page_fault flags in case *current* environment
-     * is getting destroyed after performing invalid memory access. */
-    // LAB 8: Your code here
 }
 
 #ifdef CONFIG_KSPACE
@@ -585,9 +633,9 @@ env_run(struct Env *env) {
     curenv->env_status = ENV_RUNNING;
     ++curenv->env_runs;
 
+    switch_address_space(&env->address_space);
     env_pop_tf(&curenv->env_tf);
     // LAB 8: Your code here
 
-    while (1)
-        ;
+    while (1);
 }

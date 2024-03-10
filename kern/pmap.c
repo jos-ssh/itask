@@ -16,6 +16,7 @@
 #include <kern/pmap.h>
 #include <kern/traceopt.h>
 #include <kern/trap.h>
+#include <stdint.h>
 
 /*
  * Term "page" used here does not
@@ -543,9 +544,9 @@ inline static void
 dump_entry(pte_t base, size_t step, bool isz) {
     cprintf("%s[%08llX, %08llX] %c%c%c%c%c -- step=%zx\n",
             step == 4 * KB ? " >    >    >    >" :
-                             step == 2 * MB ? " >    >    >" :
-                                              step == 1 * GB ? " >    >" :
-                                                               " >",
+            step == 2 * MB ? " >    >    >" :
+            step == 1 * GB ? " >    >" :
+                             " >",
             PTE_ADDR(base),
             PTE_ADDR(base) + (isz ? (step * isz - 1) : 0xFFF),
             base & PTE_P ? 'P' : '-',
@@ -1642,19 +1643,25 @@ int
 init_address_space(struct AddressSpace *space) {
     /* Allocte page table with alloc_pt into space->cr3
      * (remember to clean flag bits of result with PTE_ADDR) */
-    // LAB 8: Your code here
+    int res = 0;
+    pte_t page_table = 0;
+    res = alloc_pt(&page_table);
+    if (res != 0) {
+        return res;
+    }
+    space->cr3 = PTE_ADDR(page_table);
 
     /* Put its kernel virtual address to space->pml4 */
-    // LAB 8: Your code here
+    space->pml4 = KADDR(space->cr3);
 
     /* Allocate virtual tree root node
      * of type INTERMEDIATE_NODE with alloc_rescriptor() of type */
-    // LAB 8: Your code here
+    space->root = alloc_descriptor(INTERMEDIATE_NODE);
 
     /* Initialize UVPT */
-    // LAB 8: Your code here
+    space->pml4[PML4_INDEX(UVPT)] = page_table;
 
-    /* Why this call is required here and what does it do? */
+    /* Copy kernel mappings to address space */
     propagate_one_pml4(space, &kspace);
     return 0;
 }
@@ -2110,8 +2117,26 @@ static uintptr_t user_mem_check_addr;
  */
 int
 user_mem_check(struct Env *env, const void *va, size_t len, int perm) {
-    // LAB 8: Your code here
-    return -E_FAULT;
+    uintptr_t addr = (uintptr_t)va;
+    if (addr + len < addr) {
+        return -E_FAULT;
+    }
+    if (len + (addr & CLASS_MASK(0)) < len) {
+        return -E_FAULT;
+    }
+
+    len += addr & CLASS_MASK(0);
+    for (size_t offset = 0; offset < len; offset += CLASS_SIZE(0)) {
+        struct Page *vpage = page_lookup_virtual(
+                env->address_space.root,
+                addr + offset,
+                0, LOOKUP_PRESERVE);
+        if (!vpage || (vpage->state & perm) != perm) {
+            user_mem_check_addr = addr + offset;
+            return -E_FAULT;
+        }
+    }
+    return 0;
 }
 
 void

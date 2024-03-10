@@ -98,18 +98,48 @@ trapname(int trapno) {
 
 void
 timer_idt_init(void) {
+#ifdef CONFIG_KSPACE
     extern void timer_thdlr(void);
     extern void clock_thdlr(void);
     idt[IRQ_OFFSET + IRQ_TIMER] = GATE(0, GD_KT, timer_thdlr, 0);
     idt[IRQ_OFFSET + IRQ_CLOCK] = GATE(0, GD_KT, clock_thdlr, 0);
+#endif // CONFIG_KSPACE
 }
+
 
 void
 trap_init(void) {
     timer_idt_init();
 
-    // LAB 8: Your code here
     /* Insert trap handlers into IDT */
+#define SETGATE(istrap, sel, handler, dpl, code)     \
+    do {                                             \
+        extern void handler(void);                   \
+        idt[code] = GATE(istrap, sel, handler, dpl); \
+    } while (0)
+    SETGATE(0, GD_KT, divide_thdlr, 0, T_DIVIDE);
+    SETGATE(0, GD_KT, debug_thdlr, 3, T_DEBUG);
+    SETGATE(0, GD_KT, nmi_thdlr, 0, T_NMI);
+    SETGATE(0, GD_KT, brkpt_thdlr, 3, T_BRKPT);
+    SETGATE(0, GD_KT, oflow_thdlr, 0, T_OFLOW);
+    SETGATE(0, GD_KT, bound_thdlr, 3, T_BOUND);
+    SETGATE(0, GD_KT, illop_thdlr, 0, T_ILLOP);
+    SETGATE(0, GD_KT, device_thdlr, 0, T_DEVICE);
+    SETGATE(0, GD_KT, dbflt_thdlr, 0, T_DBLFLT);
+    SETGATE(0, GD_KT, tss_thdlr, 0, T_TSS);
+    SETGATE(0, GD_KT, segnp_thdlr, 0, T_SEGNP);
+    SETGATE(0, GD_KT, stack_thdlr, 0, T_STACK);
+    SETGATE(0, GD_KT, gpflt_thdlr, 0, T_GPFLT);
+    SETGATE(0, GD_KT, pgflt_thdlr, 0, T_PGFLT);
+    SETGATE(0, GD_KT, fperr_thdlr, 0, T_FPERR);
+    SETGATE(0, GD_KT, align_thdlr, 0, T_ALIGN);
+    SETGATE(0, GD_KT, mchk_thdlr, 0, T_MCHK);
+    SETGATE(0, GD_KT, simderr_thdlr, 0, T_SIMDERR);
+
+    SETGATE(0, GD_KT, timer_thdlr, 0, IRQ_OFFSET + IRQ_TIMER);
+    SETGATE(0, GD_KT, clock_thdlr, 0, IRQ_OFFSET + IRQ_CLOCK);
+    SETGATE(0, GD_KT, syscall_thdlr, 3, T_SYSCALL);
+#undef SETGATE
 
     /* Setup #PF handler dedicated stack
      * It should be switched on #PF because
@@ -234,7 +264,7 @@ trap_dispatch(struct Trapframe *tf) {
                 tf->tf_regs.reg_r8);
         return;
     case T_BRKPT:
-        // LAB 8: Your code here.
+        monitor(tf);
         return;
     case IRQ_OFFSET + IRQ_SPURIOUS:
         /* Handle spurious interrupts
