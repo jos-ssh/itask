@@ -22,8 +22,8 @@ void platform_asan_unpoison(void *, size_t);
 void platform_asan_poison(void *, size_t);
 /* not sanitized memset allows us to access "invalid" areas for extra poisoning. */
 void __nosan_memset(void *, int, size_t);
-void __nosan_memcpy(void *, void *, size_t);
-void __nosan_memmove(void *, void *, size_t);
+void __nosan_memcpy(void *, const void *, size_t);
+void __nosan_memmove(void *, const void *, size_t);
 #define nosan_memmove __nosan_memmove
 #define nosan_memcpy  __nosan_memcpy
 #define nosan_memset  __nosan_memset

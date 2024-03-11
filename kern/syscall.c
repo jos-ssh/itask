@@ -20,6 +20,9 @@
  * Destroys the environment on memory errors. */
 static int
 sys_cputs(const char *s, size_t len) {
+    if (trace_syscalls) {
+      cprintf("called sys_cputs(s=%p, len=%lu)\n", s, len);
+    }
     /* Check that the user has permission to read memory [s, s+len).
      * Destroy the environment if not. */
     user_mem_assert(curenv, s, len, PROT_R | PROT_USER_);
@@ -29,6 +32,9 @@ sys_cputs(const char *s, size_t len) {
       cputchar(s[i]);
     }
 
+    if (trace_syscalls) {
+      cprintf("returning 0 from sys_cputs(s=%p, len=%lu)\n", s, len);
+    }
     return 0;
 }
 
@@ -36,13 +42,26 @@ sys_cputs(const char *s, size_t len) {
  * Returns the character, or 0 if there is no input waiting. */
 static int
 sys_cgetc(void) {
-    return cons_getc();
+    if (trace_syscalls) {
+      cprintf("called sys_cgetc()\n");
+    }
+    int ch = cons_getc();
+    if (trace_syscalls) {
+      cprintf("returning %d from sys_cgetc()\n", ch);
+    }
+    return ch;
 }
 
 /* Returns the current environment's envid. */
 static envid_t
 sys_getenvid(void) {
+    if (trace_syscalls) {
+      cprintf("called sys_getenvid()\n");
+    }
     assert(curenv);
+    if (trace_syscalls) {
+      cprintf("returning %x from sys_getenvid()\n", curenv->env_id);
+    }
     return curenv->env_id;
 }
 
@@ -53,9 +72,15 @@ sys_getenvid(void) {
  *      or the caller doesn't have permission to change envid. */
 static int
 sys_env_destroy(envid_t envid) {
+    if (trace_syscalls) {
+      cprintf("called sys_env_destroy(envid=%x)\n", envid);
+    }
     struct Env* env = NULL;
     int result = envid2env(envid, &env, true);
     if (result != 0) {
+      if (trace_syscalls) {
+        cprintf("returning %i sys_env_destroy(envid=%d)\n", result, envid);
+      }
       return -E_BAD_ENV;
     }
     if (trace_envs) {
@@ -64,7 +89,11 @@ sys_env_destroy(envid_t envid) {
                         "[%08x] destroying %08x\n",
                 curenv->env_id, env->env_id);
     }
+    bool curenv_destroyed = (env == curenv);
     env_destroy(env);
+    if (!curenv_destroyed && trace_syscalls) {
+      cprintf("returning 0 sys_env_destroy(envid=%x)\n", envid);
+    }
     return 0;
 }
 

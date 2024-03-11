@@ -1,6 +1,7 @@
 /* See COPYRIGHT for copyright information. */
 #include "inc/env.h"
 #include "inc/memlayout.h"
+#include "inc/stdio.h"
 #include <inc/x86.h>
 #include <inc/mmu.h>
 #include <inc/error.h>
@@ -39,8 +40,12 @@ static struct Env *env_free_list;
 /* NOTE: Should be at least LOGNENV */
 #define ENVGENSHIFT 12
 
+#if 1
 #define COND_VERIFY(cond, error) \
     if (!(cond)) return -(error)
+#else
+#define COND_VERIFY(cond, error) assert(cond)
+#endif
 
 /* Converts an envid to an env pointer.
  * If checkperm is set, the specified environment must be either the
@@ -200,12 +205,20 @@ env_alloc(struct Env **newenv_store, envid_t parent_id, enum EnvType type) {
 
     // Allocate stack
     int stack_status = map_region(
-            &env->address_space, USER_STACK_TOP - PAGE_SIZE,
+            &env->address_space, USER_STACK_TOP - USER_STACK_SIZE,
             NULL, 0,
-            PAGE_SIZE, PROT_R | PROT_W | PROT_USER_ | ALLOC_ZERO);
+            USER_STACK_SIZE, PROT_R | PROT_W | PROT_USER_ | ALLOC_ZERO);
     if (stack_status < 0) {
         return stack_status;
     }
+    
+    // Unposon allocated user stack
+#ifdef SANITIZE_SHADOW_BASE
+    struct AddressSpace* old_space = switch_address_space(&env->address_space);
+    platform_asan_unpoison((void*)(USER_STACK_TOP - PAGE_SIZE), PAGE_SIZE);
+    switch_address_space(old_space);
+#endif // SANITIZE_SHADOW_BASE
+
 #endif
 
     /* For now init trapframe with IF set */
@@ -432,7 +445,7 @@ load_icode(struct Env *env, uint8_t *binary, size_t size) {
         size_t mapped_size = pheader->p_memsz;
         size_t real_size = pheader->p_filesz;
 
-        COND_VERIFY(seg_offset + real_size > seg_offset, E_INVALID_EXE);
+        COND_VERIFY(seg_offset + real_size >= seg_offset, E_INVALID_EXE);
         COND_VERIFY(seg_offset + real_size <= size, E_INVALID_EXE);
 
         int map_res = map_region(
@@ -446,12 +459,10 @@ load_icode(struct Env *env, uint8_t *binary, size_t size) {
 
         struct AddressSpace *current_space = switch_address_space(
                 &env->address_space);
-
-
-        /*for (size_t i = 0; i < real_size; ++i)
-        {
-          virt_addr[i] = binary[seg_offset + i];
-        }*/
+#ifdef SANITIZE_SHADOW_BASE
+        // Unpoison mapped region
+        platform_asan_unpoison(virt_addr, mapped_size);
+#endif // SANITIZE_SHADOW_BASE
         memcpy(virt_addr, binary + seg_offset, real_size);
 
         switch_address_space(current_space);
