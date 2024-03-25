@@ -457,6 +457,18 @@ load_icode(struct Env *env, uint8_t *binary, size_t size) {
             return map_res;
         }
 
+        int class = 0;
+        while (CLASS_SIZE(class) < mapped_size +
+                              (((uintptr_t)virt_addr) & CLASS_MASK(class))) {
+          ++class;
+        }
+
+        int alloc_res = force_alloc_page(&env->address_space, 
+                        (uintptr_t) virt_addr, class);
+        if (alloc_res < 0) {
+          return alloc_res;
+        }
+
         struct AddressSpace *current_space = switch_address_space(
                 &env->address_space);
 #ifdef SANITIZE_SHADOW_BASE
