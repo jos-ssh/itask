@@ -157,7 +157,7 @@ i386_init(void) {
     /* Choose the timer used for scheduling: hpet or pit */
     timers_schedule("hpet0");
 
-#ifdef CONFIG_KSPACE
+#if 0 /* CONFIG_KSPACE */
     /* Touch all you want */
 #ifndef MON_ONLY
     ENV_CREATE_KERNEL_TYPE(prog_test1);
@@ -179,7 +179,7 @@ i386_init(void) {
     ENV_CREATE(TEST, ENV_TYPE_USER);
 #else
     /* Touch all you want. */
-    ENV_CREATE(user_forktree, ENV_TYPE_USER);
+    ENV_CREATE(user_dumbfork, ENV_TYPE_USER);
 #endif /* TEST* */
 #endif
 

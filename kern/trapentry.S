@@ -7,7 +7,7 @@
 
 #include <kern/picirq.h>
 
-#ifdef CONFIG_KSPACE
+#if 0 /* CONFIG_KSPACE */
 
 .globl clock_thdlr
 .type clock_thdlr, @function

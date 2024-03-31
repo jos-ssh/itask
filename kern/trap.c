@@ -100,7 +100,7 @@ trapname(int trapno) {
 
 void
 timer_idt_init(void) {
-#ifdef CONFIG_KSPACE
+#if 0 /* CONFIG_KSPACE */
     extern void timer_thdlr(void);
     extern void clock_thdlr(void);
     idt[IRQ_OFFSET + IRQ_TIMER] = GATE(0, GD_KT, timer_thdlr, 0);

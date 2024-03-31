@@ -1,5 +1,8 @@
 /* See COPYRIGHT for copyright information. */
 
+#include "inc/env.h"
+#include "inc/memlayout.h"
+#include "inc/stdio.h"
 #include <inc/syscall.h>
 #include <inc/x86.h>
 #include <inc/error.h>
@@ -8,59 +11,80 @@
 
 #include <kern/console.h>
 #include <kern/env.h>
+#include <kern/sched.h>
 #include <kern/kclock.h>
 #include <kern/pmap.h>
 #include <kern/syscall.h>
 #include <kern/trap.h>
 #include <kern/traceopt.h>
 
+#define CAT(x, y)           PRIMITIVE_CAT(x, y)
+#define PRIMITIVE_CAT(x, y) x##y
+
+#define PRINT_ARG(fmt, arg_name) \
+    cprintf(#arg_name "=" fmt " ", (arg_name));
+
+#define PRINT_ARGS(args)       CAT(PRINT_ARGS_1 args, END)
+#define PRINT_ARGS_1(fmt, arg) PRINT_ARG(fmt, arg) PRINT_ARGS_2
+#define PRINT_ARGS_2(fmt, arg) PRINT_ARG(fmt, arg) PRINT_ARGS_1
+#define PRINT_ARGS_1END
+#define PRINT_ARGS_2END
+
+#define TRACE_SYSCALL_ENTER(...)              \
+    do {                                      \
+        if (trace_syscalls) {                 \
+            cprintf("called %s( ", __func__); \
+            PRINT_ARGS(__VA_ARGS__);          \
+            cprintf(")\n");                   \
+        }                                     \
+    } while (0)
+
+#define TRACE_SYSCALL_LEAVE(fmt, ret, ...)                           \
+    do {                                                             \
+        if (trace_syscalls) {                                        \
+            cprintf("returning " fmt " from %s( ", (ret), __func__); \
+            PRINT_ARGS(__VA_ARGS__);                                 \
+            cprintf(") at line %d\n", __LINE__ + 1);                \
+        }                                                            \
+    } while (0)
+
+
 /* Print a string to the system console.
  * The string is exactly 'len' characters long.
  * Destroys the environment on memory errors. */
 static int
-sys_cputs(const char *s, size_t len) {
-    if (trace_syscalls) {
-      cprintf("called sys_cputs(s=%p, len=%lu)\n", s, len);
-    }
+sys_cputs(const char* s, size_t len) {
+#define ARGS ("%p", s)("%zu", len)
+    TRACE_SYSCALL_ENTER(ARGS);
     /* Check that the user has permission to read memory [s, s+len).
      * Destroy the environment if not. */
     user_mem_assert(curenv, s, len, PROT_R | PROT_USER_);
 
-    for (size_t i = 0; i < len; ++i)
-    {
-      cputchar(s[i]);
+    for (size_t i = 0; i < len; ++i) {
+        cputchar(s[i]);
     }
 
-    if (trace_syscalls) {
-      cprintf("returning 0 from sys_cputs(s=%p, len=%lu)\n", s, len);
-    }
+    TRACE_SYSCALL_LEAVE("%d", 0, ARGS);
     return 0;
+#undef ARGS
 }
 
 /* Read a character from the system console without blocking.
  * Returns the character, or 0 if there is no input waiting. */
 static int
 sys_cgetc(void) {
-    if (trace_syscalls) {
-      cprintf("called sys_cgetc()\n");
-    }
+    TRACE_SYSCALL_ENTER();
     int ch = cons_getc();
-    if (trace_syscalls) {
-      cprintf("returning %d from sys_cgetc()\n", ch);
-    }
+    TRACE_SYSCALL_LEAVE("%d", ch);
     return ch;
 }
 
 /* Returns the current environment's envid. */
 static envid_t
 sys_getenvid(void) {
-    if (trace_syscalls) {
-      cprintf("called sys_getenvid()\n");
-    }
+    TRACE_SYSCALL_ENTER();
     assert(curenv);
-    if (trace_syscalls) {
-      cprintf("returning %x from sys_getenvid()\n", curenv->env_id);
-    }
+    TRACE_SYSCALL_LEAVE("%x", curenv->env_id);
     return curenv->env_id;
 }
 
@@ -71,16 +95,13 @@ sys_getenvid(void) {
  *      or the caller doesn't have permission to change envid. */
 static int
 sys_env_destroy(envid_t envid) {
-    if (trace_syscalls) {
-      cprintf("called sys_env_destroy(envid=%x)\n", envid);
-    }
+#define ARGS ("%x", envid)
+    TRACE_SYSCALL_ENTER(ARGS);
     struct Env* env = NULL;
     int result = envid2env(envid, &env, true);
     if (result != 0) {
-      if (trace_syscalls) {
-        cprintf("returning %i sys_env_destroy(envid=%d)\n", result, envid);
-      }
-      return -E_BAD_ENV;
+        TRACE_SYSCALL_LEAVE("'%i'", result, ARGS);
+        return result;
     }
     if (trace_envs) {
         cprintf(env == curenv ?
@@ -90,16 +111,20 @@ sys_env_destroy(envid_t envid) {
     }
     bool curenv_destroyed = (env == curenv);
     env_destroy(env);
-    if (!curenv_destroyed && trace_syscalls) {
-      cprintf("returning 0 sys_env_destroy(envid=%x)\n", envid);
+    if (!curenv_destroyed) {
+        TRACE_SYSCALL_LEAVE("%d", 0, ARGS);
     }
     return 0;
+#undef ARGS
 }
 
 /* Deschedule current environment and pick a different one to run. */
 static void
 sys_yield(void) {
-    // LAB 9: Your code here
+    TRACE_SYSCALL_ENTER();
+    assert(curenv);
+    sched_yield();
+    TRACE_SYSCALL_LEAVE("%s", "void");
 }
 
 /* Allocate a new environment.
@@ -113,9 +138,22 @@ sys_exofork(void) {
      * status is set to ENV_NOT_RUNNABLE, and the register set is copied
      * from the current environment -- but tweaked so sys_exofork
      * will appear to return 0. */
+    TRACE_SYSCALL_ENTER();
 
-    // LAB 9: Your code here
-    return 0;
+    assert(curenv);
+    struct Env* child_env = NULL;
+    int alloc_res = env_alloc(&child_env, curenv->env_id, curenv->env_type);
+    if (alloc_res < 0) {
+        TRACE_SYSCALL_LEAVE("'%i'", alloc_res);
+        return alloc_res;
+    }
+
+    memcpy(&child_env->env_tf, &curenv->env_tf, sizeof(child_env->env_tf));
+    child_env->env_tf.tf_regs.reg_rax = 0;
+    child_env->env_status = ENV_NOT_RUNNABLE;
+
+    TRACE_SYSCALL_LEAVE("%x", child_env->env_id);
+    return child_env->env_id;
 }
 
 /* Set envid's env_status to status, which must be ENV_RUNNABLE
@@ -132,10 +170,24 @@ sys_env_set_status(envid_t envid, int status) {
      * You should set envid2env's third argument to 1, which will
      * check whether the current environment has permission to set
      * envid's status. */
+#define ARGS ("%x", envid)("%x", status)
+    TRACE_SYSCALL_ENTER(ARGS);
+    if (status != ENV_NOT_RUNNABLE && status != ENV_RUNNABLE) {
+        TRACE_SYSCALL_LEAVE("'%i'", -E_INVAL, ARGS);
+        return -E_INVAL;
+    }
 
-    // LAB 9: Your code here
+    struct Env* target = NULL;
+    int lookup_res = envid2env(envid, &target, true);
+    if (lookup_res < 0) {
+        TRACE_SYSCALL_LEAVE("'%i'", lookup_res, ARGS);
+        return lookup_res;
+    }
+    target->env_status = status;
 
+    TRACE_SYSCALL_LEAVE("%d", 0, ARGS);
     return 0;
+#undef ARGS
 }
 
 /* Set the page fault upcall for 'envid' by modifying the corresponding struct
@@ -147,7 +199,7 @@ sys_env_set_status(envid_t envid, int status) {
  *  -E_BAD_ENV if environment envid doesn't currently exist,
  *      or the caller doesn't have permission to change envid. */
 static int
-sys_env_set_pgfault_upcall(envid_t envid, void *func) {
+sys_env_set_pgfault_upcall(envid_t envid, void* func) {
     // LAB 9: Your code here:
 
     return 0;
@@ -178,9 +230,44 @@ sys_env_set_pgfault_upcall(envid_t envid, void *func) {
  *      or to allocate any necessary page tables. */
 static int
 sys_alloc_region(envid_t envid, uintptr_t addr, size_t size, int perm) {
-    // LAB 9: Your code here:
+#define ARGS ("%x", envid)("0x%lx", addr)("%zu", size)("%x", perm)
+    TRACE_SYSCALL_ENTER(ARGS);
+    if (addr >= MAX_USER_ADDRESS || (addr & CLASS_MASK(0))) {
+        TRACE_SYSCALL_LEAVE("'%i'", -E_INVAL, ARGS);
+        return -E_INVAL;
+    }
+    if (perm != (perm & PROT_ALL)) {
+        TRACE_SYSCALL_LEAVE("'%i'", -E_INVAL, ARGS);
+        return -E_INVAL;
+    }
+    if ((perm & ALLOC_ZERO) && (perm & ALLOC_ONE)) {
+        TRACE_SYSCALL_LEAVE("'%i'", -E_INVAL, ARGS);
+        return -E_INVAL;
+    }
 
-    return 0;
+    struct Env* target = NULL;
+    int lookup_res = envid2env(envid, &target, true);
+    if (lookup_res < 0) {
+        TRACE_SYSCALL_LEAVE("'%i'", lookup_res, ARGS);
+        return lookup_res;
+    }
+
+    if (!(perm & ALLOC_ONE)) {
+        perm |= ALLOC_ZERO;
+    }
+
+    if (target->env_type != ENV_TYPE_KERNEL) {
+        perm |= PROT_USER_;
+    }
+
+    int map_res = map_region(&target->address_space, addr, NULL, 0, size, perm);
+    if (map_res != 0) {
+        TRACE_SYSCALL_LEAVE("'%i'", map_res, ARGS);
+    } else {
+        TRACE_SYSCALL_LEAVE("%d", 0, ARGS);
+    }
+    return map_res;
+#undef ARGS
 }
 
 /* Map the region of memory at 'srcva' in srcenvid's address space
@@ -206,9 +293,60 @@ sys_alloc_region(envid_t envid, uintptr_t addr, size_t size, int perm) {
 static int
 sys_map_region(envid_t srcenvid, uintptr_t srcva,
                envid_t dstenvid, uintptr_t dstva, size_t size, int perm) {
-    // LAB 9: Your code here
+#define ARGS ("%x", srcenvid)("0x%lx", srcva)("%x", dstenvid)("0x%lx", dstva)("%zu", size)("%x", perm)
+    TRACE_SYSCALL_ENTER(ARGS);
+    if (srcva >= MAX_USER_ADDRESS || (srcva & CLASS_MASK(0))) {
+        TRACE_SYSCALL_LEAVE("'%i'", -E_INVAL, ARGS);
+        return -E_INVAL;
+    }
+    if (dstva >= MAX_USER_ADDRESS || (dstva & CLASS_MASK(0))) {
+        TRACE_SYSCALL_LEAVE("'%i'", -E_INVAL, ARGS);
+        return -E_INVAL;
+    }
+    if (perm != (perm & PROT_ALL)) {
+        TRACE_SYSCALL_LEAVE("'%i'", -E_INVAL, ARGS);
+        return -E_INVAL;
+    }
+    if ((perm & (ALLOC_ZERO | ALLOC_ONE))) {
+        TRACE_SYSCALL_LEAVE("'%i'", -E_INVAL, ARGS);
+        return -E_INVAL;
+    }
 
-    return 0;
+    int lookup_res = 0;
+    struct Env* src = NULL;
+    struct Env* dst = NULL;
+    lookup_res = envid2env(srcenvid, &src, true);
+    if (lookup_res < 0) {
+        TRACE_SYSCALL_LEAVE("'%i'", lookup_res, ARGS);
+        return lookup_res;
+    }
+    lookup_res = envid2env(dstenvid, &dst, true);
+    if (lookup_res < 0) {
+        TRACE_SYSCALL_LEAVE("'%i'", lookup_res, ARGS);
+        return lookup_res;
+    }
+
+    if (dst->env_type != ENV_TYPE_KERNEL) {
+      perm |= PROT_USER_;
+    }
+
+    /*
+    if (user_mem_check(src, (const void*)srcva, size, (perm & PROT_RWX) | PROT_USER_) != 0) {
+        TRACE_SYSCALL_LEAVE("'%i'", -E_INVAL, ARGS);
+        return -E_INVAL;
+    }
+    */
+
+
+    int map_res = map_region(&dst->address_space, dstva, &src->address_space,
+                             srcva, size, perm);
+    if (map_res != 0) {
+        TRACE_SYSCALL_LEAVE("'%i'", map_res, ARGS);
+    } else {
+        TRACE_SYSCALL_LEAVE("%d", 0, ARGS);
+    }
+    return map_res;
+#undef ARGS
 }
 
 /* Unmap the region of memory at 'va' in the address space of 'envid'.
@@ -220,11 +358,25 @@ sys_map_region(envid_t srcenvid, uintptr_t srcva,
  *  -E_INVAL if va >= MAX_USER_ADDRESS, or va is not page-aligned. */
 static int
 sys_unmap_region(envid_t envid, uintptr_t va, size_t size) {
+#define ARGS ("%x", envid)("0x%lx", va)("%zu", size)
+    TRACE_SYSCALL_ENTER(ARGS);
     /* Hint: This function is a wrapper around unmap_region(). */
+    if (va >= MAX_USER_ADDRESS || (va & CLASS_MASK(0))) {
+        TRACE_SYSCALL_LEAVE("'%i'", -E_INVAL, ARGS);
+        return -E_INVAL;
+    }
 
-    // LAB 9: Your code here
+    struct Env* target = NULL;
+    int lookup_res = envid2env(envid, &target, true);
+    if (lookup_res < 0) {
+        TRACE_SYSCALL_LEAVE("'%i'", lookup_res, ARGS);
+        return lookup_res;
+    }
 
+    unmap_region(&target->address_space, va, size);
+    TRACE_SYSCALL_LEAVE("%d", 0, ARGS);
     return 0;
+#undef ARGS
 }
 
 /* Map region of physical memory to the userspace address.
@@ -330,20 +482,50 @@ syscall(uintptr_t syscallno, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t
     /* Call the function corresponding to the 'syscallno' parameter.
      * Return any appropriate return value. */
 
-    switch (syscallno)
-    {
+    switch (syscallno) {
     case SYS_cputs:
-      sys_cputs((const char*) a1, a2);
-      return 0;
+        sys_cputs((const char*)a1, a2);
+        return 0;
     case SYS_cgetc:
-      return sys_cgetc();
+        return sys_cgetc();
     case SYS_getenvid:
-      return sys_getenvid();
+        return sys_getenvid();
     case SYS_env_destroy:
-      return sys_env_destroy(a1);
+        return sys_env_destroy(a1);
+    case SYS_alloc_region:
+        return sys_alloc_region(a1, a2, a3, a4);
+    case SYS_map_region:
+        return sys_map_region(a1, a2, a3, a4, a5, a6);
+    case SYS_map_physical_region:
+        // TODO: implement
+        return -E_NO_SYS;
+    case SYS_unmap_region:
+        return sys_unmap_region(a1, a2, a3);
+    case SYS_region_refs:
+        // TODO: implement
+        return -E_NO_SYS;
+    case SYS_exofork:
+        return sys_exofork();
+    case SYS_env_set_status:
+        return sys_env_set_status(a1, a2);
+    case SYS_env_set_trapframe:
+        // TODO: implement
+        return -E_NO_SYS;
+    case SYS_env_set_pgfault_upcall:
+        // TODO: implement
+        return -E_NO_SYS;
+    case SYS_yield:
+        sys_yield();
+        return 0;
+    case SYS_ipc_try_send:
+        // TODO: implement
+        return -E_NO_SYS;
+    case SYS_ipc_recv:
+        // TODO: implement
+        return -E_NO_SYS;
     case NSYSCALLS:
     default:
-      return -E_NO_SYS;
+        return -E_NO_SYS;
     }
     // LAB 9: Your code here
 

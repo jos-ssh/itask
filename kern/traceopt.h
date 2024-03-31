@@ -2,7 +2,7 @@
 #define JOS_INC_TRACEOPT_H
 
 #ifndef trace_syscalls
-#define trace_syscalls 0
+#define trace_syscalls 1
 #endif
 
 #if LAB == 8

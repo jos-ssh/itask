@@ -23,7 +23,7 @@
 /* Currently active environment */
 struct Env *curenv = NULL;
 
-#ifdef CONFIG_KSPACE
+#if 0 /* CONFIG_KSPACE */
 /* All environments */
 struct Env env_array[NENV];
 struct Env *envs = env_array;
@@ -98,7 +98,7 @@ envid2env(envid_t envid, struct Env **env_store, bool need_check_perm) {
  */
 void
 env_init(void) {
-#ifdef CONFIG_KSPACE
+#if 0 /* CONFIG_KSPACE */
     const size_t env_count = NENV;
 #else
     /* kzalloc_region only works with current_space != NULL */
@@ -158,7 +158,7 @@ env_alloc(struct Env **newenv_store, envid_t parent_id, enum EnvType type) {
 
     /* Set the basic status variables */
     env->env_parent_id = parent_id;
-#ifdef CONFIG_KSPACE
+#if 0 /* CONFIG_KSPACE */
     env->env_type = ENV_TYPE_KERNEL;
 #else
     env->env_type = type;
@@ -181,7 +181,7 @@ env_alloc(struct Env **newenv_store, envid_t parent_id, enum EnvType type) {
      * checks involving the RPL and the Descriptor Privilege Level
      * (DPL) stored in the descriptors themselves */
 
-#ifdef CONFIG_KSPACE
+#if 0 /* CONFIG_KSPACE */
     env->env_tf.tf_ds = GD_KD;
     env->env_tf.tf_es = GD_KD;
     env->env_tf.tf_ss = GD_KD;
@@ -489,7 +489,7 @@ load_icode(struct Env *env, uint8_t *binary, size_t size) {
     env->binary = binary;
     env->env_tf.tf_rip = elf_header->e_entry;
 
-#ifdef CONFIG_KSPACE
+#if 0 /* CONFIG_KSPACE */
     struct AddressSpace *current_space = switch_address_space(
             &env->address_space);
 
@@ -574,7 +574,7 @@ env_destroy(struct Env *env) {
     }
 }
 
-#ifdef CONFIG_KSPACE
+#if 0 /* CONFIG_KSPACE */
 void
 csys_exit(void) {
     if (!curenv) panic("curenv = NULL");
