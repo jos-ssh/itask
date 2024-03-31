@@ -118,7 +118,7 @@ int get_prot(void *va);
 bool is_page_dirty(void *va);
 bool is_page_present(void *va);
 
-#ifdef JOS_PROG
+#if 0 /* JOS_PROG */
 extern void (*volatile sys_exit)(void);
 extern void (*volatile sys_yield)(void);
 #endif

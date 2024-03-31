@@ -1,5 +1,6 @@
 /* implement fork from user space */
 
+#include <inc/env.h>
 #include <inc/string.h>
 #include <inc/lib.h>
 
@@ -18,11 +19,26 @@
  */
 envid_t
 fork(void) {
-    // LAB 9: Your code here.
+    envid_t child = sys_exofork();
 
-    panic("fork() is not implemented");
+    if (child < 0)
+      return child;
+    
+    if (child == 0) {
+        // TODO: sys_env_set_pgfault_upcall
+        thisenv = &envs[ENVX(sys_getenvid())];
+        return 0;
+    }
 
-    return 0;
+    sys_map_region(0, NULL, child, NULL,
+        MAX_USER_ADDRESS, PROT_ALL | PROT_LAZY | PROT_COMBINE);
+
+    int status_res = sys_env_set_status(child, ENV_RUNNABLE);
+    if (status_res < 0) {
+      return status_res;
+    }
+
+    return child;
 }
 
 envid_t
