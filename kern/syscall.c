@@ -1,5 +1,6 @@
 /* See COPYRIGHT for copyright information. */
 
+#include "inc/env.h"
 #include "inc/memlayout.h"
 #include "inc/stdio.h"
 #include <inc/syscall.h>
@@ -43,7 +44,7 @@
         if (trace_syscalls) {                                        \
             cprintf("returning " fmt " from %s( ", (ret), __func__); \
             PRINT_ARGS(__VA_ARGS__);                                 \
-            cprintf(") at line %d\n", __LINE__ + 1);                \
+            cprintf(") at line %d\n", __LINE__ + 1);                 \
         }                                                            \
     } while (0)
 
@@ -122,8 +123,8 @@ static void
 sys_yield(void) {
     TRACE_SYSCALL_ENTER();
     assert(curenv);
+    TRACE_SYSCALL_LEAVE("%s", "~yield~");
     sched_yield();
-    TRACE_SYSCALL_LEAVE("%s", "void");
 }
 
 /* Allocate a new environment.
@@ -202,7 +203,7 @@ sys_env_set_pgfault_upcall(envid_t envid, void* func) {
     struct Env* target = NULL;
     int result = envid2env(envid, &target, true);
     if (result < 0)
-      return -E_BAD_ENV;
+        return -E_BAD_ENV;
 
     target->env_pgfault_upcall = func;
     return 0;
@@ -332,7 +333,7 @@ sys_map_region(envid_t srcenvid, uintptr_t srcva,
     }
 
     if (dst->env_type != ENV_TYPE_KERNEL) {
-      perm |= PROT_USER_;
+        perm |= PROT_USER_;
     }
 
     /*
@@ -449,9 +450,56 @@ sys_map_physical_region(uintptr_t pa, envid_t envid, uintptr_t va, size_t size, 
  *      address space. */
 static int
 sys_ipc_try_send(envid_t envid, uint32_t value, uintptr_t srcva, size_t size, int perm) {
-    // LAB 9: Your code here
+#define ARGS ("%x", envid)("%u", value)("0x%lx", srcva)("0x%lx", size)("%x", perm)
+    TRACE_SYSCALL_ENTER(ARGS);
+    struct Env* target = NULL;
+    int lookup_res = envid2env(envid, &target, false);
+    if (lookup_res < 0) {
+        TRACE_SYSCALL_LEAVE("'%i'", -E_BAD_ENV, ARGS);
+        return -E_BAD_ENV;
+    }
 
+    if (!target->env_ipc_recving) {
+        TRACE_SYSCALL_LEAVE("'%i'", -E_IPC_NOT_RECV, ARGS);
+        return -E_IPC_NOT_RECV;
+    }
+
+    if (srcva < MAX_USER_ADDRESS && target->env_ipc_dstva < MAX_USER_ADDRESS) {
+        if (srcva & CLASS_MASK(0)) {
+            TRACE_SYSCALL_LEAVE("'%i'", -E_INVAL, ARGS);
+            return -E_INVAL;
+        }
+        if (perm != (perm & PROT_ALL)) {
+            TRACE_SYSCALL_LEAVE("'%i'", -E_INVAL, ARGS);
+            return -E_INVAL;
+        }
+        if ((perm & (ALLOC_ZERO | ALLOC_ONE))) {
+            TRACE_SYSCALL_LEAVE("'%i'", -E_INVAL, ARGS);
+            return -E_INVAL;
+        }
+        size_t sent_size = size < target->env_ipc_maxsz ? size : target->env_ipc_maxsz;
+
+        int map_res = map_region(&target->address_space, target->env_ipc_dstva,
+                                 &curenv->address_space, srcva,
+                                 sent_size, perm);
+        if (map_res != 0) {
+            TRACE_SYSCALL_LEAVE("'%i'", map_res, ARGS);
+            return map_res;
+        }
+
+        target->env_ipc_perm = perm;
+        target->env_ipc_maxsz = size;
+    }
+    target->env_ipc_value = value;
+    target->env_ipc_from = curenv->env_id;
+    target->env_ipc_recving = false;
+
+    target->env_tf.tf_regs.reg_rax = 0;
+    target->env_status = ENV_RUNNABLE;
+
+    TRACE_SYSCALL_LEAVE("%d", 0, ARGS);
     return 0;
+#undef ARGS
 }
 
 /* Block until a value is ready.  Record that you want to receive
@@ -469,8 +517,28 @@ sys_ipc_try_send(envid_t envid, uint32_t value, uintptr_t srcva, size_t size, in
  *  -E_INVAL if maxsize is not page aligned. */
 static int
 sys_ipc_recv(uintptr_t dstva, uintptr_t maxsize) {
-    // LAB 9: Your code here
+#define ARGS ("0x%lx", dstva)("0x%lx", maxsize)
+    TRACE_SYSCALL_ENTER(ARGS);
+    if (dstva < MAX_USER_ADDRESS)
+    {
+      if ((dstva & CLASS_MASK(0)) || !maxsize || (maxsize & CLASS_MASK(0)))
+      {
+        TRACE_SYSCALL_LEAVE("'%i'", -E_INVAL, ARGS);
+        return -E_INVAL;
+      }
+      curenv->env_ipc_dstva = dstva;
+      curenv->env_ipc_maxsz = maxsize;
+    }
 
+    curenv->env_ipc_from = 0;
+    curenv->env_ipc_perm = 0;
+    curenv->env_ipc_value = 0;
+
+    curenv->env_ipc_recving = true;
+    curenv->env_status = ENV_NOT_RUNNABLE;
+
+    TRACE_SYSCALL_LEAVE("%s", "~yield~", ARGS);
+    sys_yield();
     return 0;
 }
 
@@ -522,11 +590,9 @@ syscall(uintptr_t syscallno, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t
         sys_yield();
         return 0;
     case SYS_ipc_try_send:
-        // TODO: implement
-        return -E_NO_SYS;
+        return sys_ipc_try_send(a1, a2, a3, a4, a5);
     case SYS_ipc_recv:
-        // TODO: implement
-        return -E_NO_SYS;
+        return sys_ipc_recv(a1, a2);
     case NSYSCALLS:
     default:
         return -E_NO_SYS;

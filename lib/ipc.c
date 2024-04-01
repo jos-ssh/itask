@@ -1,5 +1,8 @@
 /* User-level IPC library routines */
 
+#include "inc/error.h"
+#include "inc/memlayout.h"
+#include "inc/syscall.h"
 #include <inc/lib.h>
 
 /* Receive a value via IPC and return it.
@@ -21,9 +24,22 @@
  *   a perfectly valid place to map a page.) */
 int32_t
 ipc_recv(envid_t *from_env_store, void *pg, size_t *size, int *perm_store) {
-    // LAB 9: Your code here:
+    int res = sys_ipc_recv(pg ? pg : (void *)MAX_USER_ADDRESS,
+                           size ? *size : 0);
+    if (res != 0) {
+        if (from_env_store)
+            *from_env_store = 0;
+        if (perm_store)
+            *perm_store = 0;
+        return res;
+    }
 
-    return -1;
+    if (from_env_store)
+        *from_env_store = thisenv->env_ipc_from;
+    if (perm_store)
+        *perm_store = thisenv->env_ipc_perm;
+
+    return thisenv->env_ipc_value;
 }
 
 /* Send 'val' (and 'pg' with 'perm', if 'pg' is nonnull) to 'toenv'.
@@ -36,7 +52,15 @@ ipc_recv(envid_t *from_env_store, void *pg, size_t *size, int *perm_store) {
  *   as meaning "no page".  (Zero is not the right value.) */
 void
 ipc_send(envid_t to_env, uint32_t val, void *pg, size_t size, int perm) {
-    // LAB 9: Your code here:
+    int res = 0;
+    while ((res = sys_ipc_try_send(to_env, val, pg ? pg : (void *)MAX_USER_ADDRESS,
+                                   size, perm))) {
+        if (res == -E_IPC_NOT_RECV) {
+            sys_yield();
+            continue;
+        }
+        panic("ipc_send: %i", res);
+    }
 }
 
 /* Find the first environment of the given type.  We'll use this to
