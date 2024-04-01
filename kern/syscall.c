@@ -1,6 +1,5 @@
 /* See COPYRIGHT for copyright information. */
 
-#include "inc/env.h"
 #include "inc/memlayout.h"
 #include "inc/stdio.h"
 #include <inc/syscall.h>
@@ -200,8 +199,12 @@ sys_env_set_status(envid_t envid, int status) {
  *      or the caller doesn't have permission to change envid. */
 static int
 sys_env_set_pgfault_upcall(envid_t envid, void* func) {
-    // LAB 9: Your code here:
+    struct Env* target = NULL;
+    int result = envid2env(envid, &target, true);
+    if (result < 0)
+      return -E_BAD_ENV;
 
+    target->env_pgfault_upcall = func;
     return 0;
 }
 
@@ -259,6 +262,8 @@ sys_alloc_region(envid_t envid, uintptr_t addr, size_t size, int perm) {
     if (target->env_type != ENV_TYPE_KERNEL) {
         perm |= PROT_USER_;
     }
+
+    perm |= PROT_LAZY;
 
     int map_res = map_region(&target->address_space, addr, NULL, 0, size, perm);
     if (map_res != 0) {
@@ -512,8 +517,7 @@ syscall(uintptr_t syscallno, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t
         // TODO: implement
         return -E_NO_SYS;
     case SYS_env_set_pgfault_upcall:
-        // TODO: implement
-        return -E_NO_SYS;
+        return sys_env_set_pgfault_upcall(a1, (void*)a2);
     case SYS_yield:
         sys_yield();
         return 0;

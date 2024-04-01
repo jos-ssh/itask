@@ -234,8 +234,10 @@ env_alloc(struct Env **newenv_store, envid_t parent_id, enum EnvType type) {
     env_free_list = env->env_link;
     *newenv_store = env;
 
-    if (trace_envs_more) {
-      cprintf("[%08x] allocated env %08x\n", curenv ? curenv->env_id : 0, env->env_id);
+    if (trace_envs) {
+        cprintf("[%08x] new env %08x\n",
+                curenv ? curenv->env_id : 0,
+                env->env_id);
     }
     return 0;
 }
@@ -521,12 +523,6 @@ env_create(uint8_t *binary, size_t size, enum EnvType type) {
     status = load_icode(env, binary, size);
     if (status < 0)
         panic("load icode: %i", status);
-
-    if (trace_envs) {
-        cprintf("[%08x] new env %08x\n",
-                curenv ? curenv->env_id : 0,
-                env->env_id);
-    }
 }
 
 

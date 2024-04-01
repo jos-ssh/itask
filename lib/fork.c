@@ -19,13 +19,16 @@
  */
 envid_t
 fork(void) {
+    void* parent_upcall = thisenv->env_pgfault_upcall;
     envid_t child = sys_exofork();
 
     if (child < 0)
       return child;
     
     if (child == 0) {
-        // TODO: sys_env_set_pgfault_upcall
+        if (parent_upcall)
+          sys_env_set_pgfault_upcall(CURENVID, parent_upcall);
+
         thisenv = &envs[ENVX(sys_getenvid())];
         return 0;
     }

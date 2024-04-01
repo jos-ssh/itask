@@ -158,7 +158,7 @@
 /* Top of one-page user exception stack */
 #define USER_EXCEPTION_STACK_TOP MAX_USER_ADDRESS
 /* Size of exception stack (must be one page for now) */
-#define USER_EXCEPTION_STACK_SIZE (8 * PAGE_SIZE)
+#define USER_EXCEPTION_STACK_SIZE (PAGE_SIZE)
 /* Top of normal user stack */
 /* Next page left invalid to guard against exception stack overflow; then: */
 #define USER_STACK_TOP (USER_EXCEPTION_STACK_TOP - USER_EXCEPTION_STACK_SIZE - PAGE_SIZE)
