@@ -34,6 +34,13 @@ ipc_recv(envid_t *from_env_store, void *pg, size_t *size, int *perm_store) {
         return res;
     }
 
+#ifdef SANITIZE_USER_SHADOW_BASE
+    if (pg)
+    {
+        platform_asan_unpoison(pg, thisenv->env_ipc_maxsz);
+    }
+#endif // SANITIZE_USER_SHADOW_BASE
+
     if (from_env_store)
         *from_env_store = thisenv->env_ipc_from;
     if (perm_store)

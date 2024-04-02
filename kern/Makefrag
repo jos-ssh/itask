@@ -99,6 +99,7 @@ KERN_BINFILES :=	user/hello \
 			user/faultevilhandler \
 			user/forktree \
 			user/spin \
+      user/sendpage \
 			user/fairness \
 			user/pingpong \
 			user/pingpongs \

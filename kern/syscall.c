@@ -472,11 +472,14 @@ sys_ipc_try_send(envid_t envid, uint32_t value, uintptr_t srcva, size_t size, in
 
         int map_res = map_region(&target->address_space, target->env_ipc_dstva,
                                  &curenv->address_space, srcva,
-                                 sent_size, perm);
+                                 sent_size, perm | PROT_USER_);
         if (map_res != 0) {
             TRACE_SYSCALL_LEAVE("'%i'", map_res, ARGS);
             return map_res;
         }
+        cprintf("Sent region %p in [%x] to %p in [%x] with size 0x%lx\n",
+                (void*) srcva, curenv->env_id, (void*) target->env_ipc_dstva,
+                envid, sent_size);
 
         target->env_ipc_perm = perm;
         target->env_ipc_maxsz = size;

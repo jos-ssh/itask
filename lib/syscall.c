@@ -76,12 +76,15 @@ sys_region_refs2(void *va, size_t size, void *va2, size_t size2) {
     return syscall(SYS_region_refs, 0, (uintptr_t)va, size, (uintptr_t)va2, size2, 0, 0);
 }
 
+#define CPUTS(str) sys_cputs((str), sizeof(str) - 1)
+
 int
 sys_alloc_region(envid_t envid, void *va, size_t size, int perm) {
     int res = syscall(SYS_alloc_region, 1, envid, (uintptr_t)va, size, perm, 0, 0);
 #ifdef SANITIZE_USER_SHADOW_BASE
     /* Unpoison the allocated page */
-    if (!res && thisenv && envid == CURENVID && ((uintptr_t)va < SANITIZE_USER_SHADOW_BASE || (uintptr_t)va >= SANITIZE_USER_SHADOW_SIZE + SANITIZE_USER_SHADOW_BASE)) {
+    if (!res && thisenv && (envid == CURENVID || envid == thisenv->env_id)
+        && ((uintptr_t)va < SANITIZE_USER_SHADOW_BASE || (uintptr_t)va >= SANITIZE_USER_SHADOW_SIZE + SANITIZE_USER_SHADOW_BASE)) {
         platform_asan_unpoison(va, size);
     }
 #endif

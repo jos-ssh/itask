@@ -9,6 +9,8 @@ const char *str2 = "hello parent environment! I'm good.";
 #define TEMP_ADDR       ((char *)0xa00000)
 #define TEMP_ADDR_CHILD ((char *)0xb00000)
 
+#define CPUTS(str) sys_cputs((str), sizeof(str) - 1)
+
 void
 umain(int argc, char **argv) {
     envid_t who;
@@ -27,7 +29,9 @@ umain(int argc, char **argv) {
     }
 
     /* Parent */
-    sys_alloc_region(thisenv->env_id, TEMP_ADDR, PAGE_SIZE, PROT_RW);
+    CPUTS("Parent: allocating TEMP_ADDR\n");
+    int res = sys_alloc_region(thisenv->env_id, TEMP_ADDR, PAGE_SIZE, PROT_RW);
+    assert(res == 0);
     memcpy(TEMP_ADDR, str1, strlen(str1) + 1);
     ipc_send(who, 0, TEMP_ADDR, PAGE_SIZE, PROT_RW);
 
