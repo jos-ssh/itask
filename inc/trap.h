@@ -95,10 +95,17 @@ struct UTrapframe {
     uint64_t utf_err;
     /* Trap-time return state */
     struct PushRegs utf_regs;
+
     uintptr_t utf_rip;
+    uint16_t utf_cs;
+    uint16_t tf_padding1;
+    uint32_t tf_padding2;
     uint64_t utf_rflags;
     /* The trap-time stack to return to */
     uintptr_t utf_rsp;
+    uint16_t utf_ss;
+    uint16_t tf_padding3;
+    uint32_t tf_padding4;
 } __attribute__((packed));
 
 #endif /* !__ASSEMBLER__ */

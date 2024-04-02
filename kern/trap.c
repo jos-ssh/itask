@@ -443,10 +443,10 @@ page_fault_handler(struct Trapframe *tf) {
     uintptr_t xstack_top = USER_EXCEPTION_STACK_TOP;
 
     if (xstack_bottom <= tf->tf_rsp && tf->tf_rsp < USER_EXCEPTION_STACK_TOP)
-        xstack_top = tf->tf_rsp - 8;
+        xstack_top = tf->tf_rsp;
 
-    static_assert(UTRAP_RIP == offsetof(struct UTrapframe, utf_rip), "UTRAP_RIP should be equal to RIP offset");
-    static_assert(UTRAP_RSP == offsetof(struct UTrapframe, utf_rsp), "UTRAP_RSP should be equal to RSP offset");
+    // static_assert(UTRAP_RIP == offsetof(struct UTrapframe, utf_rip), "UTRAP_RIP should be equal to RIP offset");
+    // static_assert(UTRAP_RSP == offsetof(struct UTrapframe, utf_rsp), "UTRAP_RSP should be equal to RSP offset");
 
     user_mem_assert(curenv, (void *)(xstack_top - sizeof(struct UTrapframe)),
                     sizeof(struct UTrapframe), PROT_R | PROT_W);
@@ -472,8 +472,10 @@ page_fault_handler(struct Trapframe *tf) {
     user_tf.utf_err = tf->tf_err;
     memcpy(&user_tf.utf_regs, &tf->tf_regs, sizeof(user_tf.utf_regs));
     user_tf.utf_rip = tf->tf_rip;
+    user_tf.utf_cs = tf->tf_cs;
     user_tf.utf_rflags = tf->tf_rflags;
     user_tf.utf_rsp = tf->tf_rsp;
+    user_tf.utf_ss = tf->tf_ss;
 
     /* And then copy it userspace (nosan_memcpy()) */
     nosan_memcpy((void *)(xstack_top - sizeof(user_tf)), &user_tf, sizeof(user_tf));

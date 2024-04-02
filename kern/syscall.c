@@ -477,9 +477,12 @@ sys_ipc_try_send(envid_t envid, uint32_t value, uintptr_t srcva, size_t size, in
             TRACE_SYSCALL_LEAVE("'%i'", map_res, ARGS);
             return map_res;
         }
-        cprintf("Sent region %p in [%x] to %p in [%x] with size 0x%lx\n",
-                (void*) srcva, curenv->env_id, (void*) target->env_ipc_dstva,
-                envid, sent_size);
+        if (trace_syscalls) {
+            cprintf("%s: Sent region %p in [%x] to %p in [%x] with size 0x%lx\n",
+                    __func__,
+                    (void*)srcva, curenv->env_id, (void*)target->env_ipc_dstva,
+                    envid, sent_size);
+        }
 
         target->env_ipc_perm = perm;
         target->env_ipc_maxsz = size;
@@ -513,15 +516,13 @@ static int
 sys_ipc_recv(uintptr_t dstva, uintptr_t maxsize) {
 #define ARGS ("0x%lx", dstva)("0x%lx", maxsize)
     TRACE_SYSCALL_ENTER(ARGS);
-    if (dstva < MAX_USER_ADDRESS)
-    {
-      if ((dstva & CLASS_MASK(0)) || !maxsize || (maxsize & CLASS_MASK(0)))
-      {
-        TRACE_SYSCALL_LEAVE("'%i'", -E_INVAL, ARGS);
-        return -E_INVAL;
-      }
-      curenv->env_ipc_dstva = dstva;
-      curenv->env_ipc_maxsz = maxsize;
+    if (dstva < MAX_USER_ADDRESS) {
+        if ((dstva & CLASS_MASK(0)) || !maxsize || (maxsize & CLASS_MASK(0))) {
+            TRACE_SYSCALL_LEAVE("'%i'", -E_INVAL, ARGS);
+            return -E_INVAL;
+        }
+        curenv->env_ipc_dstva = dstva;
+        curenv->env_ipc_maxsz = maxsize;
     }
 
     curenv->env_ipc_from = 0;
