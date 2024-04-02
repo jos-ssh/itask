@@ -1,8 +1,7 @@
 /* See COPYRIGHT for copyright information. */
 
-#include "inc/env.h"
-#include "inc/memlayout.h"
-#include "inc/stdio.h"
+#include <inc/memlayout.h>
+#include <inc/stdio.h>
 #include <inc/syscall.h>
 #include <inc/x86.h>
 #include <inc/error.h>
@@ -240,7 +239,7 @@ sys_alloc_region(envid_t envid, uintptr_t addr, size_t size, int perm) {
         TRACE_SYSCALL_LEAVE("'%i'", -E_INVAL, ARGS);
         return -E_INVAL;
     }
-    if (perm != (perm & PROT_ALL)) {
+    if ((perm & ~(ALLOC_ONE | ALLOC_ZERO)) != (perm & PROT_ALL)) {
         TRACE_SYSCALL_LEAVE("'%i'", -E_INVAL, ARGS);
         return -E_INVAL;
     }
@@ -310,10 +309,6 @@ sys_map_region(envid_t srcenvid, uintptr_t srcva,
         return -E_INVAL;
     }
     if (perm != (perm & PROT_ALL)) {
-        TRACE_SYSCALL_LEAVE("'%i'", -E_INVAL, ARGS);
-        return -E_INVAL;
-    }
-    if ((perm & (ALLOC_ZERO | ALLOC_ONE))) {
         TRACE_SYSCALL_LEAVE("'%i'", -E_INVAL, ARGS);
         return -E_INVAL;
     }
@@ -470,10 +465,6 @@ sys_ipc_try_send(envid_t envid, uint32_t value, uintptr_t srcva, size_t size, in
             return -E_INVAL;
         }
         if (perm != (perm & PROT_ALL)) {
-            TRACE_SYSCALL_LEAVE("'%i'", -E_INVAL, ARGS);
-            return -E_INVAL;
-        }
-        if ((perm & (ALLOC_ZERO | ALLOC_ONE))) {
             TRACE_SYSCALL_LEAVE("'%i'", -E_INVAL, ARGS);
             return -E_INVAL;
         }
