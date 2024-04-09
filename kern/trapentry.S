@@ -74,7 +74,7 @@ _alltraps:
     # LAB 8: Your code here
     # Invoke `trap' with a pointer to struct trap as an argument.
 
-  jmp .
+    jmp .
 
 # LAB 8: Your code here
 # Use TRAPHANDLER or TRAPHANDLER_NOEC to setup
