@@ -1,5 +1,6 @@
 #include "nvme.h"
 #include "fs/pci.h"
+#include "fs/fs.h"
 #include <inc/x86.h>
 #include <inc/lib.h>
 
@@ -51,7 +52,7 @@ nvme_alloc_queues(struct NvmeController *ctl) {
 
     /* Touch buffer pages so that they does not change their addresses.
      * They will be already zeroed by the kernel otherwise */
-    for (size_t i = 0; i < 6; i++) {
+    for (size_t i = 0; i < 4; i++) {
         volatile char *page = (volatile char *)ctl->buffer + NVME_PAGE_SIZE * i;
         *page = 0;
         DEBUG("    va=%p, pa=%lx", page, get_phys_addr((char *)page));
@@ -677,6 +678,7 @@ nvme_read(uint64_t secno, void *dst, size_t nsecs) {
      *      Remember that the command takes physical address as an argument
      *      and 'dst' is a virtual address. */
 
+    force_alloc(dst, nsecs*SECTSIZE);
     return nvme_cmd_rw(&nvme, &nvme.ioq[0], NVME_CMD_READ, nvme.nsi.id,
         secno, nsecs, get_phys_addr((void*) dst), 0);
 }

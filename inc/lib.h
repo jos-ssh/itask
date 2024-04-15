@@ -120,6 +120,7 @@ uintptr_t get_phys_addr(void *va);
 int get_prot(void *va);
 bool is_page_dirty(void *va);
 bool is_page_present(void *va);
+void force_alloc(void* va, size_t size);
 
 /* fd.c */
 int close(int fd);

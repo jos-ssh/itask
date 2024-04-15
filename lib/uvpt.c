@@ -1,5 +1,6 @@
 /* User virtual page table helpers */
 
+#include "inc/types.h"
 #include <inc/lib.h>
 #include <inc/mmu.h>
 
@@ -94,4 +95,11 @@ foreach_shared_region(int (*fun)(void *start, void *end, void *arg), void *arg) 
     }
 
     return res;
+}
+
+void force_alloc(void* va, size_t size) {
+  volatile char* addr = va;
+  for (size_t i = 0; i < size; i += PAGE_SIZE) {
+    addr[i] = addr[i];
+  }
 }

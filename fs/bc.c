@@ -37,8 +37,14 @@ bc_pgfault(struct UTrapframe *utf) {
      * Hint: first round addr to page boundary. fs/ide.c has code to read
      * the disk. */
     void* fault_page = (void*) ROUNDDOWN((uintptr_t)addr, BLKSIZE);
-
     int alloc_res = sys_alloc_region(CURENVID, fault_page, BLKSIZE, PROT_RW);
+
+    /*
+    assert((get_prot(fault_page) & PROT_W) == 0);
+    *(uint8_t*)fault_page = 0;
+    assert((get_prot(fault_page) & PROT_W) != 0);
+    */
+
     if (alloc_res < 0) {
       panic("failed to allocate cache for block %08x", blockno);
     }

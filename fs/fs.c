@@ -2,6 +2,9 @@
 #include <inc/partition.h>
 
 #include "fs.h"
+#include "inc/error.h"
+#include "inc/fs.h"
+#include "inc/stdio.h"
 
 /* Superblock */
 struct Super *super;
@@ -59,7 +62,13 @@ alloc_block(void) {
      * contains the in-use bits for BLKBITSIZE blocks.  There are
      * super->s_nblocks blocks in the disk altogether. */
 
-    // LAB 10: Your code here
+    for (blockno_t i = 1; i <= super->s_nblocks; i++) {
+      if (block_is_free(i)) {
+        CLRBIT(bitmap, i);
+        flush_block(diskaddr(i));
+        return i;
+      }
+    }
 
     return 0;
 }
@@ -122,10 +131,29 @@ fs_init(void) {
  * Hint: Don't forget to clear any block you allocate. */
 int
 file_block_walk(struct File *f, blockno_t filebno, blockno_t **ppdiskbno, bool alloc) {
-    // LAB 10: Your code here
+    if (filebno >= NDIRECT + NINDIRECT || !ppdiskbno) {
+      return -E_INVAL;
+    }
 
     *ppdiskbno = NULL;
+    if (filebno < NDIRECT) {
+      *ppdiskbno = f->f_direct + filebno;
+      return 0;
+    }
+    if (f->f_indirect == 0)
+    {
+      if (!alloc) {
+        return -E_NOT_FOUND;
+      }
 
+      f->f_indirect = alloc_block();
+      if (f->f_indirect == 0) {
+        return -E_NO_DISK;
+      }
+    }
+
+    blockno_t *indirect = diskaddr(f->f_indirect);
+    *ppdiskbno = &indirect[filebno + 1 - NDIRECT];
     return 0;
 }
 
@@ -139,10 +167,25 @@ file_block_walk(struct File *f, blockno_t filebno, blockno_t **ppdiskbno, bool a
  * Hint: Use file_block_walk and alloc_block. */
 int
 file_get_block(struct File *f, blockno_t filebno, char **blk) {
-    // LAB 10: Your code here
-
+    if (!blk) {
+      return -E_INVAL;
+    }
     *blk = NULL;
 
+    blockno_t *pblockno = NULL;
+    int lookup_res = file_block_walk(f, filebno, &pblockno, true);
+    if (lookup_res != 0) {
+      return lookup_res;
+    }
+
+    if (*pblockno == 0) {
+      *pblockno = alloc_block();
+      if (*pblockno == 0) {
+        return -E_NO_DISK;
+      }
+    }
+    
+    *blk = diskaddr(*pblockno);
     return 0;
 }
 
@@ -289,7 +332,8 @@ file_create(const char *path, struct File **pf) {
  * On error return < 0. */
 int
 file_open(const char *path, struct File **pf) {
-    return walk_path(path, 0, pf, 0);
+    int res = walk_path(path, 0, pf, 0);
+    return res;
 }
 
 /* Read count bytes from f into buf, starting from seek position
@@ -401,8 +445,9 @@ file_flush(struct File *f) {
 
     for (blockno_t i = 0; i < CEILDIV(f->f_size, BLKSIZE); i++) {
         if (file_block_walk(f, i, &pdiskbno, 0) < 0 ||
-            pdiskbno == NULL || *pdiskbno == 0)
+            pdiskbno == NULL || *pdiskbno == 0) {
             continue;
+        }
         flush_block(diskaddr(*pdiskbno));
     }
     if (f->f_indirect)
