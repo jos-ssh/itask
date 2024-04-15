@@ -408,7 +408,6 @@ verify_elf_header(struct Elf *header) {
  *   What?  (See env_run() and env_pop_tf() below.) */
 static int
 load_icode(struct Env *env, uint8_t *binary, size_t size) {
-<<<<<<< HEAD
     if (size < sizeof(struct Elf))
         return -E_INVALID_EXE;
 
@@ -481,6 +480,10 @@ load_icode(struct Env *env, uint8_t *binary, size_t size) {
 
         struct AddressSpace *current_space = switch_address_space(
                 &env->address_space);
+        if (trace_envs_more) {
+          cprintf("[%08x] Loading segment to %p (memsz=0x%zx, realsz=0x%zx)\n",
+                  env->env_id, virt_addr, mapped_size, real_size);
+        }
 #ifdef SANITIZE_SHADOW_BASE
         // Unpoison mapped region
         platform_asan_unpoison(virt_addr, mapped_size);
