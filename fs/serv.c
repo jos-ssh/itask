@@ -6,6 +6,8 @@
 #include <inc/x86.h>
 #include <inc/string.h>
 
+#include "inc/mmu.h"
+#include "inc/stdio.h"
 #include "pci.h"
 #include "fs.h"
 #include "nvme.h"
@@ -197,9 +199,19 @@ serve_read(envid_t envid, union Fsipc *ipc) {
                 envid, req->req_fileid, (uint32_t)req->req_n);
     }
 
-    // LAB 10: Your code here
+    struct OpenFile* file = NULL;
+    int lookup_res = openfile_lookup(envid, req->req_fileid, &file);
+    if (lookup_res < 0) {
+      return lookup_res;
+    }
 
-    return -1;
+    const size_t bufsize = sizeof(ipc->readRet.ret_buf);
+    int read_res = file_read(file->o_file, ipc->readRet.ret_buf,
+                             MIN(req->req_n, bufsize), file->o_fd->fd_offset);
+    if (read_res > 0) {
+      file->o_fd->fd_offset += read_res;
+    }
+    return read_res;
 }
 
 /* Write req->req_n bytes from req->req_buf to req_fileid, starting at
@@ -212,9 +224,20 @@ serve_write(envid_t envid, union Fsipc *ipc) {
     if (debug)
         cprintf("serve_write %08x %08x %08x\n", envid, req->req_fileid, (uint32_t)req->req_n);
 
-    // LAB 10: Your code here
+    struct OpenFile* file = NULL;
+    int lookup_res = openfile_lookup(envid, req->req_fileid, &file);
+    if (lookup_res < 0) {
+      return lookup_res;
+    }
 
-    return -1;
+    const size_t bufsize = sizeof(req->req_buf);
+    int write_res = file_write(file->o_file, req->req_buf,
+                             MIN(req->req_n, bufsize), file->o_fd->fd_offset);
+    if (write_res > 0) {
+      file->o_fd->fd_offset += write_res;
+    }
+
+    return write_res;
 }
 
 /* Stat ipc->stat.req_fileid.  Return the file's struct Stat to the

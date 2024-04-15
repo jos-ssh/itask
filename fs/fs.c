@@ -46,6 +46,7 @@ free_block(blockno_t blockno) {
     /* Blockno zero is the null pointer of block numbers. */
     if (blockno == 0) panic("attempt to free zero block");
     SETBIT(bitmap, blockno);
+    flush_block(bitmap);
 }
 
 /* Search the bitmap for a free block and allocate it.  When you
@@ -65,7 +66,7 @@ alloc_block(void) {
     for (blockno_t i = 1; i <= super->s_nblocks; i++) {
       if (block_is_free(i)) {
         CLRBIT(bitmap, i);
-        flush_block(diskaddr(i));
+        flush_block(bitmap);
         return i;
       }
     }
@@ -150,6 +151,7 @@ file_block_walk(struct File *f, blockno_t filebno, blockno_t **ppdiskbno, bool a
       if (f->f_indirect == 0) {
         return -E_NO_DISK;
       }
+      memset(diskaddr(f->f_indirect), 0, BLKSIZE);
     }
 
     blockno_t *indirect = diskaddr(f->f_indirect);

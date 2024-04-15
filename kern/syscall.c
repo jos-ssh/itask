@@ -517,10 +517,10 @@ sys_ipc_try_send(envid_t envid, uint32_t value, uintptr_t srcva, size_t size, in
             return map_res;
         }
         if (trace_syscalls) {
-            cprintf("%s: Sent region %p in [%x] to %p in [%x] with size 0x%lx\n",
-                    __func__,
-                    (void*)srcva, curenv->env_id, (void*)target->env_ipc_dstva,
-                    envid, sent_size);
+            cprintf("[%08x] %s: Sent region %p of size 0x%lx to %p in [%x]\n",
+                    curenv->env_id, __func__,
+                    (void*)srcva, sent_size, (void*)target->env_ipc_dstva,
+                    envid);
         }
 
         target->env_ipc_perm = perm;
@@ -571,8 +571,8 @@ sys_ipc_recv(uintptr_t dstva, uintptr_t maxsize) {
     curenv->env_ipc_recving = true;
     curenv->env_status = ENV_NOT_RUNNABLE;
 
-    TRACE_SYSCALL_LEAVE("%s", "~yield~");
-    sys_yield();
+    TRACE_SYSCALL_NORETURN();
+    sched_yield();
     return 0;
 #undef ARGS
 }

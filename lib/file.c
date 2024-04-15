@@ -1,3 +1,4 @@
+#include "inc/mmu.h"
 #include <inc/fs.h>
 #include <inc/string.h>
 #include <inc/lib.h>
@@ -112,11 +113,25 @@ devfile_read(struct Fd *fd, void *buf, size_t n) {
      * bytes read will be written back to fsipcbuf by the file
      * system server. */
 
-    // LAB 10: Your code here:
-    size_t res0 = 0;
-    (void)fd, (void)buf, (void)n;
+    size_t remaining = n;
+    while (remaining > 0)
+    {
+      fsipcbuf.read.req_fileid = fd->fd_file.id;
+      fsipcbuf.read.req_n = n;
+      int res = fsipc(FSREQ_READ, &fsipcbuf);
+      if (res < 0) {
+        return res;
+      }
 
-    return res0;
+      if (res == 0) {
+        break;
+      }
+
+      memcpy(buf + n - remaining, fsipcbuf.readRet.ret_buf, res);
+      remaining -= res;
+    }
+
+    return n - remaining;
 }
 
 /* Write at most 'n' bytes from 'buf' to 'fd' at the current seek position.
@@ -133,10 +148,27 @@ devfile_write(struct Fd *fd, const void *buf, size_t n) {
      * potentially required. */
 
     // LAB 10: Your code here:
-    size_t res0 = 0;
-    (void)fd, (void)buf, (void)n;
+    size_t remaining = n;
+    while (remaining > 0)
+    {
+      const size_t bufsize = sizeof(fsipcbuf.write.req_buf);
+      fsipcbuf.write.req_fileid = fd->fd_file.id;
+      fsipcbuf.write.req_n = n;
+      memcpy(fsipcbuf.write.req_buf, buf + n - remaining, MIN(bufsize, remaining));
 
-    return res0;
+      int res = fsipc(FSREQ_WRITE, &fsipcbuf);
+      if (res < 0) {
+        return res;
+      }
+
+      if (res == 0) {
+        break;
+      }
+
+      remaining -= res;
+    }
+
+    return n - remaining;
 }
 
 /* Get file information */
