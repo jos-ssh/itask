@@ -1,5 +1,8 @@
 
 #include "fs.h"
+#include "inc/fs.h"
+#include "inc/lib.h"
+#include "inc/types.h"
 #include "nvme.h"
 
 /* Return the virtual address of this disk block. */
@@ -28,11 +31,22 @@ bc_pgfault(struct UTrapframe *utf) {
     if (super && blockno >= super->s_nblocks)
         panic("reading non-existent block %08x out of %08x\n", blockno, super->s_nblocks);
 
+
     /* Allocate a page in the disk map region, read the contents
      * of the block from the disk into that page.
      * Hint: first round addr to page boundary. fs/ide.c has code to read
      * the disk. */
-    // LAB 10: Your code here
+    void* fault_page = (void*) ROUNDDOWN((uintptr_t)addr, BLKSIZE);
+
+    int alloc_res = sys_alloc_region(CURENVID, fault_page, BLKSIZE, PROT_RW);
+    if (alloc_res < 0) {
+      panic("failed to allocate cache for block %08x", blockno);
+    }
+
+    int read_res = nvme_read(blockno * BLKSECTS, fault_page, BLKSECTS);
+    if (read_res < 0) {
+      panic("failed to read block %08x", blockno);
+    }
 
     return 1;
 }
@@ -47,16 +61,25 @@ bc_pgfault(struct UTrapframe *utf) {
 void
 flush_block(void *addr) {
     blockno_t blockno = ((uintptr_t)addr - (uintptr_t)DISKMAP) / BLKSIZE;
-    int res;
 
     if (addr < (void *)(uintptr_t)DISKMAP || addr >= (void *)(uintptr_t)(DISKMAP + DISKSIZE))
         panic("flush_block of bad va %p", addr);
     if (blockno && super && blockno >= super->s_nblocks)
         panic("reading non-existent block %08x out of %08x\n", blockno, super->s_nblocks);
 
-    // LAB 10: Your code here.
-    (void)res;
+    if (!is_page_present(addr) || !is_page_dirty(addr)) {
+      return;
+    }
 
+    void* page = (void*) ROUNDDOWN((uintptr_t) addr, BLKSIZE);
+    int write_res = nvme_write(blockno * BLKSECTS, page, BLKSECTS);
+    if (write_res < 0) {
+      panic("Failed to flush block %08x: %d", blockno, write_res);
+    }
+    int map_res = sys_map_region(CURENVID, page, CURENVID, page, BLKSIZE, PROT_RW);
+    if (map_res < 0) {
+      panic("Failed to re-allocate cache for block %08x", blockno);
+    }
 
     assert(!is_page_dirty(addr));
 }

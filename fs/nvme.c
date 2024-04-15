@@ -629,10 +629,10 @@ nvme_cmd_rw(struct NvmeController *ctl, struct NvmeQueueAttributes *ioq, int opc
      *      and elbatm should remain zeroed. They are not used here.
      * TIP: Use ioq->sq_tail as cid like it is done in other commands for simplicity. */
     
-    struct NvmeCmdRW *cmd = &ioq->sq[0].rw;
+    int cid = ioq->sq_tail;
+    struct NvmeCmdRW *cmd = &ioq->sq[cid].rw;
     memset(cmd, 0, sizeof(*cmd));
 
-    int cid = ioq->sq_tail;
     cmd->common.opc = opc;
     cmd->common.cid = cid;
     cmd->common.nsid = nsid;
