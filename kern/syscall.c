@@ -1,5 +1,6 @@
 /* See COPYRIGHT for copyright information. */
 #include "inc/mmu.h"
+#include "inc/trap.h"
 #include <inc/memlayout.h>
 #include <inc/stdio.h>
 #include <inc/syscall.h>
@@ -257,7 +258,7 @@ sys_env_set_pgfault_upcall(envid_t envid, void* func) {
  *      or to allocate any necessary page tables. */
 static int
 sys_alloc_region(envid_t envid, uintptr_t addr, size_t size, int perm) {
-#define ARGS ("%x", envid)("0x%lx", addr)("%zu", size)("%x", perm)
+#define ARGS ("%x", envid)("0x%lx", addr)("0x%zx", size)("%x", perm)
     TRACE_SYSCALL_ENTER(ARGS);
     if (addr >= MAX_USER_ADDRESS || (addr & CLASS_MASK(0))) {
         TRACE_SYSCALL_LEAVE("'%i'", -E_INVAL);
@@ -322,7 +323,7 @@ sys_alloc_region(envid_t envid, uintptr_t addr, size_t size, int perm) {
 static int
 sys_map_region(envid_t srcenvid, uintptr_t srcva,
                envid_t dstenvid, uintptr_t dstva, size_t size, int perm) {
-#define ARGS ("%x", srcenvid)("0x%lx", srcva)("%x", dstenvid)("0x%lx", dstva)("%zu", size)("%x", perm)
+#define ARGS ("%x", srcenvid)("0x%lx", srcva)("%x", dstenvid)("0x%lx", dstva)("0x%zx", size)("%x", perm)
     TRACE_SYSCALL_ENTER(ARGS);
     if (srcva >= MAX_USER_ADDRESS || (srcva & CLASS_MASK(0))) {
         TRACE_SYSCALL_LEAVE("'%i'", -E_INVAL);
@@ -589,8 +590,27 @@ sys_ipc_recv(uintptr_t dstva, uintptr_t maxsize) {
  */
 static int
 sys_env_set_trapframe(envid_t envid, struct Trapframe *tf) {
-    // LAB 11: Your code here
+    TRACE_SYSCALL_ENTER(("%08x", envid)("%p", tf));
+    user_mem_assert(curenv, tf, sizeof(*tf), PROT_R | PROT_USER_);
 
+    struct Trapframe tf_copy;
+    nosan_memcpy(&tf_copy, tf, sizeof(tf_copy));
+
+    tf_copy.tf_ds = GD_UD | 3;
+    tf_copy.tf_es = GD_UD | 3;
+    tf_copy.tf_ss = GD_UD | 3;
+    tf_copy.tf_cs = GD_UT | 3;
+
+    tf_copy.tf_rflags &= ~FL_SYSTEM;
+    tf_copy.tf_rflags |= FL_IOPL_3 | FL_IF;
+
+    struct Env* target = NULL;
+    int lookup_res = envid2env(envid, &target, true);
+    SYSCALL_ASSERT(lookup_res == 0, E_BAD_ENV);
+
+    memcpy(&target->env_tf, &tf_copy, sizeof(tf_copy));
+
+    TRACE_SYSCALL_LEAVE("%d", 0);
     return 0;
 }
 
@@ -653,13 +673,13 @@ syscall(uintptr_t syscallno, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t
     case SYS_env_set_status:
         return sys_env_set_status(a1, a2);
     case SYS_env_set_trapframe:
-        // TODO: implement
-        return -E_NO_SYS;
+        return sys_env_set_trapframe(a1, (struct Trapframe*) a2);
     case SYS_env_set_pgfault_upcall:
         return sys_env_set_pgfault_upcall(a1, (void*)a2);
     case SYS_yield:
         sys_yield();
-        return 0;
+        panic("Unreachable");
+        return -E_INVAL;
     case SYS_ipc_try_send:
         return sys_ipc_try_send(a1, a2, a3, a4, a5);
     case SYS_ipc_recv:
@@ -668,9 +688,6 @@ syscall(uintptr_t syscallno, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t
     default:
         return -E_NO_SYS;
     }
-    // LAB 9: Your code here
-    // LAB 10: Your code here
-    // LAB 11: Your code here
 
     return -E_NO_SYS;
 }

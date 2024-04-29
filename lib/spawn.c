@@ -1,3 +1,5 @@
+#include "inc/mmu.h"
+#include "inc/types.h"
 #include <inc/lib.h>
 #include <inc/elf.h>
 
@@ -268,24 +270,60 @@ map_segment(envid_t child, uintptr_t va, size_t memsz,
     // cprintf("map_segment %x+%x\n", va, memsz);
 
     /* Fixup unaligned destination */
-    int res = PAGE_OFFSET(va);
-    if (res) {
-        va -= res;
-        memsz += res;
-        filesz += res;
-        fileoffset -= res;
+    int offset = PAGE_OFFSET(va);
+    if (offset) {
+        va -= offset;
+        memsz += offset;
+        filesz += offset;
+        fileoffset -= offset;
     }
 
     // LAB 11: Your code here
     /* NOTE: There's restriction on maximal filesz
      * for each program segment (HUGE_PAGE_SIZE) */
+    if (filesz > HUGE_PAGE_SIZE) {
+        return -E_INVAL;
+    }
+
+    int res = 0;
+
+    /* Allocate filesz in parent to UTEMP */
+    void *const temp_mem = (void *)UTEMP;
+    const size_t temp_size = ROUNDUP(filesz, PAGE_SIZE);
+    res = sys_alloc_region(CURENVID, temp_mem, temp_size, PROT_RW | perm);
+    if (res < 0) goto err;
+
+    /* seek() fd to fileoffset  */
+    res = seek(fd, fileoffset);
+    if (res < 0) goto err_unmap;
+
+    /* read filesz to UTEMP */
+    ssize_t count = read(fd, temp_mem, filesz);
+    if (count < 0) {
+        res = count;
+        goto err_unmap;
+    }
+
+    /* Map read section conents to child */
+    res = sys_map_region(CURENVID, temp_mem, child, (void *)va, temp_size, perm);
+    if (res < 0) goto err_unmap;
 
     /* Allocate filesz - memsz in child */
-    /* Allocate filesz in parent to UTEMP */
-    /* seek() fd to fileoffset  */
-    /* read filesz to UTEMP */
-    /* Map read section conents to child */
-    /* Unmap it from parent */
+    if (memsz > temp_size) {
+      const uintptr_t alloc_start = va + temp_size;
+      const uintptr_t alloc_size = ROUNDUP(memsz, PAGE_SIZE) - temp_size;
+      res = sys_alloc_region(child, (void *)alloc_start, alloc_size, perm);
+      if (res < 0) goto err_unmap;
+    }
 
-    return 0;
+err_unmap:
+    /* Unmap temporary memory from parent */
+    {
+        int unmap_res = sys_unmap_region(CURENVID, temp_mem, temp_size);
+        if (unmap_res < 0) {
+            return unmap_res;
+        }
+    }
+err:
+    return res;
 }
