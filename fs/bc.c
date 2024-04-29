@@ -119,6 +119,12 @@ check_bc(void) {
     cprintf("block cache is good\n");
 }
 
+void flush_bitmap(void) {
+    for (blockno_t i = 0; i * BLKBITSIZE < super->s_nblocks; i++) {
+        flush_block(bitmap + i);
+    }
+}
+
 void
 bc_init(void) {
     struct Super super;

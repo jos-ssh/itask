@@ -17,6 +17,7 @@ extern uint32_t *bitmap;    /* bitmap blocks mapped in memory */
 /* bc.c */
 void *diskaddr(blockno_t blockno);
 void flush_block(void *addr);
+void flush_bitmap(void);
 void bc_init(void);
 
 /* fs.c */

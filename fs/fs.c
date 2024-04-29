@@ -4,6 +4,7 @@
 #include "fs.h"
 #include "inc/error.h"
 #include "inc/fs.h"
+#include "inc/lib.h"
 #include "inc/stdio.h"
 
 /* Superblock */
@@ -21,6 +22,7 @@ check_super(void) {
     if (super->s_magic != FS_MAGIC)
         panic("bad file system magic number %08x", super->s_magic);
 
+    cprintf("file system has 0x%0x blocks\n", super->s_nblocks);
     if (super->s_nblocks > DISKSIZE / BLKSIZE)
         panic("file system is too large");
 
@@ -46,7 +48,7 @@ free_block(blockno_t blockno) {
     /* Blockno zero is the null pointer of block numbers. */
     if (blockno == 0) panic("attempt to free zero block");
     SETBIT(bitmap, blockno);
-    flush_block(bitmap);
+//     flush_block(bitmap);
 }
 
 /* Search the bitmap for a free block and allocate it.  When you
@@ -66,7 +68,8 @@ alloc_block(void) {
     for (blockno_t i = 1; i <= super->s_nblocks; i++) {
       if (block_is_free(i)) {
         CLRBIT(bitmap, i);
-        flush_block(bitmap);
+        assert(is_page_dirty(bitmap + i / 32));
+        flush_block(bitmap + i / 32);
         return i;
       }
     }
@@ -433,7 +436,13 @@ file_set_size(struct File *f, off_t newsize) {
     if (f->f_size > newsize)
         file_truncate_blocks(f, newsize);
     f->f_size = newsize;
+    
     flush_block(f);
+    if(f->f_indirect) {
+        flush_block(diskaddr(f->f_indirect));
+    }
+
+    flush_bitmap();
     return 0;
 }
 
@@ -455,6 +464,7 @@ file_flush(struct File *f) {
     if (f->f_indirect)
         flush_block(diskaddr(f->f_indirect));
     flush_block(f);
+    flush_bitmap();
 }
 
 /* Sync the entire file system.  A big hammer. */

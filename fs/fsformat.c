@@ -33,6 +33,7 @@ typedef int bool;
 
 #define ROUNDUP(n, v) ((n)-1 + (v) - ((n)-1) % (v))
 #define MAX_DIR_ENTS  128
+#define DISKSIZE 0xC0000000
 
 struct Dir {
     struct File *f;
@@ -213,7 +214,7 @@ main(int argc, char **argv) {
         usage();
 
     nblocks = strtol(argv[2], &s, 0);
-    if (*s || s == argv[2] || nblocks < 2 || nblocks > 10240)
+    if (*s || s == argv[2] || nblocks < 2 || nblocks > DISKSIZE / BLKSIZE)
         usage();
 
     opendisk(argv[1]);

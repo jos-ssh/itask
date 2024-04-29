@@ -106,7 +106,7 @@ env_init(void) {
     struct AddressSpace *cur_space = switch_address_space(&kspace);
 
     /* Allocate envs array with kzalloc_region().
-     * Don't forget about rounding.
+     ;* Don't forget about rounding.
      * kzalloc_region() only works with current_space != NULL */
     envs = kzalloc_region(UENVS_SIZE);
     assert(envs);

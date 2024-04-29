@@ -1,0 +1,21 @@
+fs/fs.c:19:/* Validate the file system super-block. */
+fs/fs.c:22:    if (super->s_magic != FS_MAGIC)
+fs/fs.c:23:        panic("bad file system magic number %08x", super->s_magic);
+fs/fs.c:25:    if (super->s_nblocks > DISKSIZE / BLKSIZE)
+fs/fs.c:39:    if (super == 0 || blockno >= super->s_nblocks) return 0;
+fs/fs.c:65:     * super->s_nblocks blocks in the disk altogether. */
+fs/fs.c:67:    for (blockno_t i = 1; i <= super->s_nblocks; i++) {
+fs/fs.c:87:    for (blockno_t i = 0; i * BLKBITSIZE < super->s_nblocks; i++)
+fs/fs.c:274:    f = &super->s_root;
+fs/fs.c:466:    for (int i = 1; i < super->s_nblocks; i++) {
+fs/bc.c:11:    if (blockno == 0 || (super && blockno >= super->s_nblocks))
+fs/bc.c:31:    if (super && blockno >= super->s_nblocks)
+fs/bc.c:32:        panic("reading non-existent block %08x out of %08x\n", blockno, super->s_nblocks);
+fs/bc.c:73:    if (blockno && super && blockno >= super->s_nblocks)
+fs/bc.c:74:        panic("reading non-existent block %08x out of %08x\n", blockno, super->s_nblocks);
+fs/fsformat.c:105:    super->s_magic = FS_MAGIC;
+fs/fsformat.c:106:    super->s_nblocks = nblocks;
+fs/fsformat.c:107:    super->s_root.f_type = FTYPE_DIR;
+fs/fsformat.c:108:    strcpy(super->s_root.f_name, "/");
+fs/fsformat.c:221:    startdir(&super->s_root, &root);
+fs/test.c:12:    check_dir(&super->s_root);
