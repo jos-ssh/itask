@@ -142,6 +142,8 @@ trap_init(void) {
     SETGATE(0, GD_KT, timer_thdlr, 0, IRQ_OFFSET + IRQ_TIMER);
     SETGATE(0, GD_KT, clock_thdlr, 0, IRQ_OFFSET + IRQ_CLOCK);
     SETGATE(0, GD_KT, syscall_thdlr, 3, T_SYSCALL);
+    SETGATE(0, GD_KT, kbd_thdlr, 0, IRQ_OFFSET + IRQ_KBD);
+    SETGATE(0, GD_KT, serial_thdlr, 0, IRQ_OFFSET + IRQ_SERIAL);
 #undef SETGATE
 
     /* Setup #PF handler dedicated stack
@@ -304,9 +306,12 @@ trap_dispatch(struct Trapframe *tf) {
         }
         timer_for_schedule->handle_interrupts();
         return;
-        // LAB 11: Your code here
-        /* Handle keyboard (IRQ_KBD + kbd_intr()) and
-         * serial (IRQ_SERIAL + serial_intr()) interrupts. */
+    case IRQ_OFFSET + IRQ_KBD:
+        kbd_intr();
+        return;
+    case IRQ_OFFSET + IRQ_SERIAL:
+        serial_intr();
+        return;
     default:
         print_trapframe(tf);
         if (!(tf->tf_cs & 3))

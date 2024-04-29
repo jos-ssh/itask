@@ -47,8 +47,14 @@ again:
              * then check whether 'fd' is 0.
              * If not, dup 'fd' onto file descriptor 0,
              * then close the original 'fd'. */
-
-            // LAB 11: Your code here
+            if ((fd = open(t, O_RDONLY)) < 0) {
+                cprintf("open %s for read: %i\n", t, fd);
+                exit();
+            }
+            if (fd != 0) {
+                dup(fd, 0);
+                close(fd);
+            }
             break;
 
         case '>': /* Output redirection */
@@ -58,7 +64,7 @@ again:
                 exit();
             }
             if ((fd = open(t, O_WRONLY | O_CREAT | O_TRUNC)) < 0) {
-                cprintf("open %s for write: %i", t, fd);
+                cprintf("open %s for write: %i\n", t, fd);
                 exit();
             }
             if (fd != 1) {
