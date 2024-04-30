@@ -30,31 +30,31 @@
 #define PRINT_ARGS_1_END
 #define PRINT_ARGS_2_END
 
-#define TRACE_SYSCALL_ENTER(...)                \
-    do {                                        \
-        if (trace_syscalls) {                   \
-            cprintf("[%08x] ", curenv->env_id); \
-            cprintf("called %s( ", __func__);   \
-            PRINT_ARGS(__VA_ARGS__);            \
-            cprintf(")\n");                     \
-        }                                       \
+#define TRACE_SYSCALL_ENTER(...)                                      \
+    do {                                                              \
+        if (trace_syscalls || trace_syscalls_from == curenv->env_id) { \
+            cprintf("[%08x] ", curenv->env_id);                       \
+            cprintf("called %s( ", __func__);                         \
+            PRINT_ARGS(__VA_ARGS__);                                  \
+            cprintf(")\n");                                           \
+        }                                                             \
     } while (0)
 
-#define TRACE_SYSCALL_LEAVE(fmt, ret)                               \
-    do {                                                            \
-        if (trace_syscalls) {                                       \
-            cprintf("[%08x] ", curenv->env_id);                     \
-            cprintf("returning " fmt " from %s(", (ret), __func__); \
-            cprintf(") at line %d\n", __LINE__ + 1);                \
-        }                                                           \
+#define TRACE_SYSCALL_LEAVE(fmt, ret)                                 \
+    do {                                                              \
+        if (trace_syscalls || trace_syscalls_from == curenv->env_id) { \
+            cprintf("[%08x] ", curenv->env_id);                       \
+            cprintf("returning " fmt " from %s(", (ret), __func__);   \
+            cprintf(") at line %d\n", __LINE__ + 1);                  \
+        }                                                             \
     } while (0)
 
-#define TRACE_SYSCALL_NORETURN()                       \
-    do {                                               \
-        if (trace_syscalls) {                          \
-            cprintf("[%08x] ", curenv->env_id);        \
-            cprintf("yielding from %s()\n", __func__); \
-        }                                              \
+#define TRACE_SYSCALL_NORETURN()                                      \
+    do {                                                              \
+        if (trace_syscalls || trace_syscalls_from == curenv->env_id) { \
+            cprintf("[%08x] ", curenv->env_id);                       \
+            cprintf("yielding from %s()\n", __func__);                \
+        }                                                             \
     } while (0)
 
 static inline int
@@ -589,7 +589,7 @@ sys_ipc_recv(uintptr_t dstva, uintptr_t maxsize) {
  *   -Force IF to be set in RFLAGS
  */
 static int
-sys_env_set_trapframe(envid_t envid, struct Trapframe *tf) {
+sys_env_set_trapframe(envid_t envid, struct Trapframe* tf) {
     TRACE_SYSCALL_ENTER(("%08x", envid)("%p", tf));
     user_mem_assert(curenv, tf, sizeof(*tf), PROT_R | PROT_USER_);
 
@@ -673,7 +673,7 @@ syscall(uintptr_t syscallno, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t
     case SYS_env_set_status:
         return sys_env_set_status(a1, a2);
     case SYS_env_set_trapframe:
-        return sys_env_set_trapframe(a1, (struct Trapframe*) a2);
+        return sys_env_set_trapframe(a1, (struct Trapframe*)a2);
     case SYS_env_set_pgfault_upcall:
         return sys_env_set_pgfault_upcall(a1, (void*)a2);
     case SYS_yield:

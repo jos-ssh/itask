@@ -286,44 +286,53 @@ map_segment(envid_t child, uintptr_t va, size_t memsz,
     }
 
     int res = 0;
-
-    /* Allocate filesz in parent to UTEMP */
     void *const temp_mem = (void *)UTEMP;
     const size_t temp_size = ROUNDUP(filesz, PAGE_SIZE);
-    res = sys_alloc_region(CURENVID, temp_mem, temp_size, PROT_RW | perm);
-    if (res < 0) goto err;
 
-    /* seek() fd to fileoffset  */
-    res = seek(fd, fileoffset);
-    if (res < 0) goto err_unmap;
+    if (filesz > 0) {
+        /* Allocate filesz in parent to UTEMP */
+        res = sys_alloc_region(CURENVID, temp_mem, temp_size, PROT_RW | perm);
+        assert(res >= 0);
+        if (res < 0) goto end;
 
-    /* read filesz to UTEMP */
-    ssize_t count = read(fd, temp_mem, filesz);
-    if (count < 0) {
-        res = count;
-        goto err_unmap;
+        /* seek() fd to fileoffset  */
+        res = seek(fd, fileoffset);
+        assert(res >= 0);
+        if (res < 0) goto unmap_temp;
+
+        /* read filesz to UTEMP */
+        ssize_t count = read(fd, temp_mem, filesz);
+        if (count < 0) {
+            res = count;
+            assert(res >= 0);
+            goto unmap_temp;
+        }
+        /* Map read section conents to child */
+        res = sys_map_region(CURENVID, temp_mem, child, (void *)va, temp_size, perm);
+        assert(res >= 0);
+        if (res < 0) goto unmap_temp;
+
+    unmap_temp:
+        /* Unmap temporary memory from parent */
+        {
+            int unmap_res = sys_unmap_region(CURENVID, temp_mem, temp_size);
+            if (unmap_res < 0) {
+                return unmap_res;
+            }
+        }
+        if (res < 0) goto end;
     }
-
-    /* Map read section conents to child */
-    res = sys_map_region(CURENVID, temp_mem, child, (void *)va, temp_size, perm);
-    if (res < 0) goto err_unmap;
 
     /* Allocate filesz - memsz in child */
     if (memsz > temp_size) {
-      const uintptr_t alloc_start = va + temp_size;
-      const uintptr_t alloc_size = ROUNDUP(memsz, PAGE_SIZE) - temp_size;
-      res = sys_alloc_region(child, (void *)alloc_start, alloc_size, perm);
-      if (res < 0) goto err_unmap;
+        const uintptr_t alloc_start = va + temp_size;
+        const uintptr_t alloc_size = ROUNDUP(memsz, PAGE_SIZE) - temp_size;
+        res = sys_alloc_region(child, (void *)alloc_start, alloc_size, perm);
+        assert(res >= 0);
+        if (res < 0) goto end;
     }
 
-err_unmap:
-    /* Unmap temporary memory from parent */
-    {
-        int unmap_res = sys_unmap_region(CURENVID, temp_mem, temp_size);
-        if (unmap_res < 0) {
-            return unmap_res;
-        }
-    }
-err:
+end:
+    assert(res >= 0);
     return res;
 }

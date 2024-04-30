@@ -5,6 +5,12 @@
 #define trace_syscalls 0
 #endif
 
+#ifndef trace_syscalls_from
+#define trace_syscalls_from 0
+#endif // !trace_syscalls_from
+
+#define trace_sycalls_from 0
+
 #if LAB == 8
 #define trace_traps 1
 #elif !defined(trace_traps)
