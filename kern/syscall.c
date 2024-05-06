@@ -618,8 +618,10 @@ sys_env_set_trapframe(envid_t envid, struct Trapframe* tf) {
  * from 1970-01-01 00:00:00 UTC. */
 static int
 sys_gettime(void) {
-    // LAB 12: Your code here
-    return 0;
+    TRACE_SYSCALL_ENTER();
+    int time = gettime();
+    TRACE_SYSCALL_LEAVE("%d", time);
+    return time;
 }
 
 /*
@@ -692,6 +694,8 @@ syscall(uintptr_t syscallno, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t
         return sys_ipc_try_send(a1, a2, a3, a4, a5);
     case SYS_ipc_recv:
         return sys_ipc_recv(a1, a2);
+    case SYS_gettime:
+        return sys_gettime();
     case NSYSCALLS:
     default:
         return -E_NO_SYS;

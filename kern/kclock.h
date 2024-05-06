@@ -35,8 +35,13 @@
 #define RTC_AIE 0x20
 #define RTC_UIE 0x10
 
+#define RTC_PF 0x40
+#define RTC_AF 0x20
+#define RTC_UF 0x10
+
 void rtc_timer_init(void);
 uint8_t rtc_check_status(void);
+void rtc_clear_status(void);
 
 #define CMOS_START 0xE /* start of CMOS: offset 14 */
 #define CMOS_SIZE  50  /* 50 bytes of CMOS */
@@ -64,6 +69,7 @@ uint16_t cmos_read16(uint8_t reg);
 
 int gettime(void);
 
+// Why is this a macro?!?!???!
 #define BCD2BIN(bcd) ({uint8_t bcd__ = (bcd); ((bcd__ & 15) + (bcd__ >> 4) * 10); })
 
 #endif /* !JOS_KERN_KCLOCK_H */

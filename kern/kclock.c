@@ -1,5 +1,6 @@
 /* See COPYRIGHT for copyright information. */
 
+#include "inc/stdio.h"
 #include <inc/x86.h>
 #include <inc/time.h>
 #include <kern/kclock.h>
@@ -59,25 +60,8 @@ cmos_read16(uint8_t reg) {
     return cmos_read8(reg) | (cmos_read8(reg + 1) << 8);
 }
 
-static void
-rtc_timer_pic_interrupt(void) {
-    pic_irq_unmask(IRQ_CLOCK);
-}
-
-static void
-rtc_timer_pic_handle(void) {
-    rtc_check_status();
-    pic_send_eoi(IRQ_CLOCK);
-
-    sched_yield();
-}
-
-struct Timer timer_rtc = {
-        .timer_name = "rtc",
-        .timer_init = rtc_timer_init,
-        .enable_interrupts = rtc_timer_pic_interrupt,
-        .handle_interrupts = rtc_timer_pic_handle,
-};
+static long current_time = 0;
+static bool periodic_enabled = false;
 
 static int
 get_time(void) {
@@ -93,9 +77,10 @@ get_time(void) {
     Y = cmos_read8(RTC_YEAR_HIGH);
     state = cmos_read8(RTC_BREG);
 
-    if (state & RTC_12H) {
-        /* Fixup 12 hour mode */
-        h = (h & 0x7F) + 12 * !!(h & 0x80);
+    bool pm = false;
+    if ((state & RTC_12H) == 0) {
+      pm = true;
+      h &= 0x7F;
     }
 
     if (!(state & RTC_BINARY)) {
@@ -109,6 +94,10 @@ get_time(void) {
         Y = BCD2BIN(Y);
     }
 
+    if (pm) {
+      h += 12;
+    }
+
     time.tm_sec = s;
     time.tm_min = m;
     time.tm_hour = h;
@@ -119,24 +108,61 @@ get_time(void) {
     return timestamp(&time);
 }
 
+static void
+rtc_timer_pic_interrupt(void) {
+    uint8_t b_reg = cmos_read8(RTC_BREG);
+    // Enable periodic interrupts
+    cmos_write8(RTC_BREG, b_reg | RTC_PIE);
+
+    uint8_t a_reg = cmos_read8(RTC_AREG);
+    // Set rate
+    cmos_write8(RTC_AREG, RTC_SET_NEW_RATE(a_reg, RTC_500MS_RATE));
+
+    periodic_enabled = true;
+}
+
+static void
+rtc_timer_pic_handle(void) {
+    int status = rtc_check_status();
+    // Clock updated, we have time to update timestamp
+    if (status & RTC_UF) {
+      current_time = get_time();
+    }
+
+    rtc_clear_status();
+    pic_send_eoi(IRQ_CLOCK);
+
+    // Periodic interrupt causes scheduling of next process
+    if ((status & RTC_PF) && periodic_enabled) {
+      sched_yield();
+    }
+}
+
+struct Timer timer_rtc = {
+        .timer_name = "rtc",
+        .timer_init = rtc_timer_init,
+        .enable_interrupts = rtc_timer_pic_interrupt,
+        .handle_interrupts = rtc_timer_pic_handle,
+};
+
 int
 gettime(void) {
-    // LAB 12: your code here
-    int res = 0;
-    return res;
+    return current_time;
 }
 
 void
 rtc_timer_init(void) {
     uint8_t b_reg = cmos_read8(RTC_BREG);
-    if (!(b_reg & RTC_PIE)) {
-        cmos_write8(RTC_BREG, b_reg | RTC_PIE);
-    }
-    uint8_t a_reg = cmos_read8(RTC_AREG);
-    cmos_write8(RTC_AREG, RTC_SET_NEW_RATE(a_reg, RTC_500MS_RATE));
+    if (!(b_reg & RTC_UIE))
+      cmos_write8(RTC_BREG, b_reg | RTC_UIE);
+    pic_irq_unmask(IRQ_CLOCK);
 }
 
 uint8_t
 rtc_check_status(void) {
     return cmos_read8(RTC_CREG);
+}
+
+void rtc_clear_status(void) {
+    cmos_write8(RTC_CREG, 0);
 }

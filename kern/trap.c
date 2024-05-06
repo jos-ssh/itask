@@ -306,7 +306,7 @@ trap_dispatch(struct Trapframe *tf) {
         if (timer_for_schedule == NULL) {
             panic("No scheduling timer set!");
         }
-        timer_for_schedule->handle_interrupts();
+        timer_rtc.handle_interrupts();
         return;
     case IRQ_OFFSET + IRQ_KBD:
         kbd_intr();
