@@ -371,7 +371,9 @@ trap(struct Trapframe *tf) {
         int res = force_alloc_page(current_space, va, MAX_ALLOCATION_CLASS);
         if (trace_pagefaults) {
             bool can_redir = tf->tf_err & FEC_U && curenv && curenv->env_pgfault_upcall;
-            cprintf("<%p> Page fault ip=%08lX va=%08lX err=%c%c%c%c%c -> %s\n", current_space, tf->tf_rip, va,
+            cprintf("[%08x] <%p> Page fault ip=%08lX va=%08lX err=%c%c%c%c%c -> %s\n",
+                    curenv ? curenv->env_id : 0,
+                    current_space, tf->tf_rip, va,
                     tf->tf_err & FEC_P ? 'P' : '-',
                     tf->tf_err & FEC_U ? 'U' : '-',
                     tf->tf_err & FEC_W ? 'W' : '-',
