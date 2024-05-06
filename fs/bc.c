@@ -34,7 +34,7 @@ bc_pgfault(struct UTrapframe *utf) {
 
     /* Allocate a page in the disk map region, read the contents
      * of the block from the disk into that page.
-     * Hint: first round addr to page boundary. fs/ide.c has code to read
+     * Hint: first round addr to page boundary. fs/nvme.c has code to read
      * the disk. */
     void* fault_page = (void*) ROUNDDOWN((uintptr_t)addr, BLKSIZE);
     int alloc_res = sys_alloc_region(CURENVID, fault_page, BLKSIZE, PROT_RW);
