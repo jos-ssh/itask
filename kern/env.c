@@ -111,17 +111,20 @@ env_init(void) {
     struct AddressSpace *cur_space = switch_address_space(&kspace);
 
     /* Allocate vsys array with kzalloc_region().
-     * Don't forget about rounding.
-     * kzalloc_region only works with current_space != NULL */
-    // LAB 12: Your code here
+     * Don't forget about rounding. */
+
+    vsys = kzalloc_region(UVSYS_SIZE);
+    assert(vsys);
 
     /* Allocate envs array with kzalloc_region().
-     * Don't forget about rounding.
-     * kzalloc_region() only works with current_space != NULL */
+     * Don't forget about rounding. */
     envs = kzalloc_region(UENVS_SIZE);
     assert(envs);
+
     switch_address_space(cur_space);
 
+    map_region(&kspace, UVSYS, &kspace, (uintptr_t)vsys,
+                UVSYS_SIZE, PROT_R | PROT_USER_);
     /* Map envs to UENVS read-only,
      * but user-accessible (with PROT_USER_ set) */
     map_region(&kspace, UENVS, &kspace, (uintptr_t)envs,

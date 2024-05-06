@@ -127,7 +127,6 @@ early_boot_pml4_init(void) {
 
 void
 i386_init(void) {
-
     early_boot_pml4_init();
 
     /* Initialize the console.
@@ -144,15 +143,15 @@ i386_init(void) {
     /* Lab 6 memory management initialization functions */
     init_memory();
 
-    pic_init();
-    timers_init();
-
     /* Framebuffer init should be done after memory init */
     fb_init();
     if (trace_init) cprintf("Framebuffer initialised\n");
 
     /* User environment initialization functions */
     env_init();
+
+    pic_init();
+    timers_init();
 
     /* Choose the timer used for scheduling: hpet or pit */
     timers_schedule("hpet0");
@@ -179,7 +178,7 @@ i386_init(void) {
     ENV_CREATE(TEST, ENV_TYPE_USER);
 #else
     /* Touch all you want. */
-    ENV_CREATE(user_date, ENV_TYPE_USER);
+    ENV_CREATE(user_vdate, ENV_TYPE_USER);
 #endif /* TEST* */
 #endif
 

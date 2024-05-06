@@ -1,6 +1,8 @@
 /* See COPYRIGHT for copyright information. */
 
 #include "inc/stdio.h"
+#include "inc/vsyscall.h"
+#include "kern/vsyscall.h"
 #include <inc/x86.h>
 #include <inc/time.h>
 #include <kern/kclock.h>
@@ -127,6 +129,7 @@ rtc_timer_pic_handle(void) {
     // Clock updated, we have time to update timestamp
     if (status & RTC_UF) {
       current_time = get_time();
+      vsys[VSYS_gettime] = current_time;
     }
 
     rtc_clear_status();
