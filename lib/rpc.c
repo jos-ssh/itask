@@ -15,7 +15,7 @@ rpc_serve(const struct RpcServer* server) {
         int response_perm = 0;
         void* request = (perm & PROT_R) ? server->ReceiveBuffer : NULL;
         int result = 0;
-        if (req_id >= server->HanlderCount || server->Handlers[req_id] == NULL) {
+        if (req_id >= server->HandlerCount || server->Handlers[req_id] == NULL) {
             cprintf("[%08x]: Invalid RPC request from [%08x], invalid id %u\n",
                     sys_getenvid(), from, req_id);
             result = -E_INVAL;

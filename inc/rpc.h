@@ -24,7 +24,7 @@ typedef int rpc_serve_handler_t(envid_t from, const void* request,
 struct RpcServer {
   void* ReceiveBuffer;
   void* SendBuffer;
-  size_t HanlderCount;
+  size_t HandlerCount;
   rpc_serve_handler_t* Handlers[];
 };
 
