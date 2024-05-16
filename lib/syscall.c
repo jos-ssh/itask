@@ -146,12 +146,17 @@ sys_ipc_try_send(envid_t envid, uintptr_t value, void *srcva, size_t size, int p
 }
 
 int
-sys_ipc_recv(void *dstva, size_t size) {
-    int res = syscall(SYS_ipc_recv, 1, (uintptr_t)dstva, size, 0, 0, 0, 0);
+sys_ipc_recv_from(envid_t from, void *dstva, size_t size) {
+    int res = syscall(SYS_ipc_recv, 1, from, (uintptr_t)dstva, size, 0, 0, 0);
 #ifdef SANITIZE_USER_SHADOW_BASE
     if (!res) platform_asan_unpoison(dstva, thisenv->env_ipc_maxsz);
 #endif
     return res;
+}
+
+int
+sys_ipc_recv(void *rcv_pg, size_t size) {
+  return sys_ipc_recv_from(0, rcv_pg, size);
 }
 
 int

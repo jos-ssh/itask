@@ -95,6 +95,7 @@ int sys_map_physical_region(uintptr_t pa, envid_t dst_env,
 int sys_unmap_region(envid_t env, void *pg, size_t size);
 int sys_ipc_try_send(envid_t to_env, uint64_t value, void *pg, size_t size, int perm);
 int sys_ipc_recv(void *rcv_pg, size_t size);
+int sys_ipc_recv_from(envid_t from, void *rcv_pg, size_t size);
 int sys_gettime(void);
 
 int vsys_gettime(void);
@@ -112,6 +113,7 @@ sys_exofork(void) {
 /* ipc.c */
 void ipc_send(envid_t to_env, uint32_t value, void *pg, size_t size, int perm);
 int32_t ipc_recv(envid_t *from_env_store, void *pg, size_t *psize, int *perm_store);
+int32_t ipc_recv_from(envid_t from, void *pg, size_t *psize, int *perm_store);
 envid_t ipc_find_env(enum EnvType type);
 
 /* fork.c */
