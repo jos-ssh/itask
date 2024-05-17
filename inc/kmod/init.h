@@ -24,17 +24,11 @@ enum InitdRequestType {
   INITD_REQ_IDENTIFY = KMOD_REQ_IDENTIFY,
 
   INITD_REQ_FIND_KMOD = KMOD_REQ_FIRST_USABLE,
-  INITD_REQ_READ_ACPI,
 
   INITD_NREQUESTS
 };
 
-union InidRequest {
-  struct InitdReadAcpi {
-    char signature[4];
-    size_t offset;
-  } read_acpi;
-
+union InitdRequest {
   struct InitdFindKmod {
     ssize_t min_version;
     ssize_t max_version;
