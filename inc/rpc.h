@@ -33,5 +33,13 @@ struct RpcServer {
  */
 void rpc_serve(const struct RpcServer* server);
 
+/**
+ * @brief Execute RPC request: send request and await response.
+ * NULL is written to *res_data if res_data!=NULL and no page was received from
+ * server
+ *
+ * @note All buffers are assumed to be of size PAGE_SIZE or more
+ */
+int32_t rpc_execute(envid_t server, int32_t req_id, const void* req_data, void** res_data);
 
 #endif /* rpc.h */

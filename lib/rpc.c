@@ -32,3 +32,27 @@ rpc_serve(const struct RpcServer* server) {
         sys_unmap_region(CURENVID, server->ReceiveBuffer, PAGE_SIZE);
     }
 }
+
+int32_t rpc_execute(envid_t server, int32_t req_id, const void* req_data, void** res_data) {
+  if (req_data) {
+    ipc_send(server, req_id, (void*) req_data, PAGE_SIZE, PROT_R);
+  } else {
+    ipc_send(server, req_id, NULL, 0, 0);
+  }
+  
+  int32_t res = 0;
+  if (res_data) {
+    int recv_perm = 0;
+    size_t max_size = PAGE_SIZE;
+    res = ipc_recv_from(server, *res_data, &max_size, &recv_perm);
+
+    if (!(recv_perm & PROT_R)) {
+      // No response data
+      *res_data = NULL;
+    }
+  } else {
+    res = ipc_recv_from(server, NULL, NULL, 0);
+  }
+
+  return res;
+}
