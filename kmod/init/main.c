@@ -1,15 +1,24 @@
 #include "inc/env.h"
 #include "inc/mmu.h"
+#include "inc/stdio.h"
 #include <inc/lib.h>
 
 #include <inc/kmod/request.h>
 #include <inc/kmod/init.h>
 #include <inc/rpc.h>
 
+// Return hex string of thisenv->env_id
+static const char* envid_string(void);
+
+// Serve IDENTIFY request
 static int initd_serve_identify(envid_t from, const void* request,
                                 void* response, int* response_perm);
+// Serve FIND_KMOD request
 static int initd_serve_find_kmod(envid_t from, const void* request,
                                  void* response, int* response_perm);
+
+// Load module, passing hex string of initd's envid as argument
+static int initd_load_module(const char* path);
 
 #define MAX_MODULES  256
 #define RECEIVE_ADDR 0x0FFFF000
@@ -30,12 +39,47 @@ struct RpcServer Server = {
         .HandlerCount = INITD_NREQUESTS,
         .Handlers = {
                 [INITD_REQ_IDENTIFY] = initd_serve_identify,
-                [INITD_REQ_FIND_KMOD] = initd_serve_find_kmod
-        }};
+                [INITD_REQ_FIND_KMOD] = initd_serve_find_kmod}};
 
 void
 umain(int argc, char** argv) {
+    // TODO: actually load some future modules
+
     rpc_serve(&Server);
+}
+
+static int
+initd_load_module(const char* path) {
+    if (ModuleCount >= MAX_MODULES) {
+        return -E_NO_MEM;
+    }
+
+    const char* argv[] = {path, envid_string(), NULL};
+    int mod = spawn(path, argv);
+    if (mod < 0) {
+        cprintf("[%08x: initd] Failed to load module '%s': %i\n", thisenv->env_id, path, mod);
+        return mod;
+    }
+
+    struct KmodIdentifyResponse* response = (void*)RECEIVE_ADDR;
+    int res = rpc_execute(mod, KMOD_REQ_IDENTIFY, NULL, (void**)&response);
+    if (res != 0 || !response) {
+        cprintf("[%08x: initd] Bad module '%s'\n", thisenv->env_id, path);
+        sys_env_destroy(mod);
+        if (response) {
+            sys_unmap_region(CURENVID, response, PAGE_SIZE);
+        }
+
+        return -E_INVAL;
+    }
+
+    struct LoadedModule* module = &Modules[ModuleCount++];
+    module->env = mod;
+    module->info.version = response->info.version;
+    memcpy(module->info.name, response->info.name, KMOD_MAXNAMELEN);
+    sys_unmap_region(CURENVID, response, PAGE_SIZE);
+
+    return 0;
 }
 
 int
@@ -67,4 +111,28 @@ initd_serve_find_kmod(envid_t from, const void* request,
         return Modules[i].env;
     }
     return 0;
+}
+
+static const char*
+envid_string(void) {
+    static char str[32] = "";
+
+    if (*str) return str;
+
+    envid_t id = thisenv->env_id;
+    assert(id > 0);
+    size_t str_len = 0;
+    while (id > 0) {
+        assert(str_len < 32);
+        str[str_len++] = id & 0xF;
+        id >>= 4;
+    }
+
+    for (size_t left = 0, right = str_len - 1; left < right; ++left, --right) {
+        char tmp = str[left];
+        str[left] = str[right];
+        str[right] = tmp;
+    }
+
+    return str;
 }
