@@ -1,4 +1,5 @@
 /* See COPYRIGHT for copyright information. */
+#include "inc/env.h"
 #include "inc/mmu.h"
 #include "inc/trap.h"
 #include <inc/memlayout.h>
@@ -422,7 +423,8 @@ sys_map_physical_region(uintptr_t pa, envid_t envid, uintptr_t va, size_t size, 
     struct Env* target = NULL;
     int lookup_res = envid2env(envid, &target, true);
     SYSCALL_ASSERT(lookup_res == 0, E_BAD_ENV);
-    SYSCALL_ASSERT(target->env_type == ENV_TYPE_FS, E_BAD_ENV);
+    SYSCALL_ASSERT(target->env_type == ENV_TYPE_FS
+                || target->env_type == ENV_TYPE_KERNEL, E_BAD_ENV);
     SYSCALL_ASSERT(va < MAX_USER_ADDRESS, E_INVAL);
     SYSCALL_ASSERT(va % PAGE_SIZE == 0, E_INVAL);
     SYSCALL_ASSERT(pa % PAGE_SIZE == 0, E_INVAL);
