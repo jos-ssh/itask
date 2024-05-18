@@ -1,7 +1,8 @@
 OBJDIRS += kmod/acpi
 
 ACPIDOBJS := $(KMODOBJDIR)/acpi/main.o \
-	$(KMODOBJDIR)/acpi/acpi.o
+	$(KMODOBJDIR)/acpi/acpi.o \
+  $(KMODOBJDIR)/acpi/mmio.o
 
 $(KMODOBJDIR)/acpi/%.o: kmod/acpi/%.c kmod/acpi/acpi.h inc/lib.h $(OBJDIR)/.vars.USER_CFLAGS
 	@echo + cc[USER] $<
