@@ -1,3 +1,4 @@
+#include "inc/convert.h"
 #include "inc/env.h"
 #include "inc/mmu.h"
 #include "inc/stdio.h"
@@ -119,20 +120,8 @@ envid_string(void) {
 
     if (*str) return str;
 
-    envid_t id = thisenv->env_id;
-    assert(id > 0);
-    size_t str_len = 0;
-    while (id > 0) {
-        assert(str_len < 32);
-        str[str_len++] = id & 0xF;
-        id >>= 4;
-    }
-
-    for (size_t left = 0, right = str_len - 1; left < right; ++left, --right) {
-        char tmp = str[left];
-        str[left] = str[right];
-        str[right] = tmp;
-    }
+    int cvt_res = ulong_to_str(thisenv->env_id, BASE_HEX, str, 32);
+    assert(cvt_res > 0);
 
     return str;
 }
