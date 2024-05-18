@@ -284,11 +284,7 @@ sys_alloc_region(envid_t envid, uintptr_t addr, size_t size, int perm) {
         perm |= ALLOC_ZERO;
     }
 
-    if (target->env_type != ENV_TYPE_KERNEL) {
-        perm |= PROT_USER_;
-    }
-
-    perm |= PROT_LAZY;
+    perm |= PROT_USER_ | PROT_LAZY;
 
     int map_res = map_region(&target->address_space, addr, NULL, 0, size, perm);
     if (map_res != 0) {
@@ -352,9 +348,7 @@ sys_map_region(envid_t srcenvid, uintptr_t srcva,
         return lookup_res;
     }
 
-    if (dst->env_type != ENV_TYPE_KERNEL) {
-        perm |= PROT_USER_;
-    }
+    perm |= PROT_USER_;
 
     /*
     if (user_mem_check(src, (const void*)srcva, size, (perm & PROT_RWX) | PROT_USER_) != 0) {
