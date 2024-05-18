@@ -2,6 +2,7 @@
 #include "inc/env.h"
 #include "inc/mmu.h"
 #include "inc/trap.h"
+#include "inc/uefi.h"
 #include <inc/memlayout.h>
 #include <inc/stdio.h>
 #include <inc/syscall.h>
@@ -46,7 +47,7 @@
         if (trace_syscalls || trace_syscalls_from == curenv->env_id) { \
             cprintf("[%08x] ", curenv->env_id);                       \
             cprintf("returning " fmt " from %s(", (ret), __func__);   \
-            cprintf(") at line %d\n", __LINE__ + 1);                  \
+            cprintf(") at line %d\n", __LINE__);                      \
         }                                                             \
     } while (0)
 
@@ -652,6 +653,14 @@ sys_region_refs(uintptr_t addr, size_t size, uintptr_t addr2, size_t size2) {
 #undef ARGS
 }
 
+static intptr_t
+sys_get_rsdp_paddr(void) {
+  TRACE_SYSCALL_ENTER();
+  SYSCALL_ASSERT(curenv->env_type == ENV_TYPE_KERNEL, E_BAD_ENV);
+
+  return uefi_lp->ACPIRoot;
+}
+
 /* Dispatches to the correct kernel function, passing the arguments. */
 uintptr_t
 syscall(uintptr_t syscallno, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4, uintptr_t a5, uintptr_t a6) {
@@ -696,6 +705,8 @@ syscall(uintptr_t syscallno, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t
         return sys_ipc_recv(a1, a2, a3);
     case SYS_gettime:
         return sys_gettime();
+    case SYS_get_rsdp_paddr:
+        return sys_get_rsdp_paddr();
     case NSYSCALLS:
     default:
         return -E_NO_SYS;
