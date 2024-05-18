@@ -8,6 +8,7 @@
 
 #define RECEIVE_ADDR 0x0FFFF000
 
+
 envid_t
 find_initd() {
     for (size_t i = 0; i < NENV; i++)
@@ -30,6 +31,18 @@ find_initd() {
     return 0;
 }
 
+envid_t
+find_acpid(envid_t initd) {
+  __attribute__((aligned(PAGE_SIZE)))
+  static union InitdRequest request;
+
+  request.find_kmod.max_version = -1;
+  request.find_kmod.min_version = -1;
+  strcpy(request.find_kmod.name_prefix, "jos.core.acpi");
+
+  return rpc_execute(initd, INITD_REQ_FIND_KMOD, &request, NULL);
+}
+
 void
 umain(int argc, char** argv) {
     cprintf("hello, world\n");
@@ -37,4 +50,7 @@ umain(int argc, char** argv) {
 
     envid_t initd = find_initd();
     cprintf("Found 'initd' in env [%08x]\n", initd);
+
+    envid_t acpid = find_acpid(initd);
+    cprintf("Found 'acpid' in env [%08x]\n", acpid);
 }
