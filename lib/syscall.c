@@ -1,5 +1,6 @@
 /* System call stubs. */
 
+#include "inc/types.h"
 #include <inc/syscall.h>
 #include <inc/lib.h>
 
@@ -162,4 +163,9 @@ sys_ipc_recv(void *rcv_pg, size_t size) {
 int
 sys_gettime(void) {
     return syscall(SYS_gettime, 0, 0, 0, 0, 0, 0, 0);
+}
+
+int
+sys_get_rsdp_paddr(physaddr_t* paddr) {
+    return syscall(SYS_get_rsdp_paddr, 1, (uintptr_t)paddr, 0, 0, 0, 0, 0);
 }

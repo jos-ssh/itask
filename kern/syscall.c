@@ -2,6 +2,7 @@
 #include "inc/env.h"
 #include "inc/mmu.h"
 #include "inc/trap.h"
+#include "inc/types.h"
 #include "inc/uefi.h"
 #include <inc/memlayout.h>
 #include <inc/stdio.h>
@@ -653,12 +654,15 @@ sys_region_refs(uintptr_t addr, size_t size, uintptr_t addr2, size_t size2) {
 #undef ARGS
 }
 
-static intptr_t
-sys_get_rsdp_paddr(void) {
-  TRACE_SYSCALL_ENTER();
+static int
+sys_get_rsdp_paddr(physaddr_t* phys_addr) {
+  TRACE_SYSCALL_ENTER(("%p", phys_addr));
   SYSCALL_ASSERT(curenv->env_type == ENV_TYPE_KERNEL, E_BAD_ENV);
+  user_mem_assert(curenv, phys_addr, sizeof(*phys_addr), PROT_USER_ | PROT_R | PROT_W);
 
-  return uefi_lp->ACPIRoot;
+  *phys_addr = uefi_lp->ACPIRoot;
+  TRACE_SYSCALL_LEAVE("%d", 0);
+  return 0;
 }
 
 /* Dispatches to the correct kernel function, passing the arguments. */
@@ -706,7 +710,7 @@ syscall(uintptr_t syscallno, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t
     case SYS_gettime:
         return sys_gettime();
     case SYS_get_rsdp_paddr:
-        return sys_get_rsdp_paddr();
+        return sys_get_rsdp_paddr((physaddr_t*)a1);
     case NSYSCALLS:
     default:
         return -E_NO_SYS;
