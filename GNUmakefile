@@ -265,6 +265,7 @@ LDFLAGS := -m elf_x86_64 -z max-page-size=0x1000 --print-gc-sections --warn-comm
 
 # Linker flags for JOS programs
 ULDFLAGS := -T user/user.ld --warn-common
+BLDFLAGS := -T bin/bin.ld --warn-common
 
 # Lists that the */Makefrag makefile fragments will add to
 OBJDIRS :=
@@ -281,6 +282,7 @@ all: .git/hooks/post-checkout .git/hooks/pre-commit
 # make it so that no intermediate .o files are ever deleted
 .PRECIOUS:  $(OBJDIR)/kern/%.o \
 	   $(OBJDIR)/lib/%.o $(OBJDIR)/fs/%.o $(OBJDIR)/net/%.o \
+	   $(OBJDIR)/bin/%.o \
 	   $(OBJDIR)/user/%.o \
 	   $(OBJDIR)/prog/%.o
 
@@ -312,6 +314,7 @@ ifeq ($(CONFIG_KSPACE),y)
 include prog/Makefrag
 else
 include user/Makefrag
+include bin/Makefrag
 include fs/Makefrag
 include kmod/Makefrag
 endif
