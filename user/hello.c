@@ -12,7 +12,7 @@ envid_t
 find_initd() {
     for (size_t i = 0; i < NENV; i++)
         if (envs[i].env_type == ENV_TYPE_KERNEL) {
-            struct KmodIdentifyResponse* response = (void*)RECEIVE_ADDR;
+            union KmodIdentifyResponse* response = (void*)RECEIVE_ADDR;
 
             int res = rpc_execute(envs[i].env_id, KMOD_REQ_IDENTIFY, NULL, (void**)&response);
             assert(res == 0);

@@ -62,7 +62,7 @@ initd_load_module(const char* path) {
         return mod;
     }
 
-    struct KmodIdentifyResponse* response = (void*)RECEIVE_ADDR;
+    union KmodIdentifyResponse* response = (void*)RECEIVE_ADDR;
     int res = rpc_execute(mod, KMOD_REQ_IDENTIFY, NULL, (void**)&response);
     if (res != 0 || !response) {
         cprintf("[%08x: initd] Bad module '%s'\n", thisenv->env_id, path);
@@ -86,7 +86,7 @@ initd_load_module(const char* path) {
 int
 initd_serve_identify(envid_t from, const void* request,
                      void* response, int* response_perm) {
-    struct KmodIdentifyResponse* ident = (struct KmodIdentifyResponse*)response;
+    union KmodIdentifyResponse* ident = response;
     memset(ident, 0, sizeof(*ident));
     ident->info.version = INITD_VERSION;
     strncpy(ident->info.name, INITD_MODNAME, MAXNAMELEN);

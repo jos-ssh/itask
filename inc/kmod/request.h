@@ -30,17 +30,17 @@ enum {
 /**
  * @brief Identification information about kernel module
  */
-struct KmodInfo {
-  size_t version;
-  char name[KMOD_MAXNAMELEN];
-};
 
 /**
  * @brief IDENTIFY response body
  */
-struct KmodIdentifyResponse {
-  struct KmodInfo info;
-  char rzvd__[PAGE_SIZE - sizeof(struct KmodInfo)];
+union KmodIdentifyResponse {
+  struct KmodInfo {
+    size_t version;
+    char name[KMOD_MAXNAMELEN];
+  } info;
+
+  char pad_[PAGE_SIZE];
 } __attribute__((packed));
 
 #endif /* request.h */
