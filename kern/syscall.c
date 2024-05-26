@@ -660,7 +660,12 @@ sys_get_rsdp_paddr(physaddr_t* phys_addr) {
   SYSCALL_ASSERT(curenv->env_type == ENV_TYPE_KERNEL, E_BAD_ENV);
   user_mem_assert(curenv, phys_addr, sizeof(*phys_addr), PROT_USER_ | PROT_R | PROT_W);
 
-  *phys_addr = uefi_lp->ACPIRoot;
+  physaddr_t root = 0;
+  struct AddressSpace* old = switch_address_space(&kspace);
+  root = uefi_lp->ACPIRoot;
+  switch_address_space(old);
+
+  *phys_addr = root;
   TRACE_SYSCALL_LEAVE("%d", 0);
   return 0;
 }
