@@ -118,11 +118,10 @@ KERN_BINFILES :=	user/hello \
 			user/spawnhello \
 			user/testpteshare \
 			user/testshell \
-			user/date \
-			user/vdate \
 			user/bounds \
 			user/implicitconv \
-			user/signedoverflow
+			user/signedoverflow \
+			bin/init
 KERN_BINFILES := $(patsubst %, $(OBJDIR)/%, $(KERN_BINFILES))
 endif
 
@@ -178,7 +177,7 @@ kern/payload.c:
 # How to build kernel object files
 $(OBJDIR)/kern/%.o: kern/%.c $(OBJDIR)/.vars.KERN_CFLAGS
 	@echo + cc $<
-	@mkdir -p $(@D)
+	@mkdir -p $(@D)e
 	$(V)$(CC) $(KERN_CFLAGS) $(KERN_SAN_CFLAGS) -c -o $@ $<
 
 $(OBJDIR)/kern/%.o: kern/%.S $(OBJDIR)/.vars.KERN_CFLAGS

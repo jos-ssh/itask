@@ -15,28 +15,29 @@ FSIMGTXTFILES :=	fs/newmotd \
 			fs/testshell.key \
 			fs/testshell.sh
 
-USERAPPS :=		$(OBJDIR)/user/init \
-			$(OBJDIR)/user/cat \
-			$(OBJDIR)/user/echo \
-			$(OBJDIR)/user/ls \
-			$(OBJDIR)/user/lsfd \
-			$(OBJDIR)/user/num \
+BINAPPS :=		$(OBJDIR)/bin/init \
+			$(OBJDIR)/bin/cat \
+			$(OBJDIR)/bin/echo \
+			$(OBJDIR)/bin/ls \
+			$(OBJDIR)/bin/lsfd \
+			$(OBJDIR)/bin/date \
+			$(OBJDIR)/bin/vdate \
+			$(OBJDIR)/bin/sh
+
+
+USERAPPS :=		$(OBJDIR)/user/num \
 			$(OBJDIR)/user/forktree \
 			$(OBJDIR)/user/primes \
 			$(OBJDIR)/user/primespipe \
-			$(OBJDIR)/user/sh \
 			$(OBJDIR)/user/testfdsharing \
 			$(OBJDIR)/user/testkbd \
 			$(OBJDIR)/user/testpipe \
 			$(OBJDIR)/user/testpteshare \
 			$(OBJDIR)/user/testshell \
-			$(OBJDIR)/user/hello \
-			$(OBJDIR)/user/date \
-			$(OBJDIR)/user/vdate \
-      $(OBJDIR)/kmod/acpid \
+			$(OBJDIR)/user/hello
 
 
-FSIMGFILES := $(FSIMGTXTFILES) $(USERAPPS)
+FSIMGFILES := $(FSIMGTXTFILES) $(BINAPPS) $(USERAPPS)
 
 $(OBJDIR)/fs/%.o: fs/%.c fs/fs.h fs/pci.h fs/nvme.h inc/lib.h $(OBJDIR)/.vars.USER_CFLAGS
 	@echo + cc[USER] $<
