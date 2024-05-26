@@ -161,6 +161,7 @@ static void acpi_init() {
         if (status < 0) {
             panic("Invalid RSDT: %i", status);
         }
+        return;
     }
     /*
      * ACPI 2.0 or higher
@@ -170,6 +171,7 @@ static void acpi_init() {
         if (status < 0) {
             panic("Invalid XSDT: %i", status);
         }
+        return;
     }
 
     panic("Invalid ACPI Version");

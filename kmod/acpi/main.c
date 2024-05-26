@@ -23,7 +23,7 @@ struct RpcServer Server = {
         .HandlerCount = ACPID_NREQUESTS,
         .Handlers = {
                 [ACPID_REQ_IDENTIFY] = acpid_serve_identify,
-                // [ACPID_REQ_FIND_TABLE] = acpid_serve_find_table
+                [ACPID_REQ_FIND_TABLE] = acpid_serve_find_table
         }};
 
 void umain(int argc, char** argv) {

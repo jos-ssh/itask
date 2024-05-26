@@ -1,11 +1,9 @@
 #include "mmio.h"
 
-#include <cassert>
 #include <inc/lib.h>
 #include <inc/memlayout.h>
 #include <inc/mmu.h>
 #include <inc/types.h>
-#include <stdint.h>
 
 #define MMIO_MAX_HEAP_SIZE HUGE_PAGE_SIZE
 
