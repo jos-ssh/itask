@@ -46,7 +46,9 @@ void
 umain(int argc, char** argv) {
     // TODO: actually load some future modules
 
-    rpc_serve(&Server);
+    while (1) {
+      rpc_listen(&Server, NULL);
+    }
 }
 
 static int

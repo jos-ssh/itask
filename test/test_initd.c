@@ -30,7 +30,18 @@ find_initd() {
 }
 
 void
+test_invalid_request(envid_t initd) {
+  void* res_data = NULL;
+  int res = rpc_execute(initd, INITD_NREQUESTS + 42, NULL, &res_data);
+  assert(res == -E_INVAL);
+  assert(res_data == NULL);
+}
+
+void
 umain(int argc, char** argv) {
     envid_t initd = find_initd();
     cprintf("Found 'initd' in env [%08x]\n", initd);
+
+    test_invalid_request(initd);
+    test_invalid_request(initd);
 }
