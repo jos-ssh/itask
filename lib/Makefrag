@@ -10,6 +10,7 @@ LIB_SRCFILES :=		lib/console.c \
 			lib/string.c \
 			lib/readline.c \
 			lib/rpc.c \
+      lib/pool_alloc.c \
 			lib/syscall.c
 
 ifeq ($(CONFIG_KSPACE),y)
