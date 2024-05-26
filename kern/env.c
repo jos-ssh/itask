@@ -16,7 +16,6 @@
 #include <kern/macro.h>
 #include <kern/monitor.h>
 #include <kern/pmap.h>
-#include <kern/pmap.h>
 #include <kern/sched.h>
 #include <kern/timer.h>
 #include <kern/traceopt.h>
