@@ -26,7 +26,7 @@ fsipc(unsigned type, void *dstva) {
 
     ipc_send(fsenv, type, &fsipcbuf, PAGE_SIZE, PROT_RW);
     size_t maxsz = PAGE_SIZE;
-    return ipc_recv(NULL, dstva, &maxsz, NULL);
+    return ipc_recv_from(fsenv, dstva, &maxsz, NULL);
 }
 
 static int devfile_flush(struct Fd *fd);

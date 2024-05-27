@@ -1,0 +1,5 @@
+KMODDIRNAME := kmod
+OBJDIRS += $(KMODDIRNAME)
+KMODOBJDIR := $(OBJDIR)/$(KMODDIRNAME)
+
+include kmod/init/Makefrag

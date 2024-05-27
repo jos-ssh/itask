@@ -1,0 +1,15 @@
+OBJDIRS += test
+
+TESTLIBS = jos
+
+$(OBJDIR)/test/%.o: test/%.c $(OBJDIR)/.vars.USER_CFLAGS
+	@echo + cc[USER] $<
+	@mkdir -p $(@D)
+	$(V)$(CC) $(USER_CFLAGS) $(USER_SAN_CFLAGS) -c -o $@ $<
+
+$(OBJDIR)/test/%: $(OBJDIR)/test/%.o $(OBJDIR)/lib/entry.o $(TESTLIBS:%=$(OBJDIR)/lib/lib%.a) $(USER_EXTRA_OBJFILES) user/user.ld
+	@echo + ld $@
+	$(V)$(LD) -o $@ $(ULDFLAGS) $(LDFLAGS) $(USER_SAN_LDFLAGS) -nostdlib $(OBJDIR)/lib/entry.o $(USER_EXTRA_OBJFILES) $@.o -L$(OBJDIR)/lib $(TESTLIBS:%=-l%) $(GCC_LIB)
+	$(V)$(OBJDUMP) -S $@ > $@.asm
+	$(V)$(NM) -n $@ > $@.sym
+

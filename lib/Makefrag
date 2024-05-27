@@ -1,6 +1,7 @@
 OBJDIRS += lib
 
 LIB_SRCFILES :=		lib/console.c \
+      lib/convert.c \
 			lib/libmain.c \
 			lib/exit.c \
 			lib/panic.c \
@@ -8,6 +9,7 @@ LIB_SRCFILES :=		lib/console.c \
 			lib/printfmt.c \
 			lib/string.c \
 			lib/readline.c \
+			lib/rpc.c \
 			lib/syscall.c
 
 ifeq ($(CONFIG_KSPACE),y)
