@@ -498,6 +498,10 @@ sys_ipc_try_send(envid_t envid, uint32_t value, uintptr_t srcva, size_t size, in
         TRACE_SYSCALL_LEAVE("'%i'", -E_IPC_NOT_RECV);
         return -E_IPC_NOT_RECV;
     }
+    if (target->env_ipc_from != 0 && target->env_ipc_from != curenv->env_id) {
+        TRACE_SYSCALL_LEAVE("'%i'", -E_IPC_NOT_RECV);
+        return -E_IPC_NOT_RECV;
+    }
 
     if (srcva < MAX_USER_ADDRESS && target->env_ipc_dstva < MAX_USER_ADDRESS) {
         if (srcva & CLASS_MASK(0)) {
@@ -553,8 +557,8 @@ sys_ipc_try_send(envid_t envid, uint32_t value, uintptr_t srcva, size_t size, in
  *  -E_INVAL if dstva is valid and maxsize is 0,
  *  -E_INVAL if maxsize is not page aligned. */
 static int
-sys_ipc_recv(uintptr_t dstva, uintptr_t maxsize) {
-#define ARGS ("0x%lx", dstva)("0x%lx", maxsize)
+sys_ipc_recv(envid_t from, uintptr_t dstva, uintptr_t maxsize) {
+#define ARGS ("%08x", from)("0x%lx", dstva)("0x%lx", maxsize)
     TRACE_SYSCALL_ENTER(ARGS);
     if (dstva < MAX_USER_ADDRESS) {
         if ((dstva & CLASS_MASK(0)) || !maxsize || (maxsize & CLASS_MASK(0))) {
@@ -565,7 +569,7 @@ sys_ipc_recv(uintptr_t dstva, uintptr_t maxsize) {
         curenv->env_ipc_maxsz = maxsize;
     }
 
-    curenv->env_ipc_from = 0;
+    curenv->env_ipc_from = from;
     curenv->env_ipc_perm = 0;
     curenv->env_ipc_value = 0;
 
@@ -693,7 +697,7 @@ syscall(uintptr_t syscallno, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t
     case SYS_ipc_try_send:
         return sys_ipc_try_send(a1, a2, a3, a4, a5);
     case SYS_ipc_recv:
-        return sys_ipc_recv(a1, a2);
+        return sys_ipc_recv(a1, a2, a3);
     case SYS_gettime:
         return sys_gettime();
     case NSYSCALLS:

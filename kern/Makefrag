@@ -107,6 +107,7 @@ KERN_BINFILES :=	user/hello \
 			user/testfile \
 			user/icode \
 			fs/fs \
+			kmod/initd \
 			user/testfdsharing \
 			user/testpipe \
 			user/testpiperace \

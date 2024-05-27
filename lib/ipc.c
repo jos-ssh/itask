@@ -24,11 +24,17 @@
  *   a perfectly valid place to map a page.) */
 int32_t
 ipc_recv(envid_t *from_env_store, void *pg, size_t *size, int *perm_store) {
-    int res = sys_ipc_recv(pg ? pg : (void *)MAX_USER_ADDRESS,
+    int32_t res = ipc_recv_from(0, pg, size, perm_store);
+    if (from_env_store)
+        *from_env_store = thisenv->env_ipc_from;
+
+    return res;
+}
+
+int32_t ipc_recv_from(envid_t from, void *pg, size_t *size, int *perm_store) {
+    int res = sys_ipc_recv_from(from, pg ? pg : (void *)MAX_USER_ADDRESS,
                            size ? *size : 0);
     if (res != 0) {
-        if (from_env_store)
-            *from_env_store = 0;
         if (perm_store)
             *perm_store = 0;
         return res;
@@ -41,10 +47,10 @@ ipc_recv(envid_t *from_env_store, void *pg, size_t *size, int *perm_store) {
     }
 #endif // SANITIZE_USER_SHADOW_BASE
 
-    if (from_env_store)
-        *from_env_store = thisenv->env_ipc_from;
     if (perm_store)
         *perm_store = thisenv->env_ipc_perm;
+    if (size)
+        *size = thisenv->env_ipc_maxsz;
 
     return thisenv->env_ipc_value;
 }

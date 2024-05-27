@@ -36,8 +36,10 @@ USERAPPS :=		$(OBJDIR)/user/num \
 			$(OBJDIR)/user/testshell \
 			$(OBJDIR)/user/hello
 
+TESTS := $(OBJDIR)/test/test_initd
 
-FSIMGFILES := $(FSIMGTXTFILES) $(BINAPPS) $(USERAPPS)
+
+FSIMGFILES := $(FSIMGTXTFILES) $(BINAPPS) $(USERAPPS) $(TESTS)
 
 $(OBJDIR)/fs/%.o: fs/%.c fs/fs.h fs/pci.h fs/nvme.h inc/lib.h $(OBJDIR)/.vars.USER_CFLAGS
 	@echo + cc[USER] $<
