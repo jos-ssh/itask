@@ -30,13 +30,15 @@ void umain(int argc, char** argv) {
   // TODO: Test module
 
   cprintf("[%08x: acpid] Starting up module...\n", thisenv->env_id);
-  rpc_serve(&Server); 
+  while (1) {
+    rpc_listen(&Server, NULL);
+  }
 }
 
 int
 acpid_serve_identify(envid_t from, const void* request,
                      void* response, int* response_perm) {
-    struct KmodIdentifyResponse* ident = (struct KmodIdentifyResponse*)response;
+    union KmodIdentifyResponse* ident = response;
     memset(ident, 0, sizeof(*ident));
     ident->info.version = ACPID_VERSION;
     strncpy(ident->info.name, ACPID_MODNAME, MAXNAMELEN);

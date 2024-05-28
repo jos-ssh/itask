@@ -28,10 +28,24 @@ struct RpcServer {
   rpc_serve_handler_t* Handlers[];
 };
 
+struct RpcFailure {
+  envid_t Source;
+  int32_t RequestId;
+  void* Request;
+  int Perm;
+};
+
 /**
- * @brief Listen for incoming IPC requests and call appropriate handlers
+ * @brief Listen for next IPC request and call appropriate handler
+ *
+ * If `failure` is `NULL` server will respond to any invalid request with
+ * `-E_INVAL` and listen for next request, otherwise it will report invalid
+ * request in `failure` and return -1
+ *
+ * @return 0 on successful handling, -1 upon invalid request with
+ * non-NULL failure
  */
-void rpc_serve(const struct RpcServer* server);
+int rpc_listen(const struct RpcServer* server, struct RpcFailure* failure);
 
 /**
  * @brief Execute RPC request: send request and await response.
