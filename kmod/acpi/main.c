@@ -48,10 +48,12 @@ acpid_serve_identify(envid_t from, const void* request,
 
 static int acpid_serve_find_table(envid_t from, const void* request,
                                   void* response, int* response_perm) {
+#ifndef TEST_ACPI
   enum EnvType type = envs[ENVX(from)].env_type;
   if (type != ENV_TYPE_FS && type != ENV_TYPE_KERNEL) {
     return -E_BAD_ENV;
   }
+#endif // !TEST_ACPI
   const union AcpidRequest* acpid_req = request;
 
   // TODO: Make all functions return const pointers
