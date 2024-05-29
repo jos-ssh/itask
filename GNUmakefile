@@ -284,6 +284,7 @@ all: .git/hooks/post-checkout .git/hooks/pre-commit
 	   $(OBJDIR)/lib/%.o $(OBJDIR)/fs/%.o $(OBJDIR)/net/%.o \
 	   $(OBJDIR)/bin/%.o \
 	   $(OBJDIR)/user/%.o \
+	   $(OBJDIR)/test/%.o \
 	   $(OBJDIR)/prog/%.o
 
 KERN_CFLAGS := $(CFLAGS) -DJOS_KERNEL -DLAB=$(LAB) -mcmodel=large -m64
@@ -314,6 +315,7 @@ ifeq ($(CONFIG_KSPACE),y)
 include prog/Makefrag
 else
 include user/Makefrag
+include test/Makefrag
 include bin/Makefrag
 include fs/Makefrag
 include kmod/Makefrag
