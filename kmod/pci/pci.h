@@ -3,6 +3,7 @@
 
 #include <inc/pci.h>
 #include <inc/acpi.h>
+#include <inc/types.h>
 
 #define MAX_PCI_BUSES 16
 #define MAX_PCI_DEV_PER_BUS 32
@@ -32,7 +33,7 @@ void pci_init(void);
 
 void dump_pci_tree(void);
 
-void* pci_device_get_memory_area(struct PciDevice* device, uint8_t bar_id);
+physaddr_t pci_device_get_memory_area(struct PciDevice* device, uint8_t bar_id, size_t* size);
 
 uint32_t pci_device_get_io_base(struct PciDevice* device, uint8_t bar_id);
 

@@ -3,8 +3,13 @@
 #include <inc/pci.h>
 #include <inc/stdio.h>
 #include <inc/assert.h>
-// #include <kern/traceopt.h>
 #include <inc/list.h>
+
+#include "mmio.h"
+
+#ifndef trace_pci
+#define trace_pci 0
+#endif // !trace_pci
 
 #define PCI_ECAM_SIZE 0x1000
 
@@ -50,8 +55,8 @@ find_device(uint8_t class_code, uint8_t subclass_code, uint8_t prog_if) {
     return returned;
 }
 
-void*
-pci_device_get_memory_area(struct PciDevice* device, uint8_t bar_id) {
+physaddr_t
+pci_device_get_memory_area(struct PciDevice* device, uint8_t bar_id, size_t* size) {
     volatile uint32_t* bars = NULL;
     size_t bar_count = 0;
 
@@ -67,11 +72,11 @@ pci_device_get_memory_area(struct PciDevice* device, uint8_t bar_id) {
         bar_count = 2;
     } else {
         panic("Unsupported PCI header type %02x", device->header->header_type);
-        return NULL;
+        return 0;
     }
 
     if (bar_id >= bar_count) {
-        return NULL;
+        return 0;
     }
 
     bool is_hibar = false;
@@ -88,12 +93,12 @@ pci_device_get_memory_area(struct PciDevice* device, uint8_t bar_id) {
 
     /* Cannot map half-BAR */
     if (is_hibar) {
-        return NULL;
+        return 0;
     }
 
     /* Cannot map IO bar */
     if (PCI_BAR_IS_IO(bars[bar_id])) {
-        return NULL;
+        return 0;
     }
 
     if (PCI_BAR_IS_MEMORY64(bars[bar_id]))
@@ -114,7 +119,8 @@ pci_device_get_memory_area(struct PciDevice* device, uint8_t bar_id) {
         const uint64_t map_addr = PCI_BAR_MEMORY64_GET_ADDR(bars[bar_id],
                                                             bars[bar_id + 1]);
 
-        // return mmio_map_region(map_addr, map_size);
+        *size = map_size;
+        return map_addr;
     }
 
     if (PCI_BAR_IS_MEMORY32(bars[bar_id]))
@@ -128,11 +134,12 @@ pci_device_get_memory_area(struct PciDevice* device, uint8_t bar_id) {
         const uint32_t map_size = (~new_addr) + 1;
         const uint32_t map_addr = PCI_BAR_MEMORY32_GET_ADDR(bars[bar_id]);
 
-        // return mmio_map_region(map_addr, map_size);
+        *size = map_size;
+        return map_addr;
     }
 
     panic("Unsupported PCI BAR type %03x", bars[bar_id] & 0x7);
-    return NULL;
+    return 0;
 }
 
 uint32_t
@@ -255,12 +262,11 @@ scan_bus(struct PciDevice* bridge, uint64_t pci_base, uint8_t bus);
 static void
 scan_function(struct PciBus* bus, uint64_t pci_base, uint8_t dev, uint8_t fn) {
     const uint64_t paddr = PCI_DEV_PADDR(pci_base, bus->bus_id, dev, fn);
-    struct PciHeader* header = NULL; // mmio_map_region(paddr, PCI_ECAM_SIZE);
+    struct PciHeader* header = mmio_map_region(paddr, PCI_ECAM_SIZE);
     if (header->vendor_id == PCI_VENDOR_INVALID) {
         return;
     }
 
-    /*
     if (trace_pci) {
         cprintf("Found pci device %02x:%02x.%1o of type %02x.%02x.%02x\n",
                 (unsigned)bus->bus_id, (unsigned)dev, (unsigned)fn,
@@ -268,7 +274,6 @@ scan_function(struct PciBus* bus, uint64_t pci_base, uint8_t dev, uint8_t fn) {
                 (unsigned)header->subclass_code,
                 (unsigned)header->prog_if);
     }
-    */
 
     struct PciDevice* added = makeDevice(bus, header, PCI_DEVFN(dev, fn));
     list_append(&bus->devices, &added->child_list_node);
@@ -282,8 +287,7 @@ scan_function(struct PciBus* bus, uint64_t pci_base, uint8_t dev, uint8_t fn) {
 static void
 scan_device(struct PciBus* bus, uint64_t pci_base, uint8_t dev) {
     const uint64_t paddr = PCI_DEV_PADDR(pci_base, bus->bus_id, dev, 0);
-    struct PciHeader* header = NULL;
-            // mmio_map_region(paddr, PCI_ECAM_SIZE);
+    struct PciHeader* header = mmio_map_region(paddr, PCI_ECAM_SIZE);
 
     if (header->vendor_id == PCI_VENDOR_INVALID) {
         return;
@@ -300,7 +304,6 @@ scan_device(struct PciBus* bus, uint64_t pci_base, uint8_t dev) {
 
 static void
 scan_bus(struct PciDevice* bridge, uint64_t pci_base, uint8_t bus_num) {
-  /*
     if (trace_pci) {
         cprintf("Found PCI bus %02x (bridge %02x:%02x.%1o, class %02x.%02x.%02x)\n",
                 (unsigned)bus_num,
@@ -311,7 +314,6 @@ scan_bus(struct PciDevice* bridge, uint64_t pci_base, uint8_t bus_num) {
                 (unsigned)bridge->header->subclass_code,
                 (unsigned)bridge->header->prog_if);
     }
-    */
 
 
     struct PciBus* bus = makeBus(bridge, bus_num);
@@ -358,15 +360,13 @@ pci_init(void) {
     const uint64_t pci_base = mcfg->groups[0].base_address;
     const uint64_t pci_root_paddr = PCI_DEV_PADDR(pci_base, 0, 0, 0);
 
-    struct PciHeader* root_header = NULL; // mmio_map_region(pci_root_paddr, PCI_ECAM_SIZE);
-    /*
+    struct PciHeader* root_header = mmio_map_region(pci_root_paddr, PCI_ECAM_SIZE);
     if (trace_pci) {
         cprintf("Found Host-to-PCI bridge 00:00.0 (class %02x.%02x.%02x)\n",
                 (unsigned)root_header->class_code,
                 (unsigned)root_header->subclass_code,
                 (unsigned)root_header->prog_if);
     }
-    */
 
     struct PciDevice* host_bridge = makeDevice(NULL, root_header, PCI_DEVFN(0, 0));
 
@@ -375,12 +375,11 @@ pci_init(void) {
     if (PCI_HEADER_TYPE_IS_MULTIFUNCTION(root_header->header_type)) {
         for (size_t i = 1; i < MAX_PCI_FN_PER_DEV; ++i) {
             const uint64_t paddr = PCI_DEV_PADDR(pci_base, 0, 0, i);
-            struct PciHeader* header = NULL; // mmio_map_region(paddr, PCI_ECAM_SIZE);
+            struct PciHeader* header = mmio_map_region(paddr, PCI_ECAM_SIZE);
 
             if (header->vendor_id == PCI_VENDOR_INVALID) {
                 break;
             }
-            /*
             if (trace_pci) {
                 cprintf("Found Host-to-PCI bridge 00:00.%1o (class %02x.%02x.%02x)\n",
                         (unsigned)i,
@@ -388,7 +387,6 @@ pci_init(void) {
                         (unsigned)header->subclass_code,
                         (unsigned)header->prog_if);
             }
-            */
 
             host_bridge = makeDevice(NULL, header, PCI_DEVFN(0, i));
             scan_bus(host_bridge, pci_base, i);
