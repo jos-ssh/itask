@@ -4,7 +4,14 @@
 #include <inc/stdio.h>
 #include <inc/assert.h>
 #include <inc/list.h>
+#include <inc/string.h>
 
+#include <inc/kmod/init.h>
+#include <inc/kmod/acpi.h>
+
+#include "inc/memlayout.h"
+#include "inc/mmu.h"
+#include "inc/rpc.h"
 #include "mmio.h"
 
 #ifndef trace_pci
@@ -16,8 +23,41 @@
 #define PCI_DEV_PADDR(base, bus, dev, fn) \
     ((base) + ((bus) << 20) + ((dev) << 15) + ((fn) << 12))
 
-// TODO: implement
-static MCFG* get_mcfg(void);
+envid_t g_InitdEnvid = 0;
+
+static MCFG* get_mcfg(void) {
+  static MCFG* mcfg = NULL;
+
+  if (mcfg) { return mcfg; }
+
+  assert(g_InitdEnvid > 0);
+
+  int acpid = 0;
+  {
+    union InitdRequest request;
+    request.find_kmod.max_version = -1;
+    request.find_kmod.min_version = -1;
+    strcpy(request.find_kmod.name_prefix, ACPID_MODNAME);
+    void* res_data = NULL;
+    acpid = rpc_execute(g_InitdEnvid, INITD_REQ_FIND_KMOD, &request, &res_data);
+  }
+  assert(acpid > 0);
+
+  {
+    union AcpidRequest request;
+    strncpy(request.find_table.Signature, "MCFG", 4);
+    request.find_table.Offset = 0;
+
+    union AcpidResponse* response = (void*) (UTEMP + HUGE_PAGE_SIZE);
+    int status = rpc_execute(acpid, ACPID_REQ_FIND_TABLE, &request, (void**)&response);
+    assert(status > 0);
+    assert(status == response->table_start.Header.Length);
+
+    mcfg = (MCFG*) &response->table_start.Header;
+  }
+
+  return mcfg;
+}
 
 static bool g_isPciInitialised;
 
@@ -192,14 +232,17 @@ pci_device_get_io_base(struct PciDevice* device, uint8_t bar_id) {
 
 void
 dump_pci_tree(void) {
-    cprintf("Found PCI buses:\n");
+    if (!g_isPciInitialised) {
+      pci_init();
+    }
+
     for (struct List* list_it = g_buses.next;
          list_it != &g_buses;
          list_it = list_it->next) {
         struct PciBus* bus = (struct PciBus*)list_it;
         struct PciDevice* bridge = bus->as_device;
 
-        cprintf("%02x from bridge %02x:%02x.%1o (class %02x.%02x.%02x)\n",
+        cprintf("Bus %02x from bridge %02x:%02x.%1o (class %02x.%02x.%02x)\n",
                 (unsigned)bus->bus_id,
                 (unsigned)(bridge->bus ? bridge->bus->bus_id : 0),
                 (unsigned)PCI_DEVICE(bridge->devfn),
@@ -207,8 +250,24 @@ dump_pci_tree(void) {
                 (unsigned)bridge->header->class_code,
                 (unsigned)bridge->header->subclass_code,
                 (unsigned)bridge->header->prog_if);
+
+        cprintf("  Devices on bus %02x:\n", (unsigned)bus->bus_id);
+        for (struct List* list_it = bus->devices.next;
+             list_it != &bus->devices;
+             list_it = list_it->next) {
+            struct PciDevice* device = (struct PciDevice*)
+              ((char*)list_it - offsetof(struct PciDevice, child_list_node));
+            cprintf("    %02x:%02x.%1o of type %02x.%02x.%02x\n",
+                (unsigned)(bus ? bus->bus_id : 0),
+                (unsigned)PCI_DEVICE(device->devfn),
+                (unsigned)PCI_FUNCTION(device->devfn),
+                (unsigned)device->header->class_code,
+                (unsigned)device->header->subclass_code,
+                (unsigned)device->header->prog_if);
+        }
     }
 
+#if 0
     cprintf("Found PCI devices:\n");
     for (struct List* list_it = g_devices.next;
          list_it != &g_devices;
@@ -224,6 +283,7 @@ dump_pci_tree(void) {
                 (unsigned)device->header->subclass_code,
                 (unsigned)device->header->prog_if);
     }
+#endif
 }
 
 inline static struct PciDevice* __attribute__((always_inline))
@@ -276,7 +336,7 @@ scan_function(struct PciBus* bus, uint64_t pci_base, uint8_t dev, uint8_t fn) {
     }
 
     struct PciDevice* added = makeDevice(bus, header, PCI_DEVFN(dev, fn));
-    list_append(&bus->devices, &added->child_list_node);
+    list_append(bus->devices.prev, &added->child_list_node);
 
     if (PCI_HEADER_TYPE_CHECK(header->header_type, PCI_HEADER_TYPE_PCI_TO_PCI)) {
         struct PciHeaderPciToPciBridge* extended_header = (void*)header;

@@ -29,6 +29,8 @@ typedef struct {
 
 #pragma pack(pop)
 
+extern envid_t g_InitdEnvid;
+
 void pci_init(void);
 
 void dump_pci_tree(void);

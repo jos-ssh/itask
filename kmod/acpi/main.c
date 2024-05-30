@@ -28,8 +28,6 @@ struct RpcServer Server = {
         }};
 
 void umain(int argc, char** argv) {
-  // TODO: Test module
-
   cprintf("[%08x: acpid] Starting up module...\n", thisenv->env_id);
   while (1) {
     rpc_listen(&Server, NULL);

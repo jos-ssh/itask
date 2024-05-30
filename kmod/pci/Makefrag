@@ -1,9 +1,10 @@
 OBJDIRS += kmod/pci
 
-PCIDOBJS := $(KMODOBJDIR)/pci/main.o
-#	$(KMODOBJDIR)/pci/pci.o \
+PCIDOBJS := $(KMODOBJDIR)/pci/main.o \
+	          $(KMODOBJDIR)/pci/pci.o \
+	          $(KMODOBJDIR)/pci/mmio.o
 
-$(KMODOBJDIR)/pci/%.o: kmod/pci/%.c inc/lib.h $(OBJDIR)/.vars.USER_CFLAGS # kmod/pci/pci.h 
+$(KMODOBJDIR)/pci/%.o: kmod/pci/%.c inc/lib.h $(OBJDIR)/.vars.USER_CFLAGS kmod/pci/pci.h 
 	@echo + cc[USER] $<
 	@mkdir -p $(@D)
 	$(V)$(CC) $(USER_CFLAGS) $(USER_SAN_CFLAGS) -c -o $@ $<
