@@ -286,6 +286,7 @@ umain(int argc, char **argv) {
             if (debug) cprintf("EXITING\n");
             exit(); /* end of file */
         }
+        if (strncmp(buf, "exit", 4) == 0) exit();
         if (debug) cprintf("LINE: %s\n", buf);
         if (buf[0] == '#') continue;
         if (echocmds) printf("# %s\n", buf);

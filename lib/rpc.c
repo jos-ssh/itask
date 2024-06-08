@@ -50,7 +50,6 @@ rpc_listen(const struct RpcServer* server, struct RpcFailure* failure) {
 
 int32_t
 rpc_execute(envid_t server, int32_t req_id, const void* req_data, void** res_data) {
-    assert(res_data);
     if (req_data) {
         ipc_send(server, req_id, (void*)req_data, PAGE_SIZE, PROT_R);
     } else {

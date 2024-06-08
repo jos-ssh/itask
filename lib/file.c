@@ -1,9 +1,28 @@
+#include "inc/env.h"
 #include "inc/mmu.h"
+#include "inc/rpc.h"
 #include <inc/fs.h>
 #include <inc/string.h>
 #include <inc/lib.h>
+#include <inc/kmod/file.h>
 
 union Fsipc fsipcbuf __attribute__((aligned(PAGE_SIZE)));
+
+union FiledRequest filed_req;
+union FiledResponse filed_resp;
+
+static int
+filed_rpc_execute(unsigned type, union FiledRequest *req, union FiledResponse *resp) {
+    static envid_t filed_env;
+
+    if (!filed_env) {
+        filed_env = kmod_find_any_version(FILED_MODNAME);
+        int res = sys_unmap_region(CURENVID, &filed_resp, sizeof(filed_resp));
+        assert(res == 0);
+    }
+
+    return rpc_execute(filed_env, type, &filed_req, (void **)&resp);
+};
 
 /* Send an inter-environment request to the file server, and wait for
  * a reply.  The request body should be in fsipcbuf, and parts of the
@@ -66,6 +85,46 @@ open(const char *path, int flags, ...) {
      * If any step after fd_alloc fails, use fd_close to free the
      * file descriptor. */
 
+    int res;
+    struct Fd *fd;
+
+    if (strlen(path) >= MAXPATHLEN)
+        return -E_BAD_PATH;
+
+
+    if ((res = fd_alloc(&fd)) < 0) return res;
+
+    strncpy(filed_req.open.req_path, path, MAXPATHLEN);
+    filed_req.open.req_omode = flags;
+    filed_req.open.req_fd_vaddr = (uintptr_t)fd;
+
+    if ((res = filed_rpc_execute(FILED_REQ_OPEN, &filed_req, NULL)) < 0) {
+        fd_close(fd, 0);
+        return res;
+    }
+
+    return fd2num(fd);
+}
+
+int
+open_raw_fs(const char *path, int flags, ...) {
+    /* Find an unused file descriptor page using fd_alloc.
+     * Then send a file-open request to the file server.
+     * Include 'path' and 'omode' in request,
+     * and map the returned file descriptor page
+     * at the appropriate fd address.
+     * FSREQ_OPEN returns 0 on success, < 0 on failure.
+     *
+     * (fd_alloc does not allocate a page, it just returns an
+     * unused fd address.  Do you need to allocate a page?)
+     *
+     * Return the file descriptor index.
+     * If any step after fd_alloc fails, use fd_close to free the
+     * file descriptor. */
+
+    if (thisenv->env_type != ENV_TYPE_KERNEL) {
+        return -E_BAD_ENV;
+    }
     int res;
     struct Fd *fd;
 

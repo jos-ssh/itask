@@ -13,17 +13,24 @@ FSIMGTXTFILES :=	fs/fs_image/newmotd \
 			fs/fs_image/lorem \
 			fs/fs_image/script \
 			fs/fs_image/testshell.key \
-			fs/fs_image/testshell.sh
+			fs/fs_image/testshell.sh \
+			fs/fs_image/testdir \
+			fs/fs_image/passwd \
+			fs/fs_image/shadow \
+			fs/fs_image/cantopen
 
 BINAPPS :=		$(OBJDIR)/bin/init \
 			$(OBJDIR)/bin/cat \
 			$(OBJDIR)/bin/echo \
+			$(OBJDIR)/bin/lsold \
 			$(OBJDIR)/bin/ls \
 			$(OBJDIR)/bin/lsfd \
 			$(OBJDIR)/bin/date \
 			$(OBJDIR)/bin/vdate \
-			$(OBJDIR)/bin/sh
-
+			$(OBJDIR)/bin/sh \
+			$(OBJDIR)/bin/login \
+			$(OBJDIR)/bin/useradd \
+			$(OBJDIR)/bin/sudo			
 
 USERAPPS :=		$(OBJDIR)/user/num \
 			$(OBJDIR)/user/forktree \
@@ -38,7 +45,9 @@ USERAPPS :=		$(OBJDIR)/user/num \
 
 KERNMODS := $(OBJDIR)/kmod/acpid \
             $(OBJDIR)/kmod/pcid \
-            $(OBJDIR)/kmod/sigd
+            $(OBJDIR)/kmod/sigd \
+            $(OBJDIR)/kmod/filed \
+		$(OBJDIR)/kmod/usersd
 
 TESTS := $(OBJDIR)/test/test_initd \
       $(OBJDIR)/test/test_acpid \

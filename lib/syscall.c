@@ -184,3 +184,13 @@ int
 sys_get_rsdp_paddr(physaddr_t *paddr) {
     return syscall(SYS_get_rsdp_paddr, 1, (uintptr_t)paddr, 0, 0, 0, 0, 0);
 }
+
+int
+sys_crypto(const char *hashed, const char *salt, const char *password) {
+    return syscall(SYS_crypto, 0, (uintptr_t)hashed, (uintptr_t)salt, (uintptr_t)password, 0, 0, 0);
+}
+
+int
+sys_crypto_get(const char *password, const char *salt, unsigned char *hashed) {
+    return syscall(SYS_crypto_get, 0, (uintptr_t)password, (uintptr_t)salt, (uintptr_t)hashed, 0, 0, 0);
+}

@@ -23,6 +23,8 @@ enum {
     SYS_ipc_recv,
     SYS_gettime,
     SYS_get_rsdp_paddr,
+    SYS_crypto, 
+    SYS_crypto_get, 
     NSYSCALLS
 };
 

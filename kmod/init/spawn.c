@@ -13,7 +13,7 @@
 envid_t
 initd_fork(envid_t parent) {
     int res = 0;
-    const volatile struct Env* parent_env = &envs[ENVX(parent)];
+    const volatile struct Env *parent_env = &envs[ENVX(parent)];
 
     void *parent_upcall = parent_env->env_pgfault_upcall;
     res = sys_exofork();
@@ -31,19 +31,19 @@ initd_fork(envid_t parent) {
     if (res < 0) goto error;
 
     struct Trapframe child_tf;
-    memcpy(&child_tf, (const void*) &parent_env->env_tf, sizeof(child_tf));
+    memcpy(&child_tf, (const void *)&parent_env->env_tf, sizeof(child_tf));
     child_tf.tf_regs.reg_rax = 0;
 
     res = sys_env_set_trapframe(child, &child_tf);
     if (res < 0) goto error;
 
     res = sys_map_region(parent, NULL, child, NULL,
-                   MAX_USER_ADDRESS, PROT_ALL | PROT_LAZY | PROT_COMBINE);
+                         MAX_USER_ADDRESS, PROT_ALL | PROT_LAZY | PROT_COMBINE);
     if (res < 0) goto error;
 
     if (parent_upcall) {
-      res = sys_env_set_pgfault_upcall(child, parent_upcall);
-      if (res < 0) goto error;
+        res = sys_env_set_pgfault_upcall(child, parent_upcall);
+        if (res < 0) goto error;
     }
 
     return child;
@@ -93,11 +93,10 @@ initd_spawn(envid_t parent, const char *prog, const char **argv) {
      *   - Load child with code from file
      *   - Copy open file descriptors */
 
-    int fd = open(prog, O_RDONLY);
+    int fd = open_raw_fs(prog, O_RDONLY);
     if (fd < 0) return fd;
 
     /* Create new child environment */
-    // TODO: set parent appropriately
     if ((int)(res = sys_exofork()) < 0) goto error2;
     envid_t child = res;
 
@@ -110,10 +109,10 @@ initd_spawn(envid_t parent, const char *prog, const char **argv) {
     /* TODO: copy file descriptors separately to handle possible O_CLOEXEC */
     /* Copy file descriptors. */
     res = sys_map_region(parent, (void *)FDTABLE, child, (void *)FDTABLE,
-                   2 * MAXFD * PAGE_SIZE, PROT_ALL | PROT_SHARE | PROT_COMBINE);
-   
+                         2 * MAXFD * PAGE_SIZE, PROT_ALL | PROT_SHARE | PROT_COMBINE);
+
     if (res < 0) {
-      panic("FD copy: %i\n", res);
+        panic("FD copy: %i\n", res);
     }
 
     return child;
