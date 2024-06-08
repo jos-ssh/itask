@@ -17,8 +17,3 @@ void
 srand(unsigned int seed) {
     next = seed;
 }
-
-void
-rand_init(unsigned int num) {
-    srand(((unsigned int *)_dev_urandom)[num % _dev_urandom_len]);
-}

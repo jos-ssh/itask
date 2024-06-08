@@ -100,7 +100,9 @@ int sys_ipc_try_send(envid_t to_env, uint64_t value, void *pg, size_t size, int 
 int sys_ipc_recv(void *rcv_pg, size_t size);
 int sys_ipc_recv_from(envid_t from, void *rcv_pg, size_t size);
 int sys_gettime(void);
-int sys_get_rsdp_paddr(physaddr_t *paddr);
+int sys_get_rsdp_paddr(physaddr_t* paddr);
+int sys_crypto(const char *hashed, const char *salt, const char *password);
+int sys_crypto_get(const char *password, const char *salt, unsigned char *hashed);
 
 int vsys_gettime(void);
 
@@ -150,6 +152,8 @@ int stat(const char *path, struct Stat *statbuf);
 
 /* file.c */
 int open(const char *path, int mode, ...);
+int open_raw_fs(const char *path, int mode, ...);
+
 int ftruncate(int fd, off_t size);
 int remove(const char *path);
 int sync(void);
@@ -213,7 +217,7 @@ extern void (*volatile sys_yield)(void);
 #endif
 
 #ifndef debug
-#define debug 0
+#define debug 1
 #endif
 
 #endif /* !JOS_INC_LIB_H */

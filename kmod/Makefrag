@@ -6,3 +6,5 @@ include kmod/init/Makefrag
 include kmod/acpi/Makefrag
 include kmod/pci/Makefrag
 include kmod/signal/Makefrag
+include kmod/file/Makefrag
+include kmod/users/Makefrag
