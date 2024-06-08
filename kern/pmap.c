@@ -1293,7 +1293,8 @@ map_physical_region(struct AddressSpace *dst, uintptr_t dstart, uintptr_t pstart
             struct Page *page = page_lookup(NULL, pstart, class, PARTIAL_NODE, 1);
             if (flags & MAP_USER_MMIO) {
                 if (!page) return -E_NO_MEM;
-                if (page->refc) return -E_NO_ENT;
+                // FIXME: Find a way to release kernel MMIO memory
+                // if (page->refc) return -E_NO_ENT;
             }
             assert(page);
             if ((res = map_page(dst, start, page, flags)) < 0) return res;
@@ -1307,7 +1308,8 @@ map_physical_region(struct AddressSpace *dst, uintptr_t dstart, uintptr_t pstart
             struct Page *page = page_lookup(NULL, pstart, class, PARTIAL_NODE, 1);
             if (flags & MAP_USER_MMIO) {
                 if (!page) return -E_NO_MEM;
-                if (page->refc) return -E_NO_ENT;
+                // FIXME: Find a way to release kernel MMIO memory
+                // if (page->refc) return -E_NO_ENT;
             }
             assert(page);
             if ((res = map_page(dst, start, page, flags)) < 0) return res;

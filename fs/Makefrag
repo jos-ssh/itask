@@ -36,10 +36,12 @@ USERAPPS :=		$(OBJDIR)/user/num \
 			$(OBJDIR)/user/testshell \
 			$(OBJDIR)/user/hello
 
-TESTS := $(OBJDIR)/test/test_initd
+KERNMODS := $(OBJDIR)/kmod/acpid
 
+TESTS := $(OBJDIR)/test/test_initd \
+      $(OBJDIR)/test/test_acpid
 
-FSIMGFILES := $(FSIMGTXTFILES) $(BINAPPS) $(USERAPPS) $(TESTS)
+FSIMGFILES := $(FSIMGTXTFILES) $(BINAPPS) $(USERAPPS) $(KERNMODS) $(TESTS)
 
 $(OBJDIR)/fs/%.o: fs/%.c fs/fs.h fs/pci.h fs/nvme.h inc/lib.h $(OBJDIR)/.vars.USER_CFLAGS
 	@echo + cc[USER] $<

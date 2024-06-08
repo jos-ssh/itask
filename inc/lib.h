@@ -97,6 +97,7 @@ int sys_ipc_try_send(envid_t to_env, uint64_t value, void *pg, size_t size, int 
 int sys_ipc_recv(void *rcv_pg, size_t size);
 int sys_ipc_recv_from(envid_t from, void *rcv_pg, size_t size);
 int sys_gettime(void);
+int sys_get_rsdp_paddr(physaddr_t* paddr);
 
 int vsys_gettime(void);
 

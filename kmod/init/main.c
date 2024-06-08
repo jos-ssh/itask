@@ -44,10 +44,10 @@ struct RpcServer Server = {
 
 void
 umain(int argc, char** argv) {
-    // TODO: actually load some future modules
-
+    cprintf("[%08x: initd] Starting up module...\n", thisenv->env_id);
+    initd_load_module("/acpid");
     while (1) {
-      rpc_listen(&Server, NULL);
+        rpc_listen(&Server, NULL);
     }
 }
 
@@ -57,8 +57,7 @@ initd_load_module(const char* path) {
         return -E_NO_MEM;
     }
 
-    const char* argv[] = {path, envid_string(), NULL};
-    int mod = spawn(path, argv);
+    int mod = spawnl(path, path, envid_string(), NULL);
     if (mod < 0) {
         cprintf("[%08x: initd] Failed to load module '%s': %i\n", thisenv->env_id, path, mod);
         return mod;
@@ -75,6 +74,10 @@ initd_load_module(const char* path) {
 
         return -E_INVAL;
     }
+
+    cprintf("[%08x: initd] Loaded module '%s' v%zu from '%s' as env [%08x]\n",
+            thisenv->env_id, response->info.name, response->info.version,
+            path, mod);
 
     struct LoadedModule* module = &Modules[ModuleCount++];
     module->env = mod;

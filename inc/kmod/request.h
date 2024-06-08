@@ -28,10 +28,6 @@ enum {
 };
 
 /**
- * @brief Identification information about kernel module
- */
-
-/**
  * @brief IDENTIFY response body
  */
 union KmodIdentifyResponse {
@@ -41,6 +37,6 @@ union KmodIdentifyResponse {
   } info;
 
   char pad_[PAGE_SIZE];
-} __attribute__((packed));
+} __attribute__((aligned(PAGE_SIZE)));
 
 #endif /* request.h */
