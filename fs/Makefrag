@@ -13,7 +13,8 @@ FSIMGTXTFILES :=	fs/fs_image/newmotd \
 			fs/fs_image/lorem \
 			fs/fs_image/script \
 			fs/fs_image/testshell.key \
-			fs/fs_image/testshell.sh
+			fs/fs_image/testshell.sh \
+			fs/fs_image/passwd
 
 BINAPPS :=		$(OBJDIR)/bin/init \
 			$(OBJDIR)/bin/cat \
@@ -22,7 +23,8 @@ BINAPPS :=		$(OBJDIR)/bin/init \
 			$(OBJDIR)/bin/lsfd \
 			$(OBJDIR)/bin/date \
 			$(OBJDIR)/bin/vdate \
-			$(OBJDIR)/bin/sh
+			$(OBJDIR)/bin/sh \
+			$(OBJDIR)/bin/login
 
 
 USERAPPS :=		$(OBJDIR)/user/num \

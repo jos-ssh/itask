@@ -8,10 +8,22 @@
 #define NULL ((void *)0)
 #endif
 
-/* lib/stdio.c */
+#define EOF -1
+
+/* lib/console.c*/
 void cputchar(int c);
 int getchar(void);
 int iscons(int fd);
+
+/* lib/stdio.c */
+struct Fd;
+
+struct Fd* fopen(const char *path, int mode);
+int fclose(struct Fd* stream);
+
+int fgetc(struct Fd* stream);
+char *fgets(char *s, int size, struct Fd* stream);
+
 
 /* lib/printfmt.c */
 void printfmt(void (*putch)(int, void *), void *putdat, const char *fmt, ...) __attribute__((format(printf, 3, 4)));
@@ -30,5 +42,7 @@ int vfprintf(int fd, const char *fmt, va_list);
 
 /* lib/readline.c */
 char *readline(const char *prompt);
+char *readline_noecho(const char *promtt);
+
 
 #endif /* !JOS_INC_STDIO_H */

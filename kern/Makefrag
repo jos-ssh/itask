@@ -122,7 +122,9 @@ KERN_BINFILES :=	user/hello \
 			user/implicitconv \
 			user/signedoverflow \
 			user/testdirsupport \
-			bin/init
+			bin/init \
+			bin/login
+			
 KERN_BINFILES := $(patsubst %, $(OBJDIR)/%, $(KERN_BINFILES))
 endif
 

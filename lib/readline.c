@@ -7,8 +7,8 @@
 
 static char buf[BUFLEN];
 
-char *
-readline(const char *prompt) {
+static char *
+readline_impl(const char *prompt, bool is_echo) {
     if (prompt) {
 #if JOS_KERNEL
         cprintf("%s", prompt);
@@ -17,7 +17,7 @@ readline(const char *prompt) {
 #endif
     }
 
-    bool echo = iscons(0);
+    bool echo = iscons(0) && is_echo;
 
     for (size_t i = 0;;) {
         int c = getchar();
@@ -42,6 +42,7 @@ readline(const char *prompt) {
                 }
                 buf[i++] = (char)c;
             }
+            // FIXME: it seem's that when we reach end of buffer, we start to just ignore chars
         } else if (c == '\n' || c == '\r') {
             if (echo) {
                 cputchar('\n');
@@ -50,4 +51,12 @@ readline(const char *prompt) {
             return buf;
         }
     }
+}
+
+char *readline(const char *prompt) {
+    return readline_impl(prompt, true);
+}
+
+char *readline_noecho(const char *prompt) {
+    return readline_impl(prompt, false);
 }
