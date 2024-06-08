@@ -17,17 +17,20 @@ rpc_listen(const struct RpcServer* server, struct RpcFailure* failure) {
         void* request = (perm & PROT_R) ? server->ReceiveBuffer : NULL;
         int result = 0;
         if (req_id >= server->HandlerCount || server->Handlers[req_id] == NULL) {
-            if (failure) {
+            if (server->Fallback) {
+                result = server->Fallback(req_id, from, request, server->SendBuffer, &response_perm);
+            } else if (failure) {
                 failure->Source = from;
                 failure->RequestId = req_id;
                 failure->Request = request;
                 failure->Perm = perm;
 
                 return -1;
+            } else {
+                cprintf("[%08x]: Invalid RPC request from [%08x], invalid id %u\n",
+                        sys_getenvid(), from, req_id);
+                result = -E_INVAL;
             }
-            cprintf("[%08x]: Invalid RPC request from [%08x], invalid id %u\n",
-                    sys_getenvid(), from, req_id);
-            result = -E_INVAL;
         } else {
             result = server->Handlers[req_id](from, request,
                                               server->SendBuffer, &response_perm);

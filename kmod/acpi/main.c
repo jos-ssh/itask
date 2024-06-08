@@ -20,6 +20,7 @@ static union AcpidResponse ResponseBuffer;
 struct RpcServer Server = {
         .ReceiveBuffer = (void*)RECEIVE_ADDR,
         .SendBuffer = &ResponseBuffer,
+        .Fallback = NULL,
         .HandlerCount = ACPID_NREQUESTS,
         .Handlers = {
                 [ACPID_REQ_IDENTIFY] = acpid_serve_identify,
@@ -27,8 +28,6 @@ struct RpcServer Server = {
         }};
 
 void umain(int argc, char** argv) {
-  // TODO: Test module
-
   cprintf("[%08x: acpid] Starting up module...\n", thisenv->env_id);
   while (1) {
     rpc_listen(&Server, NULL);

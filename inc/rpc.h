@@ -21,9 +21,14 @@
 typedef int rpc_serve_handler_t(envid_t from, const void* request,
                                 void* response, int* response_perm);
 
+typedef int rpc_fallback_t(int32_t request_id, envid_t from,
+                                   const void* request, void* response,
+                                   int* response_perm);
+
 struct RpcServer {
   void* ReceiveBuffer;
   void* SendBuffer;
+  rpc_fallback_t* Fallback;
   size_t HandlerCount;
   rpc_serve_handler_t* Handlers[];
 };
