@@ -37,6 +37,7 @@ __attribute__((aligned(PAGE_SIZE))) static uint8_t SendBuffer[PAGE_SIZE];
 struct RpcServer Server = {
         .ReceiveBuffer = (void*)RECEIVE_ADDR,
         .SendBuffer = SendBuffer,
+        .Fallback = NULL,
         .HandlerCount = INITD_NREQUESTS,
         .Handlers = {
                 [INITD_REQ_IDENTIFY] = initd_serve_identify,
@@ -46,6 +47,7 @@ void
 umain(int argc, char** argv) {
     cprintf("[%08x: initd] Starting up module...\n", thisenv->env_id);
     initd_load_module("/acpid");
+    initd_load_module("/pcid");
     while (1) {
         rpc_listen(&Server, NULL);
     }

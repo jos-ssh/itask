@@ -36,10 +36,12 @@ USERAPPS :=		$(OBJDIR)/user/num \
 			$(OBJDIR)/user/testshell \
 			$(OBJDIR)/user/hello
 
-KERNMODS := $(OBJDIR)/kmod/acpid
+KERNMODS := $(OBJDIR)/kmod/acpid \
+            $(OBJDIR)/kmod/pcid
 
 TESTS := $(OBJDIR)/test/test_initd \
-      $(OBJDIR)/test/test_acpid
+      $(OBJDIR)/test/test_acpid \
+      $(OBJDIR)/test/test_pcid
 
 FSIMGFILES := $(FSIMGTXTFILES) $(BINAPPS) $(USERAPPS) $(KERNMODS) $(TESTS)
 

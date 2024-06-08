@@ -14,7 +14,7 @@
 
 #include "inc/acpi.h"
 #include <inc/kmod/request.h>
-#include <stdint.h>
+#include <inc/types.h>
 
 #ifndef ACPID_VERSION
 #define ACPID_VERSION 0
