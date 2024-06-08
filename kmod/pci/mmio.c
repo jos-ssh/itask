@@ -25,7 +25,7 @@ mmio_map_region(physaddr_t paddr, size_t size) {
     }
 
     int res = sys_map_physical_region(start, CURENVID, MmioHeapTop, true_size,
-                                      PROT_R | PROT_CD);
+                                      PROT_RW | PROT_CD);
     assert(res >= 0);
 
     LastRegion = MmioHeapTop + (paddr - start);
@@ -63,7 +63,7 @@ mmio_remap_last_region(physaddr_t paddr, void* old_vaddr,
     }
 
     int res = sys_map_physical_region(old_end, CURENVID, MmioHeapTop,
-                                      size_diff, PROT_R | PROT_CD);
+                                      size_diff, PROT_RW | PROT_CD);
     assert(res >= 0);
 
     LastSize = new_size;

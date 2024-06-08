@@ -1,6 +1,5 @@
 #include "pci.h"
 
-#include <inc/pci.h>
 #include <inc/stdio.h>
 #include <inc/assert.h>
 #include <inc/list.h>

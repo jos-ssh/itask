@@ -4,7 +4,6 @@
 #include "inc/kmod/pci.h"
 #include <inc/rpc.h>
 
-#include "inc/pci.h"
 #include "inc/stdio.h"
 #include "inc/types.h"
 #include "pci.h"
@@ -113,17 +112,8 @@ pcid_find_device(uint8_t class, uint8_t subclass, uint8_t prog,
         return -E_NOT_FOUND;
     }
 
-    struct PciHeader* header = dev->header;
-    switch (header->header_type) {
-    case PCI_HEADER_TYPE_GENERAL:
-        memcpy(response, header, sizeof(struct PciHeaderGeneral));
-        return sizeof(struct PciHeaderGeneral);
-    case PCI_HEADER_TYPE_PCI_TO_PCI:
-        memcpy(response, header, sizeof(struct PciHeaderPciToPciBridge));
-        return sizeof(struct PciHeaderPciToPciBridge);
-    default:
-        return -E_NOT_SUPP;
-    }
+    response->dev_confspace = get_phys_addr(dev->header);
+    return 0;
 }
 
 static int

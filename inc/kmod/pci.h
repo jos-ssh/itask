@@ -14,7 +14,6 @@
 
 #include <inc/assert.h>
 #include <inc/kmod/request.h>
-#include <inc/pci.h>
 #include <inc/types.h>
 
 #ifndef PCID_VERSION
@@ -63,7 +62,7 @@ union PcidResponse {
       physaddr_t address;
       size_t size;
     } bar;
-    struct PciHeader device;
+    physaddr_t dev_confspace;
 
     uint8_t pad_[PAGE_SIZE];
 } __attribute__((aligned(PAGE_SIZE)));

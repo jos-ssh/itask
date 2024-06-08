@@ -4,7 +4,6 @@
 #include <inc/assert.h>
 #include <inc/kmod/pci.h>
 #include "inc/mmu.h"
-#include "inc/pci.h"
 #include "inc/rpc.h"
 #include "inc/stdio.h"
 #include <inc/lib.h>
@@ -50,24 +49,23 @@ find_pcid(envid_t initd) {
 }
 
 void lspci(envid_t pcid) {
+    cprintf("Listing pci devices...\n");
     void* resp = NULL;
     rpc_execute(pcid, PCID_REQ_LSPCI, NULL, &resp);
 }
 
 void check_nvme(envid_t pcid) {
+    cprintf("Checking NVME pci device...\n");
     union PcidResponse* response = (void*) RECEIVE_ADDR;
 
-    int res = rpc_execute(pcid, PCID_REQ_FIND_DEVICE | pcid_device_id(1, 8, 2), NULL,
+    int res = rpc_execute(pcid, PCID_REQ_READ_BAR | pcid_bar_id(1, 8, 2, 0), NULL,
         (void**)&response);
 
     if (res < 0) {
       panic("NVME check failed: %i\n", res);
     }
-    assert(res >= sizeof(struct PciHeader));
-    assert(res == sizeof(struct PciHeaderGeneral));
-    assert(response->device.class_code == 1);
-    assert(response->device.subclass_code == 8);
-    assert(response->device.prog_if == 2);
+    cprintf("NVME BAR#0: 0x%016lx (0x%zx bytes)\n",
+        response->bar.address, response->bar.size);
 
     sys_unmap_region(CURENVID, response, PAGE_SIZE);
 }
