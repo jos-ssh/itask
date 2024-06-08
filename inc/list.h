@@ -52,8 +52,9 @@ list_del(struct List* list) {
         panic("list_del called for corrupted list");
     }
 
-    if (list->next == list->prev)
-        return NULL;
+    if (list_is_empty(list)) {
+      return list;
+    }
 
     struct List* prev = list->prev;
     struct List* next = list->next;
