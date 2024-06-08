@@ -36,6 +36,6 @@ union InitdRequest {
   } find_kmod;
   
   uint8_t pad_[PAGE_SIZE];
-};
+} __attribute__((aligned(PAGE_SIZE)));
 
 #endif /* init.h */
