@@ -1,6 +1,7 @@
 OBJDIRS += kmod/spawn
 
-SPAWNDOBJS := $(KMODOBJDIR)/spawn/main.o
+SPAWNDOBJS := $(KMODOBJDIR)/spawn/main.o \
+              $(KMODOBJDIR)/spawn/spawn.o
 
 $(KMODOBJDIR)/spawn/%.o: kmod/spawn/%.c inc/lib.h $(OBJDIR)/.vars.USER_CFLAGS
 	@echo + cc[USER] $<
