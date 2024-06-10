@@ -73,6 +73,7 @@ umain(int argc, char** argv) {
     initd_load_module("/kmod/filed");
     initd_load_module("/kmod/sigd");
     initd_load_module("/kmod/usersd");
+    initd_load_module("/kmod/netd");
     
     while (1) {
         rpc_listen(&Server, NULL);

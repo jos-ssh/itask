@@ -8,3 +8,4 @@ include kmod/pci/Makefrag
 include kmod/signal/Makefrag
 include kmod/file/Makefrag
 include kmod/users/Makefrag
+include kmod/net/Makefrag
