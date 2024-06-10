@@ -7,6 +7,7 @@
 #include <inc/lib.h>
 #include <inc/rpc.h>
 
+#include "inc/stdio.h"
 #include "net.h"
 
 static int netd_serve_identify(envid_t from, const void* request,
@@ -22,8 +23,8 @@ struct RpcServer Server = {
         .SendBuffer = &ResponseBuffer,
         .HandlerCount = NETD_NREQUESTS,
         .Handlers = {
-                [IDENTITY] = netd_serve_identify,
-                [IS_TEAPOT] = netd_serve_teapot
+                [NETD_IDENTITY] = netd_serve_identify,
+                [NETD_IS_TEAPOT] = netd_serve_teapot
         }};
 
 void umain(int argc, char** argv) {
@@ -58,11 +59,13 @@ static int netd_serve_teapot(envid_t from, const void* request,
                                   void* response, int* response_perm) {
   const union NetdRequest* req = request;
 
-  cprintf("[%08x: netd] Requested teapot with code %d", thisenv->env_id, (int)req->req);
-
+  cprintf("[%08x: netd] Requested teapot with code %d\n", thisenv->env_id, (int)req->req);
   union NetdResponce* res = response;
   memset(res, 0, sizeof(*res));
   res->res = req->req;
 
-  return 1;
+  serve_teapot();
+
+  *response_perm = PROT_R;
+  return 0;
 }

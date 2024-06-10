@@ -16,6 +16,7 @@
 #include <inc/types.h>
 #include <inc/list.h>
 #include <inc/env.h>
+#include <fs/pci_classes.h>
 
 #define MAX_PCI_BUSES 16
 #define MAX_PCI_DEV_PER_BUS 32
@@ -40,7 +41,6 @@
 #define PCI_HEADER_TYPE_IS_MULTIFUNCTION(header_type) \
     (((header_type)&PCI_HEADER_TYPE_MULTIFUNCTION) != 0)
 
-#define PCI_CLASS_BRIDGE 0x6
 #define PCI_CLASS_SERIAL 0xC
 
 #define PCI_SUBCLASS_PCI_TO_PCI 0x4

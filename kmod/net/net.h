@@ -7,3 +7,6 @@ extern envid_t g_PcidEnvid;
 extern bool g_IsNetdInitialized;
 
 #define RECEIVE_ADDR 0x0FFFF000
+
+
+void serve_teapot();
