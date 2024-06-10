@@ -18,7 +18,7 @@
 #include <inc/mmu.h>
 
 #ifndef SPAWND_VERSION
-#define SPAWND_VERSION
+#define SPAWND_VERSION 0
 #endif // !SPAWND_VERSION
 
 #define SPAWND_MODNAME "jos.core.spawn"
