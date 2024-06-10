@@ -6,6 +6,8 @@
 #define UTEMP2USTACK(addr) ((void *)(addr) + (USER_STACK_TOP - USER_STACK_SIZE) - UTEMP)
 
 /* Helper functions for spawn. */
+static int load_executable(envid_t child, int fd, const char** argv);
+
 static int init_stack(envid_t child, const char **argv, struct Trapframe *tf);
 static int map_segment(envid_t child, uintptr_t va, size_t memsz,
                        int fd, size_t filesz, off_t fileoffset, int perm);
@@ -18,17 +20,76 @@ static int copy_shared_region(void *start, void *end, void *arg);
  * Returns child envid on success, < 0 on failure. */
 int
 spawn(const char *prog, const char **argv) {
-    unsigned char elf_buf[512];
     int res;
 
     /* This code follows this procedure:
      *
      *   - Open the program file.
-     *
+     *   - TODO: check file is executable
+     *   - Use sys_exofork() to create a new environment.
+     *   - Load child with code from file
+     *   - Start the child process running with sys_env_set_status(). */
+
+    int fd = open(prog, O_RDONLY);
+    if (fd < 0) return fd;
+
+    /* Create new child environment */
+    if ((int)(res = sys_exofork()) < 0) goto error2;
+    envid_t child = res;
+
+    if ((int)(res = load_executable(child, fd, argv)) < 0) goto error;
+    close(fd);
+
+    if ((res = sys_env_set_status(child, ENV_RUNNABLE)) < 0)
+        panic("sys_env_set_status: %i", res);
+
+    return child;
+
+error:
+    sys_env_destroy(child);
+error2:
+    close(fd);
+
+    return res;
+}
+
+/* Spawn, taking command-line arguments array directly on the stack.
+ * NOTE: Must have a sentinal of NULL at the end of the args
+ * (none of the args may be NULL). */
+int
+spawnl(const char *prog, const char *arg0, ...) {
+    /* We calculate argc by advancing the args until we hit NULL.
+     * The contract of the function guarantees that the last
+     * argument will always be NULL, and that none of the other
+     * arguments will be NULL. */
+    int argc = 0;
+    va_list vl;
+    va_start(vl, arg0);
+    while (va_arg(vl, void *) != NULL) argc++;
+    va_end(vl);
+
+    /* Now that we have the size of the args, do a second pass
+     * and store the values in a VLA, which has the format of argv */
+    const char *argv[argc + 2];
+    argv[0] = arg0;
+    argv[argc + 1] = NULL;
+
+    va_start(vl, arg0);
+    unsigned i;
+    for (i = 0; i < argc; i++) {
+        argv[i + 1] = va_arg(vl, const char *);
+    }
+    va_end(vl);
+
+    return spawn(prog, argv);
+}
+
+static int load_executable(envid_t child, int fd, const char** argv) {
+    unsigned char elf_buf[512];
+    int res;
+    /*
      *   - Read the ELF header, as you have before, and sanity check its
      *     magic number.  (Check out your load_icode!)
-     *
-     *   - Use sys_exofork() to create a new environment.
      *
      *   - Set child_tf to an initial struct Trapframe for the child.
      *
@@ -76,12 +137,7 @@ spawn(const char *prog, const char **argv) {
      *   - Call sys_env_set_trapframe(child, &child_tf) to set up the
      *     correct initial eip and esp values in the child.
      *
-     *   - Start the child process running with sys_env_set_status(). */
-
-    // TODO Properly load ELF and check errors
-
-    int fd = open(prog, O_RDONLY);
-    if (fd < 0) return fd;
+     */
 
     /* Read elf header */
     struct Elf *elf = (struct Elf *)elf_buf;
@@ -101,10 +157,6 @@ spawn(const char *prog, const char **argv) {
         close(fd);
         return -E_NOT_EXEC;
     }
-
-    /* Create new child environment */
-    if ((int)(res = sys_exofork()) < 0) goto error2;
-    envid_t child = res;
 
     /* Set up trap frame, including initial stack. */
     struct Trapframe child_tf = envs[ENVX(child)].env_tf;
@@ -127,8 +179,7 @@ spawn(const char *prog, const char **argv) {
             goto error;
     }
 
-    close(fd);
-
+    /* TODO: copy file descriptors separately to handle possible O_CLOEXEC */
     /* Copy shared library state. */
     if ((res = foreach_shared_region(copy_shared_region, &child)) < 0)
         panic("copy_shared_region: %i", res);
@@ -136,48 +187,10 @@ spawn(const char *prog, const char **argv) {
     if ((res = sys_env_set_trapframe(child, &child_tf)) < 0)
         panic("sys_env_set_trapframe: %i", res);
 
-    if ((res = sys_env_set_status(child, ENV_RUNNABLE)) < 0)
-        panic("sys_env_set_status: %i", res);
-
-    return child;
-
 error:
-    sys_env_destroy(child);
-error2:
     close(fd);
 
     return res;
-}
-
-/* Spawn, taking command-line arguments array directly on the stack.
- * NOTE: Must have a sentinal of NULL at the end of the args
- * (none of the args may be NULL). */
-int
-spawnl(const char *prog, const char *arg0, ...) {
-    /* We calculate argc by advancing the args until we hit NULL.
-     * The contract of the function guarantees that the last
-     * argument will always be NULL, and that none of the other
-     * arguments will be NULL. */
-    int argc = 0;
-    va_list vl;
-    va_start(vl, arg0);
-    while (va_arg(vl, void *) != NULL) argc++;
-    va_end(vl);
-
-    /* Now that we have the size of the args, do a second pass
-     * and store the values in a VLA, which has the format of argv */
-    const char *argv[argc + 2];
-    argv[0] = arg0;
-    argv[argc + 1] = NULL;
-
-    va_start(vl, arg0);
-    unsigned i;
-    for (i = 0; i < argc; i++) {
-        argv[i + 1] = va_arg(vl, const char *);
-    }
-    va_end(vl);
-
-    return spawn(prog, argv);
 }
 
 /* Set up the initial stack page for the new child process with envid 'child'
