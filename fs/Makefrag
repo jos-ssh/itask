@@ -52,7 +52,8 @@ KERNMODS := $(OBJDIR)/kmod/acpid \
             $(OBJDIR)/kmod/pcid \
             $(OBJDIR)/kmod/sigd \
             $(OBJDIR)/kmod/filed \
-			$(OBJDIR)/kmod/usersd
+		$(OBJDIR)/kmod/usersd \
+            $(OBJDIR)/kmod/netd
 
 TESTS := $(OBJDIR)/test/test_initd \
       $(OBJDIR)/test/test_acpid \
