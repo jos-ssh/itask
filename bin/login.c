@@ -25,6 +25,12 @@ struct PasswParsed {
     const char* shell;
 };
 
+struct ShadowParsed {
+    const char* username;
+    const char* pass;
+    const char* date;
+};
+
 void parse_passw_line(struct PasswParsed* p, const char* line) {
     assert(p);
     assert(line);
@@ -32,6 +38,21 @@ void parse_passw_line(struct PasswParsed* p, const char* line) {
     const char **p_as_array = (const char**) p;
 
     for (int i = 0; i < sizeof(*p) / sizeof(*p_as_array); ++i) {
+        p_as_array[i] = *line == ':' ? NULL : line;
+        
+        // printf("%s: %s\n", __func__, line);
+        line = strchr(line, ':');
+        if (line) ++line;
+    }
+}
+
+void parse_shadow_line(struct ShadowParsed* s, const char* line) {
+    assert(s);
+    assert(line);
+
+    const char **p_as_array = (const char**) s;
+
+    for (int i = 0; i < sizeof(*s) / sizeof(*p_as_array); ++i) {
         p_as_array[i] = *line == ':' ? NULL : line;
         
         // printf("%s: %s\n", __func__, line);

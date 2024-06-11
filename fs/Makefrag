@@ -14,7 +14,8 @@ FSIMGTXTFILES :=	fs/fs_image/newmotd \
 			fs/fs_image/script \
 			fs/fs_image/testshell.key \
 			fs/fs_image/testshell.sh \
-			fs/fs_image/passwd
+			fs/fs_image/passwd \
+			fs/fs_image/shadow
 
 BINAPPS :=		$(OBJDIR)/bin/init \
 			$(OBJDIR)/bin/cat \
