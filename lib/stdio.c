@@ -19,32 +19,45 @@ struct Fd* fopen(const char *path, int mode) {
 }
 
 int fclose(struct Fd* stream) {
-    return close(stream->fd_file.id);
+    return close(fd2num(stream));
 }
 
 int fgetc(struct Fd* stream) {
     char buf;
 
-    if (readn(stream->fd_file.id, &buf, 1) < 0)
+    if (read(fd2num(stream), &buf, 1) <= 0)
         return EOF;
     
     return buf;
 }
 
-char *fgets(char *s, int size, struct Fd* stream) {
-    int i = 0, c = 0;
+char *fgets(char *str, int size, struct Fd *stream) {
+    int c;
+    int i = 0;
 
-    while(--size > 0 && c > EOF && c != '\n') {
+    while (i < size - 1) {
         c = fgetc(stream);
 
-        if (c != EOF && c >= 0)
-            s[i++] = c;
+        if (c == EOF) {
+            break;
         }
 
-    if(size == 0)
+        str[i] = c;
+
+        if (c == '\n') {
+            i++;
+            break;
+        }
+
+        i++;
+    }
+
+    str[i] = '\0';
+
+    if (i == 0 && c == EOF) {
         return NULL;
+    }
 
-    s[i] = '\0';
-
-    return s;
+    return str;
 }
+

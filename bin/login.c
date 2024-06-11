@@ -1,12 +1,63 @@
 #include <inc/lib.h>
 #include <inc/stdio.h>
+#include <inc/crypto.h>
 
 const char* PASSWD_PATH = "/passwd";
 #define MAX_LOGIN_AND_PASSWORD_LENGTH 256
+#define MAX_PASSWD_LINE_BUFF_LENGTH (MAX_LOGIN_AND_PASSWORD_LENGTH * 2 + 256)
 
 static void help(void);
 static void no_users_login(void);
-static void login(void);
+static bool login(void);
+
+/* Parsed line of etc/passed line
+   username:encrypted_pass:UID:GUI:comment:homedir:shell
+   
+   P.s. Must be implemented as array of char*
+*/
+struct PasswParsed {
+    const char* username;
+    const char* pass;
+    const char* uid;
+    const char* guid;
+    const char* comment;
+    const char* homedir;
+    const char* shell;
+};
+
+void parse_passw_line(struct PasswParsed* p, const char* line) {
+    assert(p);
+    assert(line);
+
+    const char **p_as_array = (const char**) p;
+
+    for (int i = 0; i < sizeof(*p) / sizeof(*p_as_array); ++i) {
+        p_as_array[i] = *line == ':' ? NULL : line;
+        
+        // printf("%s: %s\n", __func__, line);
+        line = strchr(line, ':');
+        if (line) ++line;
+    }
+}
+
+bool authorize(const struct PasswParsed* p, const char* login, const char* passwd) {
+    assert(p);
+    assert(login);
+    assert(passwd);
+
+    if (strncmp(p->username, login, strlen(login)))
+        return false;
+    
+    if (!check_PBKDF2(p->pass, passwd, strlen(passwd))) {
+        if (debug) {
+            printf("Wrong password\n");
+        }
+        
+        return false;
+    }
+
+    return true;
+}
 
 void umain(int argc, char **argv) {
     int r;
@@ -28,14 +79,16 @@ void umain(int argc, char **argv) {
 
         if(debug)
             printf("%i\n", r);
-
-        panic("Access denied\n");
+        return;
     }
 
     if (passwd_stat.st_size == 0)
         return no_users_login();
     
-    return login();
+    while(!login())
+        ;
+
+    return;
 }
 
 
@@ -47,24 +100,34 @@ static void no_users_login(void) {
     spawnl("/sh", "sh", (char*)0);
 }
 
-static void login(void) {
+static bool login(void) {
     static char login_buf[MAX_LOGIN_AND_PASSWORD_LENGTH];
     static char passw_buf[MAX_LOGIN_AND_PASSWORD_LENGTH];
 
-    char* login = readline("Enter login: ");
-    assert(login);
-
-    strncpy(login_buf, login, MAX_LOGIN_AND_PASSWORD_LENGTH);
+    strncpy(login_buf, readline("Enter login: "), MAX_LOGIN_AND_PASSWORD_LENGTH);
+    strncpy(passw_buf, readline_noecho("Enter password: "), MAX_LOGIN_AND_PASSWORD_LENGTH);
     
-    char* passw = readline_noecho("Enter password: ");
-    assert(passw);
+    if (debug) {
+        printf("login: %s\npassword: %s\n", login_buf, passw_buf);
+    }
 
-    strncpy(passw_buf, passw, MAX_LOGIN_AND_PASSWORD_LENGTH);
-    
     struct Fd* fpassw = fopen(PASSWD_PATH, O_RDONLY);
     assert(fpassw);
 
-    char line_buf[256];
-    while(true) {
-        int res = 
+    char line_buf[MAX_PASSWD_LINE_BUFF_LENGTH];
+
+    while(fgets(line_buf, MAX_PASSWD_LINE_BUFF_LENGTH, fpassw)) {
+        struct PasswParsed pass;
+        parse_passw_line(&pass, line_buf);
+
+        if (authorize(&pass, login_buf, passw_buf)) {
+            spawnl(pass.shell, pass.shell, (char*) 0);
+
+            printf("Hello '%s', welcome back!\n", login_buf);
+            return true;
+        }
+    } 
+
+    printf("Wrong login '%s' or password\n", login_buf);
+    return false;
 }
