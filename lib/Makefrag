@@ -32,6 +32,7 @@ LIB_SRCFILES :=		$(LIB_SRCFILES) \
 			lib/pipe.c \
 			lib/wait.c \
 			lib/uvpt.c \
+			lib/pbkdf2_sha2.c \
       lib/kmod.c
 
 LIB_SRCFILES :=		$(LIB_SRCFILES) \
