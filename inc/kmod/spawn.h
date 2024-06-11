@@ -32,7 +32,6 @@ enum SpawndRequestType {
 
     SPAWND_REQ_FORK = KMOD_REQ_FIRST_USABLE,
     SPAWND_REQ_SPAWN,
-    SPAWND_REQ_EXEC,
 
     SPAWND_NREQUESTS
 };

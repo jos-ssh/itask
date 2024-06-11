@@ -16,6 +16,5 @@
 
 envid_t spawnd_fork(envid_t parent);
 int spawnd_spawn(envid_t parent, const char *prog, const char **argv);
-int spawnd_exec(envid_t target, const char *prog, const char** argv);
 
 #endif /* spawn.h */

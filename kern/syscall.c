@@ -205,7 +205,7 @@ sys_env_set_status(envid_t envid, int status) {
     }
 
     struct Env* target = NULL;
-    int lookup_res = envid2env(envid, &target, true);
+    int lookup_res = envid2env(envid, &target, curenv->env_type != ENV_TYPE_KERNEL);
     if (lookup_res < 0) {
         TRACE_SYSCALL_LEAVE("'%i'", lookup_res);
         return lookup_res;
@@ -277,7 +277,7 @@ sys_alloc_region(envid_t envid, uintptr_t addr, size_t size, int perm) {
     }
 
     struct Env* target = NULL;
-    int lookup_res = envid2env(envid, &target, true);
+    int lookup_res = envid2env(envid, &target, curenv->env_type != ENV_TYPE_KERNEL);
     if (lookup_res < 0) {
         TRACE_SYSCALL_LEAVE("'%i'", lookup_res);
         return lookup_res;
@@ -340,12 +340,12 @@ sys_map_region(envid_t srcenvid, uintptr_t srcva,
     int lookup_res = 0;
     struct Env* src = NULL;
     struct Env* dst = NULL;
-    lookup_res = envid2env(srcenvid, &src, true);
+    lookup_res = envid2env(srcenvid, &src, curenv->env_type != ENV_TYPE_KERNEL);
     if (lookup_res < 0) {
         TRACE_SYSCALL_LEAVE("'%i'", lookup_res);
         return lookup_res;
     }
-    lookup_res = envid2env(dstenvid, &dst, true);
+    lookup_res = envid2env(dstenvid, &dst, curenv->env_type != ENV_TYPE_KERNEL);
     if (lookup_res < 0) {
         TRACE_SYSCALL_LEAVE("'%i'", lookup_res);
         return lookup_res;
@@ -390,7 +390,7 @@ sys_unmap_region(envid_t envid, uintptr_t va, size_t size) {
     }
 
     struct Env* target = NULL;
-    int lookup_res = envid2env(envid, &target, true);
+    int lookup_res = envid2env(envid, &target, curenv->env_type != ENV_TYPE_KERNEL);
     if (lookup_res < 0) {
         TRACE_SYSCALL_LEAVE("'%i'", lookup_res);
         return lookup_res;
@@ -422,6 +422,8 @@ sys_map_physical_region(uintptr_t pa, envid_t envid, uintptr_t va, size_t size, 
     // TIP: Use map_physical_region() with (perm | PROT_USER_ | MAP_USER_MMIO)
     //      And don't forget to validate arguments as always.
     TRACE_SYSCALL_ENTER(("0x%lx", pa)("%x", envid)("0x%lx", va)("0x%zx", size)("%x", perm));
+    SYSCALL_ASSERT(curenv->env_type == ENV_TYPE_FS
+                || curenv->env_type == ENV_TYPE_KERNEL, E_BAD_ENV);
     struct Env* target = NULL;
     int lookup_res = envid2env(envid, &target, true);
     SYSCALL_ASSERT(lookup_res == 0, E_BAD_ENV);
@@ -607,7 +609,7 @@ sys_env_set_trapframe(envid_t envid, struct Trapframe* tf) {
     tf_copy.tf_rflags |= FL_IOPL_3 | FL_IF;
 
     struct Env* target = NULL;
-    int lookup_res = envid2env(envid, &target, true);
+    int lookup_res = envid2env(envid, &target, curenv->env_type != ENV_TYPE_KERNEL);
     SYSCALL_ASSERT(lookup_res == 0, E_BAD_ENV);
 
     memcpy(&target->env_tf, &tf_copy, sizeof(tf_copy));

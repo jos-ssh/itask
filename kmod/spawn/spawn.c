@@ -1,14 +1,17 @@
 #include "spawn.h"
 
 #include "inc/env.h"
+#include "inc/fd.h"
 #include "inc/memlayout.h"
 #include "inc/mmu.h"
+#include "inc/stdio.h"
 #include "inc/types.h"
 #include <inc/lib.h>
 #include <inc/elf.h>
 
 envid_t
 spawnd_fork(envid_t parent) {
+    // TODO: implement
     void *parent_upcall = thisenv->env_pgfault_upcall;
     envid_t child = sys_exofork();
 
@@ -23,7 +26,7 @@ spawnd_fork(envid_t parent) {
         return 0;
     }
 
-    sys_map_region(0, NULL, child, NULL,
+    sys_map_region(parent, NULL, child, NULL,
                    MAX_USER_ADDRESS, PROT_ALL | PROT_LAZY | PROT_COMBINE);
 
     int status_res = sys_env_set_status(child, ENV_RUNNABLE);
@@ -51,6 +54,19 @@ static int copy_shared_region(void *start, void *end, void *arg);
  * Returns child envid on success, < 0 on failure. */
 int
 spawnd_spawn(envid_t parent, const char *prog, const char **argv) {
+    cprintf("spawnd_spawn(parent=%08x, prog=%s, argv=[", parent, prog);
+    const char** argp = argv;
+    while (*argp)
+    {
+      cprintf("\"%s\"", *argp);
+      ++argp;
+      if (*argp) {
+        cprintf(", ");
+      }
+    }
+    cprintf("])\n");
+
+
     int res;
 
     /* This code follows this procedure:
@@ -59,6 +75,7 @@ spawnd_spawn(envid_t parent, const char *prog, const char **argv) {
      *   - TODO: check file is executable
      *   - Use sys_exofork() to create a new environment.
      *   - Load child with code from file
+     *   - Copy open file descriptors
      *   - Start the child process running with sys_env_set_status(). */
 
     int fd = open(prog, O_RDONLY);
@@ -72,6 +89,15 @@ spawnd_spawn(envid_t parent, const char *prog, const char **argv) {
     if ((int)(res = load_executable(child, fd, argv)) < 0) goto error;
     close(fd);
 
+    /* TODO: copy file descriptors separately to handle possible O_CLOEXEC */
+    /* Copy file descriptors. */
+    res = sys_map_region(parent, (void *)FDTABLE, child, (void *)FDTABLE,
+                   2 * MAXFD * PAGE_SIZE, PROT_ALL | PROT_SHARE | PROT_COMBINE);
+   
+    if (res < 0) {
+      panic("FD copy: %i\n", res);
+    }
+
     if ((res = sys_env_set_status(child, ENV_RUNNABLE)) < 0)
         panic("sys_env_set_status: %i", res);
 
@@ -83,35 +109,6 @@ error2:
     close(fd);
 
     return res;
-}
-
-int
-spawnd_exec(envid_t target, const char *prog, const char **argv) {
-    int fd = open(prog, O_RDONLY);
-    // TODO: check file is executable
-    if (fd < 0) return fd;
-
-    int res = 0;
-
-    res = sys_env_set_status(target, ENV_NOT_RUNNABLE);
-    if (res < 0) goto error;
-
-    res = sys_unmap_region(target, NULL, MAX_USER_ADDRESS);
-    if (res < 0) goto error;
-
-    res = load_executable(target, fd, argv);
-    if (res < 0) goto error;
-
-    res = sys_env_set_status(target, ENV_RUNNABLE);
-    if (res < 0) goto error;
-
-    close(fd);
-    return 0;
-
-error:
-    close(fd);
-    sys_env_destroy(target);
-    return 0;
 }
 
 static int
@@ -209,11 +206,6 @@ load_executable(envid_t child, int fd, const char **argv) {
                                fd, ph->p_filesz, ph->p_offset, perm)) < 0)
             goto error;
     }
-
-    /* TODO: copy file descriptors separately to handle possible O_CLOEXEC */
-    /* Copy shared library state. */
-    if ((res = foreach_shared_region(copy_shared_region, &child)) < 0)
-        panic("copy_shared_region: %i", res);
 
     if ((res = sys_env_set_trapframe(child, &child_tf)) < 0)
         panic("sys_env_set_trapframe: %i", res);

@@ -218,7 +218,7 @@ write(int fdnum, const void *buf, size_t n) {
     }
 
     if (debug) {
-        cprintf("write %d %p %lu via dev %s\n",
+        cprintf("[%08x] write %d %p %lu via dev %s\n", thisenv->env_id,
                 fdnum, buf, (unsigned long)n, dev->dev_name);
     }
 

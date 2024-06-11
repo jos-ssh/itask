@@ -19,8 +19,6 @@ static int spawnd_serve_fork(envid_t from, const void* request, void* response,
                              int* response_perm);
 static int spawnd_serve_spawn(envid_t from, const void* request, void* response,
                               int* response_perm);
-static int spawnd_serve_exec(envid_t from, const void* request, void* response,
-                             int* response_perm);
 
 struct RpcServer Server = {
         .ReceiveBuffer = (void*)RECEIVE_ADDR,
@@ -30,8 +28,7 @@ struct RpcServer Server = {
         .Handlers = {
           [SPAWND_REQ_IDENTIFY] = spawnd_serve_identify,
           [SPAWND_REQ_FORK] = spawnd_serve_fork,
-          [SPAWND_REQ_SPAWN] = spawnd_serve_spawn,
-          [SPAWND_REQ_EXEC] = NULL }};
+          [SPAWND_REQ_SPAWN] = spawnd_serve_spawn}};
 
 void
 umain(int argc, char** argv) {
