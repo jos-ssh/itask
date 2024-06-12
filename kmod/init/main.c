@@ -142,7 +142,23 @@ initd_serve_find_kmod(envid_t from, const void* request,
 static int
 initd_serve_fork(envid_t from, const void* request, void* response,
                  int* response_perm) {
-    return initd_fork(from);
+    const volatile struct Env* parent = &envs[ENVX(from)];
+    while (!parent->env_ipc_recving) {
+      sys_yield();
+    }
+    assert(parent->env_status == ENV_NOT_RUNNABLE);
+    int child = initd_fork(from);
+    if (child < 0) {
+      return child;
+    }
+    int res = initd_start_process(child);
+    if (res < 0) {
+      sys_env_destroy(child);
+      return res;
+    }
+
+    // TODO: setup env_type and RUID
+    return child;
 }
 
 static int

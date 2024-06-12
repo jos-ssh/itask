@@ -210,7 +210,14 @@ sys_env_set_status(envid_t envid, int status) {
         TRACE_SYSCALL_LEAVE("'%i'", lookup_res);
         return lookup_res;
     }
+    if (curenv->env_type != ENV_TYPE_KERNEL &&
+        target->env_ipc_recving && status == ENV_RUNNABLE) {
+        TRACE_SYSCALL_LEAVE("'%i'", -E_INVAL);
+        return -E_INVAL;
+    }
+
     target->env_status = status;
+    target->env_ipc_recving = false;
 
     TRACE_SYSCALL_LEAVE("%d", 0);
     return 0;

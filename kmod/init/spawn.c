@@ -5,31 +5,45 @@
 #include "inc/memlayout.h"
 #include "inc/mmu.h"
 #include "inc/stdio.h"
+#include "inc/trap.h"
 #include "inc/types.h"
 #include <inc/lib.h>
 #include <inc/elf.h>
 
 envid_t
 initd_fork(envid_t parent) {
-    // TODO: implement
-    void *parent_upcall = thisenv->env_pgfault_upcall;
+    int res = 0;
+    const volatile struct Env* parent_env = &envs[ENVX(parent)];
+
+    void *parent_upcall = parent_env->env_pgfault_upcall;
     envid_t child = sys_exofork();
 
     if (child < 0)
         return child;
 
     if (child == 0) {
-        if (parent_upcall)
-            sys_env_set_pgfault_upcall(CURENVID, parent_upcall);
+        panic("Unreachable code");
+    }
+    struct Trapframe child_tf;
+    memcpy(&child_tf, (const void*) &parent_env->env_tf, sizeof(child_tf));
+    child_tf.tf_regs.reg_rax = 0;
 
-        thisenv = &envs[ENVX(sys_getenvid())];
-        return 0;
+    res = sys_env_set_trapframe(child, &child_tf);
+    if (res < 0) goto error;
+
+    res = sys_map_region(parent, NULL, child, NULL,
+                   MAX_USER_ADDRESS, PROT_ALL | PROT_LAZY | PROT_COMBINE);
+    if (res < 0) goto error;
+
+    if (parent_upcall) {
+      res = sys_env_set_pgfault_upcall(child, parent_upcall);
+      if (res < 0) goto error;
     }
 
-    sys_map_region(parent, NULL, child, NULL,
-                   MAX_USER_ADDRESS, PROT_ALL | PROT_LAZY | PROT_COMBINE);
-
     return child;
+error:
+    sys_env_destroy(child);
+    return res;
 }
 
 #define UTEMP2USTACK(addr) ((void *)(addr) + (USER_STACK_TOP - USER_STACK_SIZE) - UTEMP)

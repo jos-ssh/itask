@@ -87,6 +87,23 @@ check_spawn_echo(envid_t initd) {
 }
 
 void
+check_fork(envid_t initd) {
+  void* res_data = NULL;
+  printf("INITD CHECK: fork\n");
+  int res = rpc_execute(initd, INITD_REQ_FORK, NULL, &res_data);
+  if (res < 0) {
+    panic("spawn error: %i", res);
+  }
+
+  if (res == 0) {
+    printf("INITD LOG: child running\n");
+    return;
+  }
+
+  printf("INITD LOG: forked child [%08x]\n", res);
+}
+
+void
 umain(int argc, char** argv) {
     envid_t initd = find_initd();
     cprintf("Found 'initd' in env [%08x]\n", initd);
@@ -97,4 +114,5 @@ umain(int argc, char** argv) {
     */
     check_spawn_date(initd);
     check_spawn_echo(initd);
+    check_fork(initd);
 }
