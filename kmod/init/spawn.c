@@ -10,7 +10,7 @@
 #include <inc/elf.h>
 
 envid_t
-spawnd_fork(envid_t parent) {
+initd_fork(envid_t parent) {
     // TODO: implement
     void *parent_upcall = thisenv->env_pgfault_upcall;
     envid_t child = sys_exofork();
@@ -28,11 +28,6 @@ spawnd_fork(envid_t parent) {
 
     sys_map_region(parent, NULL, child, NULL,
                    MAX_USER_ADDRESS, PROT_ALL | PROT_LAZY | PROT_COMBINE);
-
-    int status_res = sys_env_set_status(child, ENV_RUNNABLE);
-    if (status_res < 0) {
-        return status_res;
-    }
 
     return child;
 }
@@ -53,8 +48,9 @@ static int copy_shared_region(void *start, void *end, void *arg);
  *   which will be passed to the child as its command-line arguments.
  * Returns child envid on success, < 0 on failure. */
 int
-spawnd_spawn(envid_t parent, const char *prog, const char **argv) {
-    cprintf("spawnd_spawn(parent=%08x, prog=%s, argv=[", parent, prog);
+initd_spawn(envid_t parent, const char *prog, const char **argv) {
+#if 0
+    cprintf("initd_spawn(parent=%08x, prog=%s, argv=[", parent, prog);
     const char** argp = argv;
     while (*argp)
     {
@@ -65,7 +61,7 @@ spawnd_spawn(envid_t parent, const char *prog, const char **argv) {
       }
     }
     cprintf("])\n");
-
+#endif
 
     int res;
 
@@ -75,8 +71,7 @@ spawnd_spawn(envid_t parent, const char *prog, const char **argv) {
      *   - TODO: check file is executable
      *   - Use sys_exofork() to create a new environment.
      *   - Load child with code from file
-     *   - Copy open file descriptors
-     *   - Start the child process running with sys_env_set_status(). */
+     *   - Copy open file descriptors */
 
     int fd = open(prog, O_RDONLY);
     if (fd < 0) return fd;
@@ -98,9 +93,6 @@ spawnd_spawn(envid_t parent, const char *prog, const char **argv) {
       panic("FD copy: %i\n", res);
     }
 
-    if ((res = sys_env_set_status(child, ENV_RUNNABLE)) < 0)
-        panic("sys_env_set_status: %i", res);
-
     return child;
 
 error:
@@ -109,6 +101,10 @@ error2:
     close(fd);
 
     return res;
+}
+
+int initd_start_process(envid_t proc) {
+  return sys_env_set_status(proc, ENV_RUNNABLE);
 }
 
 static int

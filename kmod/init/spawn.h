@@ -14,7 +14,9 @@
 
 #include <inc/env.h>
 
-envid_t spawnd_fork(envid_t parent);
-int spawnd_spawn(envid_t parent, const char *prog, const char **argv);
+envid_t initd_fork(envid_t parent);
+int initd_spawn(envid_t parent, const char *prog, const char **argv);
+int initd_setup_process(envid_t proc, enum EnvType type, uint64_t ruid);
+int initd_start_process(envid_t proc);
 
 #endif /* spawn.h */

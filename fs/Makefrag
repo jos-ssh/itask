@@ -37,13 +37,11 @@ USERAPPS :=		$(OBJDIR)/user/num \
 			$(OBJDIR)/user/hello
 
 KERNMODS := $(OBJDIR)/kmod/acpid \
-            $(OBJDIR)/kmod/pcid \
-            $(OBJDIR)/kmod/spawnd
+            $(OBJDIR)/kmod/pcid
 
 TESTS := $(OBJDIR)/test/test_initd \
       $(OBJDIR)/test/test_acpid \
-      $(OBJDIR)/test/test_pcid \
-      $(OBJDIR)/test/test_spawnd
+      $(OBJDIR)/test/test_pcid
 
 FSIMGFILES := $(FSIMGTXTFILES) $(BINAPPS) $(USERAPPS) $(KERNMODS) $(TESTS)
 

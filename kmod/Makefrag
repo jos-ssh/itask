@@ -5,4 +5,3 @@ KMODOBJDIR := $(OBJDIR)/$(KMODDIRNAME)
 include kmod/init/Makefrag
 include kmod/acpi/Makefrag
 include kmod/pci/Makefrag
-include kmod/spawn/Makefrag
