@@ -234,12 +234,50 @@ sys_env_set_status(envid_t envid, int status) {
  *      or the caller doesn't have permission to change envid. */
 static int
 sys_env_set_pgfault_upcall(envid_t envid, void* func) {
+    TRACE_SYSCALL_ENTER(("%08x", envid)("%p", func));
     struct Env* target = NULL;
-    int result = envid2env(envid, &target, true);
-    if (result < 0)
+    int result = envid2env(envid, &target, curenv->env_type != ENV_TYPE_KERNEL);
+    if (result < 0) {
+        TRACE_SYSCALL_LEAVE("%i", -E_BAD_ENV);
         return -E_BAD_ENV;
+    }
 
     target->env_pgfault_upcall = func;
+    TRACE_SYSCALL_LEAVE("%d", 0);
+    return 0;
+}
+
+static int
+sys_env_set_parent(envid_t target, envid_t parent) {
+    int res = 0;
+    TRACE_SYSCALL_ENTER(("%08x", target)("%08x", parent));
+    SYSCALL_ASSERT(curenv->env_type == ENV_TYPE_KERNEL, -E_BAD_ENV);
+
+    struct Env* parent_env = NULL;
+    res = envid2env(parent, &parent_env, false);
+    SYSCALL_ASSERT(res == 0, res);
+    
+    struct Env* target_env = NULL;
+    res = envid2env(target, &target_env, false);
+    SYSCALL_ASSERT(res == 0, res);
+
+    target_env->env_parent_id = parent;
+
+    TRACE_SYSCALL_LEAVE("%d", 0);
+    return 0;
+}
+
+static int
+sys_env_downgrade(envid_t target) {
+    TRACE_SYSCALL_ENTER(("%08x", target));
+    SYSCALL_ASSERT(curenv->env_type == ENV_TYPE_KERNEL, -E_BAD_ENV);
+
+    struct Env* target_env = NULL;
+    int res = envid2env(target, &target_env, false);
+    SYSCALL_ASSERT(res == 0, res);
+    
+    target_env->env_type = ENV_TYPE_USER;
+    TRACE_SYSCALL_LEAVE("%d", 0);
     return 0;
 }
 
@@ -713,6 +751,10 @@ syscall(uintptr_t syscallno, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t
         return sys_env_set_trapframe(a1, (struct Trapframe*)a2);
     case SYS_env_set_pgfault_upcall:
         return sys_env_set_pgfault_upcall(a1, (void*)a2);
+    case SYS_env_set_parent:
+        return sys_env_set_parent(a1, a2);
+    case SYS_env_downgrade:
+        return sys_env_downgrade(a1);
     case SYS_yield:
         sys_yield();
         panic("Unreachable");

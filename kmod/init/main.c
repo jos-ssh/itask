@@ -157,7 +157,13 @@ initd_serve_fork(envid_t from, const void* request, void* response,
       return res;
     }
 
-    // TODO: setup env_type and RUID
+    // TODO: setup RUID
+    res = initd_convert_proc_to_user(child, 0);
+    if (res < 0) {
+      sys_env_destroy(child);
+      return res;
+    }
+
     return child;
 }
 
@@ -201,7 +207,12 @@ initd_serve_spawn(envid_t from, const void* request, void* response,
         sys_env_destroy(child);
         return res;
     }
-    // TODO: set env_type and ruid
+    // TODO: setup RUID
+    res = initd_convert_proc_to_user(child, 0);
+    if (res < 0) {
+        sys_env_destroy(child);
+        return res;
+    }
 
     return child;
 }

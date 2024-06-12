@@ -17,8 +17,7 @@ find_initd() {
             assert(res == 0);
 
             int namelen = strnlen(response->info.name, KMOD_MAXNAMELEN);
-
-            cprintf("Kernel type env [%08x] is module '%*s' v%zu\n",
+cprintf("Kernel type env [%08x] is module '%*s' v%zu\n",
                     envs[i].env_id, namelen, response->info.name,
                     response->info.version);
 
@@ -90,6 +89,8 @@ void
 check_fork(envid_t initd) {
   void* res_data = NULL;
   printf("INITD CHECK: fork\n");
+  envid_t parent = thisenv->env_id;
+
   int res = rpc_execute(initd, INITD_REQ_FORK, NULL, &res_data);
   if (res < 0) {
     panic("spawn error: %i", res);
@@ -97,6 +98,11 @@ check_fork(envid_t initd) {
 
   if (res == 0) {
     printf("INITD LOG: child running\n");
+    thisenv = &envs[ENVX(sys_getenvid())];
+
+    assert(thisenv->env_id != parent);
+    assert(thisenv->env_parent_id == parent);
+    assert(thisenv->env_type == ENV_TYPE_USER);
     return;
   }
 

@@ -16,14 +16,19 @@ initd_fork(envid_t parent) {
     const volatile struct Env* parent_env = &envs[ENVX(parent)];
 
     void *parent_upcall = parent_env->env_pgfault_upcall;
-    envid_t child = sys_exofork();
+    res = sys_exofork();
 
-    if (child < 0)
-        return child;
+    if (res < 0)
+        return res;
+    envid_t child = res;
 
     if (child == 0) {
         panic("Unreachable code");
     }
+
+    res = sys_env_set_parent(child, parent);
+    if (res < 0) goto error;
+
     struct Trapframe child_tf;
     memcpy(&child_tf, (const void*) &parent_env->env_tf, sizeof(child_tf));
     child_tf.tf_regs.reg_rax = 0;
@@ -95,6 +100,8 @@ initd_spawn(envid_t parent, const char *prog, const char **argv) {
     if ((int)(res = sys_exofork()) < 0) goto error2;
     envid_t child = res;
 
+    if ((int)(res = sys_env_set_parent(child, parent)) < 0) goto error;
+
     if ((int)(res = load_executable(child, fd, argv)) < 0) goto error;
     close(fd);
 
@@ -115,6 +122,11 @@ error2:
     close(fd);
 
     return res;
+}
+
+int initd_convert_proc_to_user(envid_t proc, uint64_t ruid) {
+  // TODO: set RUID
+  return sys_env_downgrade(proc);
 }
 
 int initd_start_process(envid_t proc) {
