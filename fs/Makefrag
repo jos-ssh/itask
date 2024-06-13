@@ -8,12 +8,12 @@ FSOFILES := 		$(OBJDIR)/fs/bc.o \
 			$(OBJDIR)/fs/pci.o \
 			$(OBJDIR)/fs/nvme.o
 
-FSIMGTXTFILES :=	fs/newmotd \
-			fs/motd \
-			fs/lorem \
-			fs/script \
-			fs/testshell.key \
-			fs/testshell.sh
+FSIMGTXTFILES :=	fs/fs_image/newmotd \
+			fs/fs_image/motd \
+			fs/fs_image/lorem \
+			fs/fs_image/script \
+			fs/fs_image/testshell.key \
+			fs/fs_image/testshell.sh
 
 BINAPPS :=		$(OBJDIR)/bin/init \
 			$(OBJDIR)/bin/cat \
