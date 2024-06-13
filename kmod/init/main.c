@@ -1,5 +1,6 @@
 #include "inc/convert.h"
 #include "inc/env.h"
+#include "inc/error.h"
 #include "inc/mmu.h"
 #include "inc/stdio.h"
 #include <inc/lib.h>
@@ -76,7 +77,7 @@ initd_load_module(const char* path) {
         cprintf("[%08x: initd] Failed to load module '%s': %i\n", thisenv->env_id, path, mod);
         return mod;
     }
-    int res = initd_start_process(mod);
+    int res = sys_env_set_status(mod, ENV_RUNNABLE);
     if (res < 0) {
         cprintf("[%08x: initd] Failed to start module '%s': %i\n", thisenv->env_id, path, res);
         return res;
@@ -142,26 +143,28 @@ initd_serve_find_kmod(envid_t from, const void* request,
 static int
 initd_serve_fork(envid_t from, const void* request, void* response,
                  int* response_perm) {
+#ifndef TEST_INIT
+    enum EnvType type = envs[ENVX(from)].env_type;
+    if (type != ENV_TYPE_KERNEL) {
+        return -E_BAD_ENV;
+    }
+#endif // !TEST_INIT
+
     const volatile struct Env* parent = &envs[ENVX(from)];
     while (!parent->env_ipc_recving) {
-      sys_yield();
+        sys_yield();
     }
     assert(parent->env_status == ENV_NOT_RUNNABLE);
     int child = initd_fork(from);
     if (child < 0) {
-      return child;
-    }
-    int res = initd_start_process(child);
-    if (res < 0) {
-      sys_env_destroy(child);
-      return res;
+        return child;
     }
 
-    // TODO: setup RUID
-    res = initd_convert_proc_to_user(child, 0);
+    sys_env_set_status(child, ENV_RUNNABLE);
+    int res = sys_env_downgrade(child);
     if (res < 0) {
-      sys_env_destroy(child);
-      return res;
+        sys_env_destroy(child);
+        return res;
     }
 
     return child;
@@ -170,6 +173,13 @@ initd_serve_fork(envid_t from, const void* request, void* response,
 static int
 initd_serve_spawn(envid_t from, const void* request, void* response,
                   int* response_perm) {
+#ifndef TEST_INIT
+    enum EnvType type = envs[ENVX(from)].env_type;
+    if (type != ENV_TYPE_KERNEL) {
+        return -E_BAD_ENV;
+    }
+#endif // !TEST_INIT
+
     const union InitdRequest* spawnd_req = request;
     if (strnlen(spawnd_req->spawn.file, MAXPATHLEN) == MAXPATHLEN) {
         return -E_INVAL;
@@ -202,13 +212,8 @@ initd_serve_spawn(envid_t from, const void* request, void* response,
 
     int child = initd_spawn(from, spawnd_req->spawn.file, argv);
     if (child < 0) return child;
-    int res = initd_start_process(child);
-    if (res < 0) {
-        sys_env_destroy(child);
-        return res;
-    }
-    // TODO: setup RUID
-    res = initd_convert_proc_to_user(child, 0);
+
+    int res = sys_env_downgrade(child);
     if (res < 0) {
         sys_env_destroy(child);
         return res;

@@ -2,6 +2,7 @@
 #include "inc/kmod/init.h"
 #include "inc/rpc.h"
 #include "inc/stdio.h"
+#include "inc/syscall.h"
 #include <inc/lib.h>
 #include <inc/kmod/request.h>
 
@@ -52,9 +53,15 @@ check_spawn_date(envid_t initd) {
   if (res < 0) {
     panic("spawn error: %i", res);
   }
+  envid_t child = res;
 
-  printf("INITD LOG: spawned 'date' as [%08x]\n", res);
-  wait(res);
+  res = sys_env_set_status(child, ENV_RUNNABLE);
+  if (res < 0) {
+    panic("status error: %i", res);
+  }
+
+  printf("INITD LOG: spawned 'date' as [%08x]\n", child);
+  wait(child);
 };
 
 void
@@ -81,8 +88,14 @@ check_spawn_echo(envid_t initd) {
     panic("spawn error: %i", res);
   }
 
-  printf("INITD LOG: spawned 'echo' as [%08x]\n", res);
-  wait(res);
+  envid_t child = res;
+  res = sys_env_set_status(child, ENV_RUNNABLE);
+  if (res < 0) {
+    panic("status error: %i", res);
+  }
+
+  printf("INITD LOG: spawned 'echo' as [%08x]\n", child);
+  wait(child);
 }
 
 void
@@ -92,10 +105,15 @@ check_fork(envid_t initd) {
   envid_t parent = thisenv->env_id;
 
   int res = rpc_execute(initd, INITD_REQ_FORK, NULL, &res_data);
+  // fixup thisenv
+  thisenv = &envs[ENVX(sys_getenvid())];
+  res = thisenv->env_ipc_value;
+
   if (res < 0) {
     panic("spawn error: %i", res);
   }
 
+  assert(res != sys_getenvid());
   if (res == 0) {
     printf("INITD LOG: child running\n");
     thisenv = &envs[ENVX(sys_getenvid())];
@@ -106,7 +124,16 @@ check_fork(envid_t initd) {
     return;
   }
 
-  printf("INITD LOG: forked child [%08x]\n", res);
+  envid_t child = res;
+  assert(envs[ENVX(child)].env_ipc_value == 0);
+
+  res = sys_env_set_status(child, ENV_RUNNABLE);
+  if (res < 0) {
+    panic("status error: %i", res);
+  }
+
+  printf("INITD LOG: forked child [%08x]\n", child);
+  wait(child);
 }
 
 void

@@ -46,8 +46,6 @@ union InitdRequest {
   struct InitdSpawn {
       // Path to executable file
       char file[MAXPATHLEN];
-      // RUID of loaded process (unused in user-mode)
-      uint64_t ruid;
       // Number of arguments passed to process.
       // If 0, `argc` of process will be 1, and `argv[0]` will be equal to `file`
       uint16_t argc;

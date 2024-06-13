@@ -26,6 +26,7 @@ initd_fork(envid_t parent) {
         panic("Unreachable code");
     }
 
+    // FIXME: remove when kmod-user fork is implemented
     res = sys_env_set_parent(child, parent);
     if (res < 0) goto error;
 
@@ -100,6 +101,7 @@ initd_spawn(envid_t parent, const char *prog, const char **argv) {
     if ((int)(res = sys_exofork()) < 0) goto error2;
     envid_t child = res;
 
+    // FIXME: remove when kmod-user spawn is implemented
     if ((int)(res = sys_env_set_parent(child, parent)) < 0) goto error;
 
     if ((int)(res = load_executable(child, fd, argv)) < 0) goto error;
@@ -122,15 +124,6 @@ error2:
     close(fd);
 
     return res;
-}
-
-int initd_convert_proc_to_user(envid_t proc, uint64_t ruid) {
-  // TODO: set RUID
-  return sys_env_downgrade(proc);
-}
-
-int initd_start_process(envid_t proc) {
-  return sys_env_set_status(proc, ENV_RUNNABLE);
 }
 
 static int

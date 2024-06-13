@@ -16,7 +16,5 @@
 
 envid_t initd_fork(envid_t parent);
 int initd_spawn(envid_t parent, const char *prog, const char **argv);
-int initd_convert_proc_to_user(envid_t proc, uint64_t ruid);
-int initd_start_process(envid_t proc);
 
 #endif /* spawn.h */
