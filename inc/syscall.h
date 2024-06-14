@@ -16,6 +16,8 @@ enum {
     SYS_env_set_status,
     SYS_env_set_trapframe,
     SYS_env_set_pgfault_upcall,
+    SYS_env_set_parent,
+    SYS_env_downgrade,
     SYS_yield,
     SYS_ipc_try_send,
     SYS_ipc_recv,

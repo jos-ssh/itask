@@ -159,14 +159,23 @@ env_alloc(struct Env **newenv_store, envid_t parent_id, enum EnvType type) {
     if (!(env = env_free_list))
         return -E_NO_FREE_ENV;
 
-    /* Allocate and set up the page directory for this environment. */
-    int res = init_address_space(&env->address_space);
-    if (res < 0) return res;
-
     /* Generate an env_id for this environment */
     int32_t generation = (env->env_id + (1 << ENVGENSHIFT)) & ~(NENV - 1);
     /* Don't create a negative env_id */
     if (generation <= 0) generation = 1 << ENVGENSHIFT;
+
+    /* Clear out all the saved register state,
+     * to prevent the register values
+     * of a prior environment inhabiting this Env structure
+     * from "leaking" into our new environment */
+    struct Env* link = env->env_link;
+    memset(env, 0, sizeof(*env));
+    env->env_link = link;
+
+    /* Allocate and set up the page directory for this environment. */
+    int res = init_address_space(&env->address_space);
+    if (res < 0) return res;
+
     env->env_id = generation | (env - envs);
 
     /* Set the basic status variables */
@@ -178,12 +187,6 @@ env_alloc(struct Env **newenv_store, envid_t parent_id, enum EnvType type) {
 #endif
     env->env_status = ENV_RUNNABLE;
     env->env_runs = 0;
-
-    /* Clear out all the saved register state,
-     * to prevent the register values
-     * of a prior environment inhabiting this Env structure
-     * from "leaking" into our new environment */
-    memset(&env->env_tf, 0, sizeof(env->env_tf));
 
     /* Set up appropriate initial values for the segment registers.
      * GD_UD is the user data (KD - kernel data) segment selector in the GDT, and
