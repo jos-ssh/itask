@@ -1,6 +1,7 @@
 OBJDIRS += kmod/init
 
-INITDOBJS := $(KMODOBJDIR)/init/main.o
+INITDOBJS := $(KMODOBJDIR)/init/main.o \
+             $(KMODOBJDIR)/init/spawn.o
 
 $(KMODOBJDIR)/init/%.o: kmod/init/%.c inc/lib.h $(OBJDIR)/.vars.USER_CFLAGS
 	@echo + cc[USER] $<
