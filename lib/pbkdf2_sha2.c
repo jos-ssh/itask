@@ -31,6 +31,7 @@
 #include <inc/crypto.h>
 #include <inc/types.h>
 #include <inc/string.h>
+#include <inc/stdio.h>
 
 typedef struct {
     unsigned long total[2];   /*!< number of bytes processed  */
@@ -463,12 +464,19 @@ PKCS5_PBKDF2_HMAC(const unsigned char *password, size_t plen,
 
 bool
 check_PBKDF2(const char *key, const char *salt, const char *password) {
-    const size_t iteration_count = 5;
+    const size_t iteration_count = 2;
 
     unsigned char key_buf[KEY_LENGTH + 1];
 
-    PKCS5_PBKDF2_HMAC((const unsigned char *)password, strlen(password), (const unsigned char *)salt, strlen(salt),
+    PKCS5_PBKDF2_HMAC((const unsigned char *)password, strlen(password), (const unsigned char *)salt, SALT_LENGTH,
                       iteration_count, KEY_LENGTH, key_buf);
+
+
+    // printf("keybuffer:|\n");
+    // for (int i = 0; i < KEY_LENGTH; ++i) {
+    //     printf("%d==%d\n", (unsigned char)key_buf[i], (unsigned char)key[i]);
+    // }
+    // printf("|\n");
 
     return !memcmp(key, key_buf, KEY_LENGTH);
 }

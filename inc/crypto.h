@@ -3,8 +3,9 @@
 
 #include <inc/types.h>
 
-#define KEY_LENGTH 32
+#define KEY_LENGTH 13
+#define SALT_LENGTH 7
 
-bool check_PBKDF2(const char* hash, const char* salt, const char* password);
+bool check_PBKDF2(const char* hashed, const char* salt, const char* password);
 
 #endif

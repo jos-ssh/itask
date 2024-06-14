@@ -4,36 +4,38 @@
 
 
 // TODO: add shadow file check
-const char* PASSWD_PATH = "/passwd";
+const char* kPasswdPath = "/passwd";
+const char* kShadowPath = "/shadow";
+
 #define MAX_LOGIN_AND_PASSWORD_LENGTH 256
-#define MAX_PASSWD_LINE_BUFF_LENGTH   (MAX_LOGIN_AND_PASSWORD_LENGTH * 2 + 256)
+#define MAX_LINE_BUFF_LENGTH          (MAX_LOGIN_AND_PASSWORD_LENGTH * 2 + 256)
+
 
 static void help(void);
 static void no_users_login(void);
 static bool login(void);
 
-/* Parsed line of etc/passed line
-   username:encrypted_pass:UID:GUI:comment:homedir:shell
+/* Parsed line of etc/passwd
+   username:UID:GUI:homedir:shell
 
    P.s. Must be implemented as array of char*
 */
-
 struct PasswParsed {
     const char* username;
-    const char* pass;
     const char* uid;
     const char* guid;
-    const char* comment;
     const char* homedir;
     const char* shell;
 };
 
-// TODO:: change \shadow format
-
+/* Parsed line of etc/passwrd
+   username:salt:hashed:last_change_date
+*/
 struct ShadowParsed {
     const char* username;
-    const char* pass;
-    const char* date;
+    const char* salt;
+    const char* hashed;
+    const char* last_change_date;
 };
 
 void
@@ -68,27 +70,6 @@ parse_shadow_line(struct ShadowParsed* s, const char* line) {
     }
 }
 
-bool
-authorize(const struct PasswParsed* p, const char* login, const char* passwd) {
-    assert(p);
-    assert(login);
-    assert(passwd);
-
-    if (strncmp(p->username, login, strlen(login)))
-        return false;
-
-    // TODO: add salt
-    if (!check_PBKDF2(p->pass, "default", passwd)) {
-        if (debug) {
-            printf("Wrong password\n");
-        }
-
-        return false;
-    }
-
-    return true;
-}
-
 void
 umain(int argc, char** argv) {
     int r;
@@ -105,8 +86,9 @@ umain(int argc, char** argv) {
         panic("dup: %i", r);
 
     struct Stat passwd_stat = {};
-    if ((r = stat(PASSWD_PATH, &passwd_stat)) < 0) {
-        printf("Can't open '%s'\n", PASSWD_PATH);
+
+    if ((r = stat(kPasswdPath, &passwd_stat)) < 0) {
+        printf("Can't open '%s'\n", kPasswdPath);
 
         if (debug)
             printf("%i\n", r);
@@ -133,35 +115,54 @@ no_users_login(void) {
     spawnl("/sh", "sh", (char*)0);
 }
 
+
 static bool
 login(void) {
-    static char login_buf[MAX_LOGIN_AND_PASSWORD_LENGTH];
-    static char passw_buf[MAX_LOGIN_AND_PASSWORD_LENGTH];
+    char login[MAX_LOGIN_AND_PASSWORD_LENGTH];
+    char password[MAX_LOGIN_AND_PASSWORD_LENGTH];
 
-    strncpy(login_buf, readline("Enter login: "), MAX_LOGIN_AND_PASSWORD_LENGTH);
-    strncpy(passw_buf, readline_noecho("Enter password: "), MAX_LOGIN_AND_PASSWORD_LENGTH);
+    strncpy(login, readline("Enter login: "), MAX_LOGIN_AND_PASSWORD_LENGTH);
+    strncpy(password, readline_noecho("Enter password: "), MAX_LOGIN_AND_PASSWORD_LENGTH);
 
-    if (debug) {
-        printf("login: %s\npassword: %s\n", login_buf, passw_buf);
+    if (1) {
+        printf("\nlogin: %s\npassword: %s\n", login, password);
     }
 
-    struct Fd* fpassw = fopen(PASSWD_PATH, O_RDONLY);
-    assert(fpassw);
+    struct Fd* fpasswd = fopen(kPasswdPath, O_RDONLY);
+    assert(fpasswd);
 
-    char line_buf[MAX_PASSWD_LINE_BUFF_LENGTH];
+    struct Fd* fshadow = fopen(kShadowPath, O_RDONLY);
+    assert(fshadow);
 
-    while (fgets(line_buf, MAX_PASSWD_LINE_BUFF_LENGTH, fpassw)) {
-        struct PasswParsed pass;
-        parse_passw_line(&pass, line_buf);
+    char passwd_line_buf[MAX_LINE_BUFF_LENGTH];
+    char shadow_line_buf[MAX_LINE_BUFF_LENGTH];
 
-        if (authorize(&pass, login_buf, passw_buf)) {
-            spawnl(pass.shell, pass.shell, (char*)0);
 
-            printf("Hello '%s', welcome back!\n", login_buf);
+    while (fgets(passwd_line_buf, MAX_LINE_BUFF_LENGTH, fpasswd)) {
+        fgets(shadow_line_buf, MAX_LINE_BUFF_LENGTH, fshadow);
+
+        struct PasswParsed parsed_passwd_line;
+        struct ShadowParsed parsed_shadow_line;
+
+        parse_passw_line(&parsed_passwd_line, passwd_line_buf);
+        parse_shadow_line(&parsed_shadow_line, shadow_line_buf);
+
+        if (1) {
+            printf("password: %s, hashed_password: %s\n", password, parsed_shadow_line.hashed);
+        }
+
+        if (strncmp(parsed_passwd_line.username, login, strlen(login))) {
+            continue;
+        }
+
+        if (true == check_PBKDF2(parsed_shadow_line.hashed, parsed_shadow_line.salt, password)) {
+            spawnl(parsed_passwd_line.shell, parsed_passwd_line.shell, NULL);
+
+            printf("Hello '%s', welcome back!\n", login);
             return true;
         }
     }
 
-    printf("Wrong login '%s' or password\n", login_buf);
+    printf("Wrong login '%s' or password\n", login);
     return false;
 }
