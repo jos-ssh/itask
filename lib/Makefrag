@@ -1,7 +1,7 @@
 OBJDIRS += lib
 
 LIB_SRCFILES :=		lib/console.c \
-      lib/convert.c \
+      		lib/convert.c \
 			lib/libmain.c \
 			lib/exit.c \
 			lib/panic.c \
@@ -33,6 +33,7 @@ LIB_SRCFILES :=		$(LIB_SRCFILES) \
 			lib/wait.c \
 			lib/uvpt.c \
 			lib/pbkdf2_sha2.c \
+			lib/random.c \
       lib/kmod.c
 
 LIB_SRCFILES :=		$(LIB_SRCFILES) \

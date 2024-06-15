@@ -1,33 +1,3 @@
-/*
- *  FIPS-180-2 compliant SHA-256 implementation
- *
- *  Copyright (C) 2006-2010, Brainspark B.V.
- *
- *  This file is part of PolarSSL (http://www.polarssl.org)
- *  Lead Maintainer: Paul Bakker <polarssl_maintainer at polarssl.org>
- *
- *  All rights reserved.
- *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
- */
-/*
- *  The SHA-256 Secure Hash Standard was published by NIST in 2002.
- *
- *  http://csrc.nist.gov/publications/fips/fips180-2/fips180-2.pdf
- */
-
 #include <inc/crypto.h>
 #include <inc/types.h>
 #include <inc/string.h>
@@ -471,12 +441,6 @@ check_PBKDF2(const char *key, const char *salt, const char *password) {
     PKCS5_PBKDF2_HMAC((const unsigned char *)password, strlen(password), (const unsigned char *)salt, SALT_LENGTH,
                       iteration_count, KEY_LENGTH, key_buf);
 
-
-    // printf("keybuffer:|\n");
-    // for (int i = 0; i < KEY_LENGTH; ++i) {
-    //     printf("%d==%d\n", (unsigned char)key_buf[i], (unsigned char)key[i]);
-    // }
-    // printf("|\n");
 
     return !memcmp(key, key_buf, KEY_LENGTH);
 }
