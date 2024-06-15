@@ -30,7 +30,8 @@ LIB_SRCFILES :=		$(LIB_SRCFILES) \
 			lib/spawn.c \
 			lib/pipe.c \
 			lib/wait.c \
-			lib/uvpt.c
+			lib/uvpt.c \
+      lib/kmod.c
 
 LIB_SRCFILES :=		$(LIB_SRCFILES) \
 			lib/vsyscall.c

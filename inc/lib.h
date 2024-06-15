@@ -119,6 +119,10 @@ int32_t ipc_recv(envid_t *from_env_store, void *pg, size_t *psize, int *perm_sto
 int32_t ipc_recv_from(envid_t from, void *pg, size_t *psize, int *perm_store);
 envid_t ipc_find_env(enum EnvType type);
 
+/* kmod.c */
+int kmod_find(const char* name_prefix, int min_version, int max_version);
+int kmod_find_any_version(const char* name_prefix);
+
 /* fork.c */
 envid_t fork(void);
 envid_t sfork(void);

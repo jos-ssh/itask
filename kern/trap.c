@@ -274,7 +274,11 @@ trap_dispatch(struct Trapframe *tf) {
         return;
     case T_PGFLT:
         /* Handle processor exceptions. */
-        page_fault_handler(tf);
+        if (curenv->env_pgfault_upcall) 
+            page_fault_handler(tf);
+        else
+            panic("Unhandled Page fault");
+
         return;
     case T_BRKPT:
         monitor(tf);
