@@ -6,12 +6,12 @@ const char *msg = "This is the NEW message of the day!\n\n";
 #define FVA ((struct Fd *)0xA000000)
 
 static int
-xopen(const char *path, int mode) {
+xopen(const char *path, int flags) {
     extern union Fsipc fsipcbuf;
     envid_t fsenv;
 
     strcpy(fsipcbuf.open.req_path, path);
-    fsipcbuf.open.req_omode = mode;
+    fsipcbuf.open.req_oflags = flags;
 
     fsenv = ipc_find_env(ENV_TYPE_FS);
     size_t sz = PAGE_SIZE;
@@ -82,7 +82,7 @@ umain(int argc, char **argv) {
     cprintf("stale fileid is good\n");
 
     /* Try writing */
-    if ((r = xopen("/new-file", O_RDWR | O_CREAT)) < 0)
+    if ((r = xopen("/new-file", O_RDWR | O_CREAT)) < 0) // TODO(egor): add openmode
         panic("serve_open /new-file: %ld", (long)r);
 
     if ((r = devfile.dev_write(FVA, msg, strlen(msg))) != strlen(msg))
@@ -147,7 +147,7 @@ umain(int argc, char **argv) {
     {
       increment_file_name(name_buffer + 1, MAXNAMELEN);
       cprintf("writing %s (%lu/%lld)\n", name_buffer, file_name, 0xA0000 * BLKSIZE / MAXFILESIZE);
-      if ((f = open(name_buffer, O_RDWR | O_CREAT)) < 0) {
+      if ((f = open(name_buffer, O_RDWR | O_CREAT)) < 0) { // TODO(egor): add openmode
         panic("open %s: %ld",name_buffer, f);
       }
       memset(buf, 0, sizeof(buf));

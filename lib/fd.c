@@ -276,6 +276,10 @@ fstat(int fdnum, struct Stat *stat) {
     stat->st_isdir = 0;
     stat->st_dev = dev;
 
+    stat->st_gid = 0;
+    stat->st_uid = 0;
+    stat->st_mode = 0;
+
     return (*dev->dev_stat)(fd, stat);
 }
 

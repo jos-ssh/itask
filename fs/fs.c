@@ -6,6 +6,10 @@
 #include "inc/fs.h"
 #include "inc/lib.h"
 #include "inc/stdio.h"
+#include "inc/filemode.h"
+
+/* umask */
+uint32_t umask = IUMASK;
 
 /* Superblock */
 struct Super *super;
@@ -48,7 +52,7 @@ free_block(blockno_t blockno) {
     /* Blockno zero is the null pointer of block numbers. */
     if (blockno == 0) panic("attempt to free zero block");
     SETBIT(bitmap, blockno);
-//     flush_block(bitmap);
+    //     flush_block(bitmap);
 }
 
 /* Search the bitmap for a free block and allocate it.  When you
@@ -66,12 +70,12 @@ alloc_block(void) {
      * super->s_nblocks blocks in the disk altogether. */
 
     for (blockno_t i = 1; i <= super->s_nblocks; i++) {
-      if (block_is_free(i)) {
-        CLRBIT(bitmap, i);
-        assert(is_page_dirty(bitmap + i / 32));
-        flush_block(bitmap + i / 32);
-        return i;
-      }
+        if (block_is_free(i)) {
+            CLRBIT(bitmap, i);
+            assert(is_page_dirty(bitmap + i / 32));
+            flush_block(bitmap + i / 32);
+            return i;
+        }
     }
 
     return 0;
@@ -136,25 +140,24 @@ fs_init(void) {
 int
 file_block_walk(struct File *f, blockno_t filebno, blockno_t **ppdiskbno, bool alloc) {
     if (filebno >= NDIRECT + NINDIRECT || !ppdiskbno) {
-      return -E_INVAL;
+        return -E_INVAL;
     }
 
     *ppdiskbno = NULL;
     if (filebno < NDIRECT) {
-      *ppdiskbno = f->f_direct + filebno;
-      return 0;
+        *ppdiskbno = f->f_direct + filebno;
+        return 0;
     }
-    if (f->f_indirect == 0)
-    {
-      if (!alloc) {
-        return -E_NOT_FOUND;
-      }
+    if (f->f_indirect == 0) {
+        if (!alloc) {
+            return -E_NOT_FOUND;
+        }
 
-      f->f_indirect = alloc_block();
-      if (f->f_indirect == 0) {
-        return -E_NO_DISK;
-      }
-      memset(diskaddr(f->f_indirect), 0, BLKSIZE);
+        f->f_indirect = alloc_block();
+        if (f->f_indirect == 0) {
+            return -E_NO_DISK;
+        }
+        memset(diskaddr(f->f_indirect), 0, BLKSIZE);
     }
 
     blockno_t *indirect = diskaddr(f->f_indirect);
@@ -173,23 +176,23 @@ file_block_walk(struct File *f, blockno_t filebno, blockno_t **ppdiskbno, bool a
 int
 file_get_block(struct File *f, blockno_t filebno, char **blk) {
     if (!blk) {
-      return -E_INVAL;
+        return -E_INVAL;
     }
     *blk = NULL;
 
     blockno_t *pblockno = NULL;
     int lookup_res = file_block_walk(f, filebno, &pblockno, true);
     if (lookup_res != 0) {
-      return lookup_res;
+        return lookup_res;
     }
 
     if (*pblockno == 0) {
-      *pblockno = alloc_block();
-      if (*pblockno == 0) {
-        return -E_NO_DISK;
-      }
+        *pblockno = alloc_block();
+        if (*pblockno == 0) {
+            return -E_NO_DISK;
+        }
     }
-    
+
     *blk = diskaddr(*pblockno);
     return 0;
 }
@@ -290,7 +293,7 @@ walk_path(const char *path, struct File **pdir, struct File **pf, char *lastelem
         name[path - p] = '\0';
         path = skip_slash(path);
 
-        if (dir->f_type != FTYPE_DIR)
+        if (!ISDIR(dir->f_mode))
             return -E_NOT_FOUND;
 
         if ((r = dir_lookup(dir, name, &f)) < 0) {
@@ -318,7 +321,7 @@ walk_path(const char *path, struct File **pdir, struct File **pf, char *lastelem
 /* Create "path".  On success set *pf to point at the file and return 0.
  * On error return < 0. */
 int
-file_create(const char *path, struct File **pf) {
+file_create(const char *path, struct File **pf, uint32_t mode) {
     char name[MAXNAMELEN];
     int res;
     struct File *dir, *filp;
@@ -328,6 +331,8 @@ file_create(const char *path, struct File **pf) {
     if ((res = dir_alloc_file(dir, &filp)) < 0) return res;
 
     strcpy(filp->f_name, name);
+    // TODO(egor): guid, uid
+    filp->f_mode = (mode & ~umask);
     *pf = filp;
     file_flush(dir);
     return 0;
@@ -436,9 +441,9 @@ file_set_size(struct File *f, off_t newsize) {
     if (f->f_size > newsize)
         file_truncate_blocks(f, newsize);
     f->f_size = newsize;
-    
+
     flush_block(f);
-    if(f->f_indirect) {
+    if (f->f_indirect) {
         flush_block(diskaddr(f->f_indirect));
     }
 
