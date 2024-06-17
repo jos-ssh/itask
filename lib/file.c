@@ -203,7 +203,8 @@ sync(void) {
     return fsipc(FSREQ_SYNC, NULL);
 }
 
-int remove(const char *path)
+int 
+remove(const char *path)
 {
     if (strlen(path) >= MAXPATHLEN)
         return -E_BAD_PATH;
@@ -212,7 +213,8 @@ int remove(const char *path)
     return fsipc(FSREQ_REMOVE, &fsipcbuf);
 }
 
-int mkdir(const char *path)
+int 
+mkdir(const char *path)
 {
     if (strlen(path) >= MAXPATHLEN)
         return -E_BAD_PATH;
