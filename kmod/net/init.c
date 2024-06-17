@@ -27,6 +27,14 @@ struct buffer {
 // TODO: Smarter reallocate & reuse policy for buffers
 struct buffer buffers[2 * VIRTQ_SIZE];
 
+// Да, костыль, лол
+// потом придется как-то хранить соответствие
+// и скорее всего не в init.c, а queue.c
+//
+// Или захадкодить красивее, вида queue->id * VIRTQ_SIZE + indx
+void *reverse_buffer_addr(int64_t index) {
+    return &buffers[index]; // для sendq там indx -> indx;
+}
 
 /* #### Initialization ####
 */

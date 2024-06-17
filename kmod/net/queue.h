@@ -202,7 +202,7 @@ struct virtio_net_hdr {
     uint16_t gso_size;
     uint16_t csum_start;
     uint16_t csum_offset;
-    uint16_t num_buffers;
+    // uint16_t num_buffers; // не будет, так как не согласовано склеивание буферов + мы легаси драйвер (хз почему...)
 };
 
 static inline int
@@ -223,4 +223,4 @@ struct virtq_desc *
 alloc_desc(struct virtq *queue, int writable);
 
 void
-recycle_used(struct virtq *queue);
+process_queue(struct virtq *queue, bool incoming);
