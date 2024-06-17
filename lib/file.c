@@ -204,8 +204,7 @@ sync(void) {
 }
 
 int 
-remove(const char *path)
-{
+remove(const char *path) {
     if (strlen(path) >= MAXPATHLEN)
         return -E_BAD_PATH;
 
@@ -214,8 +213,7 @@ remove(const char *path)
 }
 
 int 
-mkdir(const char *path)
-{
+mkdir(const char *path) {
     if (strlen(path) >= MAXPATHLEN)
         return -E_BAD_PATH;
 
