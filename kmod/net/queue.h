@@ -3,7 +3,7 @@
 #include <inc/types.h>
 #include <stdint.h>
 
-#define VIRTQ_SIZE 64
+#define VIRTQ_SIZE 512
 /* This marks a buffer as continuing via the next field. */
 #define VIRTQ_DESC_F_NEXT 1
 /* This marks a buffer as write-only (otherwise read-only). */
@@ -47,6 +47,7 @@
 
 // Feature bits
 #define VIRTIO_NET_F_MAC            (1u << 5)
+#define VIRTIO_NET_F_MRG_RXBUF      (1u << 15)
 #define VIRTIO_NET_F_STATUS         (1u << 16)
 
 // Common configuration
@@ -185,6 +186,25 @@ struct virtio_net_device_t {
     struct virtio_net_config_t *conf;
 };
 
+struct virtio_net_hdr {
+#define VIRTIO_NET_HDR_F_NEEDS_CSUM 1
+#define VIRTIO_NET_HDR_F_DATA_VALID 2
+#define VIRTIO_NET_HDR_F_RSC_INFO 4
+    uint8_t flags;
+#define VIRTIO_NET_HDR_GSO_NONE 0
+#define VIRTIO_NET_HDR_GSO_TCPV4 1
+#define VIRTIO_NET_HDR_GSO_UDP 3
+#define VIRTIO_NET_HDR_GSO_TCPV6 4
+#define VIRTIO_NET_HDR_GSO_UDP_L4 5
+#define VIRTIO_NET_HDR_GSO_ECN 0x80
+    uint8_t gso_type;
+    uint16_t hdr_len;
+    uint16_t gso_size;
+    uint16_t csum_start;
+    uint16_t csum_offset;
+    uint16_t num_buffers;
+};
+
 static inline int
 virtq_need_event(uint16_t event_idx, uint16_t new_idx, uint16_t old_idx) {
     return (uint16_t)(new_idx - event_idx - 1) < (uint16_t)(new_idx - old_idx);
@@ -201,3 +221,6 @@ queue_avail(struct virtq *queue, uint32_t count);
 
 struct virtq_desc *
 alloc_desc(struct virtq *queue, int writable);
+
+void
+recycle_used(struct virtq *queue);
