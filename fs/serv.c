@@ -283,6 +283,22 @@ serve_sync(envid_t envid, union Fsipc *req) {
     return 0;
 }
 
+int
+serve_remove(envid_t envid, union Fsipc *req) {
+    //TODO implement
+}
+
+int
+serve_mkdir(envid_t envid, union Fsipc *req) {
+    struct File* f = NULL;
+    return file_create(req->mkdir.req_path, &f, FTYPE_DIR);
+}
+
+int
+serve_getdents(envid_t envid, union Fsipc *req) {
+    //TODO implement
+}
+
 typedef int (*fshandler)(envid_t envid, union Fsipc *req);
 
 fshandler handlers[] = {
@@ -293,7 +309,10 @@ fshandler handlers[] = {
         [FSREQ_FLUSH] = serve_flush,
         [FSREQ_WRITE] = serve_write,
         [FSREQ_SET_SIZE] = serve_set_size,
-        [FSREQ_SYNC] = serve_sync};
+        [FSREQ_SYNC] = serve_sync,
+        [FSREQ_REMOVE] = serve_remove,
+        [FSREQ_MKDIR] = serve_mkdir,
+        [FSREQ_GETDENTS] = serve_getdents,};
 #define NHANDLERS (sizeof(handlers) / sizeof(handlers[0]))
 
 void

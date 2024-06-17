@@ -75,7 +75,9 @@ enum {
     FSREQ_STAT,
     FSREQ_FLUSH,
     FSREQ_REMOVE,
-    FSREQ_SYNC
+    FSREQ_SYNC,
+    FSREQ_MKDIR,
+    FSREQ_GETDENTS
 };
 
 union Fsipc {
@@ -113,6 +115,12 @@ union Fsipc {
     struct Fsreq_remove {
         char req_path[MAXPATHLEN];
     } remove;
+    struct Fsreq_mkdir {
+        const char req_path[MAXPATHLEN]; 
+    } mkdir;
+    struct Fsreq_getdents {
+        // TODO 
+    } getdents;
 
     /* Ensure Fsipc is one page */
     char _pad[PAGE_SIZE];

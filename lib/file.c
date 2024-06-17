@@ -207,3 +207,13 @@ int remove(const char *path)
 {
     // TODO implement
 }
+
+int mkdir(const char *path)
+{
+    int res;
+    if (strlen(path) >= MAXPATHLEN)
+        return -E_BAD_PATH;
+
+    strlcpy(fsipcbuf.mkdir.req_path, path, MAXPATHLEN);
+    return fsipc(FSREQ_MKDIR, &fsipcbuf);
+}
