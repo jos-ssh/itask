@@ -98,6 +98,7 @@ parse_common_cfg(volatile struct virtio_pci_common_cfg_t *cfg_header) {
     // Accept features
     // VIRTIO_NET_F_MAC — device can tell mac address
     // VIRTIO_NET_F_STATUS — device can tell link status
+    // (not used) VIRTIO_NET_F_MRG_RXBUF — device can split package into multiple descriptors
     for (int i = 0; i < 4; ++i) {
         cfg_header->device_feature_select = i;
         (void)cfg_header->device_feature;
@@ -126,17 +127,17 @@ parse_common_cfg(volatile struct virtio_pci_common_cfg_t *cfg_header) {
     setup_queue(&net.recvq, cfg_header);
 
     for (int i = 0; i < VIRTQ_SIZE; ++i) {
-        buffers[i]._[0] = 0;
+        buffers[i]._[0] = 0; // force alloc
         net.recvq.desc[i].addr = get_phys_addr(buffers + i);
         net.recvq.desc[i].len  = sizeof(struct buffer);
         net.recvq.desc[i].flags |= VIRTQ_DESC_F_WRITE;
 
-        buffers[i + VIRTQ_SIZE]._[0] = 0;
+        buffers[i + VIRTQ_SIZE]._[0] = 0; // force alloc
         net.sendq.desc[i].addr = get_phys_addr(buffers + i + VIRTQ_SIZE);
         net.sendq.desc[i].len  = sizeof(struct buffer);
     }
 
-    queue_avail(&net.recvq, 1);
+    queue_avail(&net.recvq, VIRTQ_SIZE);
     notify_queue(&net.recvq);
 
     // Set DRIVER_OK flag
@@ -199,6 +200,7 @@ setup_device(struct PciHeaderGeneral* header) {
         case VIRTIO_PCI_CAP_ISR_CFG:
             addr = cap_header.offset + get_bar(header->bar, cap_header.bar);
             net.isr_status = (uint8_t *)addr;
+            sys_map_physical_region(addr, CURENVID, net.isr_status, sizeof(uint8_t), PROT_RW | PROT_CD);
             break;
         case VIRTIO_PCI_CAP_DEVICE_CFG:
             net.conf = (struct virtio_net_config_t *)(cap_header.offset + get_bar(header->bar, cap_header.bar));

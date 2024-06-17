@@ -2,6 +2,8 @@
 #include <inc/kmod/init.h>
 #include <fs/pci_classes.h>
 #include <kmod/pci/pci.h>
+#include <stdint.h>
+#include "inc/stdio.h"
 #include "queue.h"
 /* #### Globals ####
 */
@@ -17,5 +19,12 @@ struct virtio_net_device_t net;
 void serve_teapot() {
     if (!g_IsNetdInitialized) {
         initialize();
+    }
+
+    uint8_t status = *net.isr_status;
+    if (status & VIRTIO_PCI_ISR_NOTIFY) {
+        cprintf("== KURWA == \n");
+
+        recycle_used(&net.recvq);
     }
 }
