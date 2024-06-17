@@ -1,8 +1,9 @@
 OBJDIRS += kmod/net
 
-NETDOBJS := $(KMODOBJDIR)/net/main.o $(KMODOBJDIR)/net/net.o
+NETDOBJS := $(KMODOBJDIR)/net/main.o $(KMODOBJDIR)/net/net.o $(KMODOBJDIR)/net/init.o $(KMODOBJDIR)/net/queue.o
+NETDHEADERS := kmod/net/net.h kmod/net/queue.h inc/lib.h 
 
-$(KMODOBJDIR)/net/%.o: kmod/net/%.c kmod/net/net.h inc/lib.h $(OBJDIR)/.vars.USER_CFLAGS
+$(KMODOBJDIR)/net/%.o: kmod/net/%.c $(NETDHEADERS) $(OBJDIR)/.vars.USER_CFLAGS
 	@echo + cc[USER] $<
 	@mkdir -p $(@D)
 	$(V)$(CC) $(USER_CFLAGS) $(USER_SAN_CFLAGS) -c -o $@ $<
