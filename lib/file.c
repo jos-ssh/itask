@@ -209,7 +209,7 @@ int remove(const char *path)
         return -E_BAD_PATH;
 
     strlcpy(fsipcbuf.remove.req_path, path, MAXPATHLEN);
-    return fsipc(FSREQ_MKDIR, &fsipcbuf);
+    return fsipc(FSREQ_REMOVE, &fsipcbuf);
 }
 
 int mkdir(const char *path)
