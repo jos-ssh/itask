@@ -15,6 +15,7 @@
 #include <inc/assert.h>
 #include <inc/kmod/request.h>
 #include <inc/fs.h>
+#include <inc/env.h>
 
 #ifndef INITD_VERSION
 #define INITD_VERSION 0
@@ -27,36 +28,42 @@
 #define SPAWN_ARGLEN  16
 
 enum InitdRequestType {
-  INITD_REQ_IDENTIFY = KMOD_REQ_IDENTIFY,
+    INITD_REQ_IDENTIFY = KMOD_REQ_IDENTIFY,
 
-  INITD_REQ_FIND_KMOD = KMOD_REQ_FIRST_USABLE,
-  INITD_REQ_FORK,
-  INITD_REQ_SPAWN,
+    INITD_REQ_FIND_KMOD = KMOD_REQ_FIRST_USABLE,
+    INITD_REQ_FORK,
+    INITD_REQ_SPAWN,
 
-  INITD_NREQUESTS
+    INITD_NREQUESTS
 };
 
 union InitdRequest {
-  struct InitdFindKmod {
-    ssize_t min_version;
-    ssize_t max_version;
-    char name_prefix[KMOD_MAXNAMELEN];
-  } find_kmod;
+    struct InitdFindKmod {
+        ssize_t min_version;
+        ssize_t max_version;
+        char name_prefix[KMOD_MAXNAMELEN];
+    } find_kmod;
 
-  struct InitdSpawn {
-      // Path to executable file
-      char file[MAXPATHLEN];
-      // Number of arguments passed to process.
-      // If 0, `argc` of process will be 1, and `argv[0]` will be equal to `file`
-      uint16_t argc;
-      // Argument vector. Strings are encoded as offsets into `strtab`
-      uint16_t argv[SPAWN_MAXARGS];
+    struct InitdSpawn {
+        // True parent of process
+        envid_t parent;
+        // Path to executable file
+        char file[MAXPATHLEN];
+        // Number of arguments passed to process.
+        // If 0, `argc` of process will be 1, and `argv[0]` will be equal to `file`
+        uint16_t argc;
+        // Argument vector. Strings are encoded as offsets into `strtab`
+        uint16_t argv[SPAWN_MAXARGS];
 
-      // Array of NUL-terminated strings
-      char strtab[SPAWN_MAXARGS * SPAWN_ARGLEN];
-  } spawn;
-  
-  uint8_t pad_[PAGE_SIZE];
+        // Array of NUL-terminated strings
+        char strtab[SPAWN_MAXARGS * SPAWN_ARGLEN];
+    } spawn;
+
+    struct InitdFork {
+        envid_t parent;
+    } fork;
+
+    uint8_t pad_[PAGE_SIZE];
 } __attribute__((aligned(PAGE_SIZE)));
 
 static_assert(sizeof(union InitdRequest) == PAGE_SIZE, "initd request is too big");

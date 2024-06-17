@@ -150,12 +150,15 @@ initd_serve_fork(envid_t from, const void* request, void* response,
     }
 #endif // !TEST_INIT
 
-    const volatile struct Env* parent = &envs[ENVX(from)];
+    const union InitdRequest* spawnd_req = request;
+    envid_t parent_id = spawnd_req->fork.parent ? spawnd_req->fork.parent : from;
+
+    const volatile struct Env* parent = &envs[ENVX(parent_id)];
     while (!parent->env_ipc_recving) {
         sys_yield();
     }
     assert(parent->env_status == ENV_NOT_RUNNABLE);
-    int child = initd_fork(from);
+    int child = initd_fork(parent_id);
     if (child < 0) {
         return child;
     }
@@ -210,7 +213,8 @@ initd_serve_spawn(envid_t from, const void* request, void* response,
         argv[spawnd_req->spawn.argc] = NULL;
     }
 
-    int child = initd_spawn(from, spawnd_req->spawn.file, argv);
+    int parent = spawnd_req->spawn.parent ? spawnd_req->spawn.parent : from;
+    int child = initd_spawn(parent, spawnd_req->spawn.file, argv);
     if (child < 0) return child;
 
     int res = sys_env_downgrade(child);
