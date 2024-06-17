@@ -202,3 +202,8 @@ sync(void) {
 
     return fsipc(FSREQ_SYNC, NULL);
 }
+
+int remove(const char *path)
+{
+    // TODO implement
+}
