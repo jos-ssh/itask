@@ -1,5 +1,6 @@
 #pragma once
 
+#include "queue.h"
 #include <inc/env.h>
 
 extern envid_t g_InitdEnvid;
@@ -16,5 +17,8 @@ extern struct virtio_net_device_t net;
 #define UNWRAP(res, line) do { if (res != 0) { panic(line ": %i", res); } } while (0)
 
 void initialize();
+
+void analyze_packet(struct virtq* queue, size_t indx);
+void *reverse_buffer_addr(int64_t index);
 
 void serve_teapot();

@@ -25,6 +25,7 @@ void serve_teapot() {
     if (status & VIRTIO_PCI_ISR_NOTIFY) {
         cprintf("== KURWA == \n");
 
-        recycle_used(&net.recvq);
+        process_queue(&net.recvq, true);
+        process_queue(&net.sendq, false);
     }
 }

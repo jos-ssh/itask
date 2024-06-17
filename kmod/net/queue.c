@@ -1,5 +1,6 @@
 #include "queue.h"
 #include "inc/stdio.h"
+#include "net.h"
 #include <inc/lib.h>
 
 void
@@ -85,7 +86,7 @@ alloc_desc(struct virtq *queue, int writable) {
 }
 
 void
-recycle_used(struct virtq *queue) {
+process_queue(struct virtq *queue, bool incoming) {
     size_t tail = queue->used_tail;
     size_t const mask = ~-(1 << queue->log2_size);
     size_t const done_idx = queue->used.idx;
@@ -93,6 +94,10 @@ recycle_used(struct virtq *queue) {
     do {
         struct virtq_used_elem *used = &queue->used.ring[tail & mask];
         uint16_t id = used->id;
+
+        if (incoming) {
+            analyze_packet(queue, id);
+        }
 
         unsigned freed_count = 1;
 
@@ -105,8 +110,6 @@ recycle_used(struct virtq *queue) {
         queue->desc[end].next = queue->desc_first_free;
         queue->desc_first_free = id;
         queue->desc_free_count += freed_count;
-
-        cprintf("Freed %d descs\n", freed_count);
     } while ((++tail & 0xFFFF) != done_idx);
 
     queue->used_tail = tail;
