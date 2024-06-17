@@ -220,3 +220,8 @@ mkdir(const char *path) {
     strlcpy(fsipcbuf.mkdir.req_path, path, MAXPATHLEN);
     return fsipc(FSREQ_MKDIR, &fsipcbuf);
 }
+
+int
+getdents(int fd, struct File* buffer, int count) {
+    // TODO implement
+}

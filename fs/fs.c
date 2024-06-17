@@ -532,3 +532,9 @@ fs_sync(void) {
         flush_block(diskaddr(i));
     }
 }
+
+int 
+getdents(int fd, struct File* buffer, int count)
+{
+    //TODO implement
+}

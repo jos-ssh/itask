@@ -119,7 +119,7 @@ union Fsipc {
         const char req_path[MAXPATHLEN]; 
     } mkdir;
     struct Fsreq_getdents {
-        // TODO 
+        // TODO implement
     } getdents;
 
     /* Ensure Fsipc is one page */
