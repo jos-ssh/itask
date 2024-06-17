@@ -10,6 +10,7 @@
 #include <string.h>
 #include <fs/pci_classes.h>
 #include <kmod/pci/pci.h>
+#include "virtio-queue.h"
 #include "virtio.h"
 #include "kern/pci_common.h"
 
@@ -23,6 +24,12 @@ envid_t g_PcidEnvid;
 bool g_IsNetdInitialized = false;
 
 struct virtio_net_device_t net;
+
+struct buffer {
+    _Alignas(4096) char _[2000];
+};
+
+struct buffer buffers[2 * VIRTQ_SIZE];
 
 #define VENDOR_ID 0x1AF4
 #define DEVICE_ID 0x1000
@@ -95,6 +102,12 @@ get_bar(uint32_t *base_addrs, size_t bar) {
 static void
 setup_queue(struct virtq *queue, volatile struct virtio_pci_common_cfg_t *cfg_header) {
     cfg_header->queue_select = queue->queue_idx;
+    
+    // force allocation
+    queue->desc[0].addr = 0;
+    queue->avail.flags = 0;
+    queue->used.flags = 0;
+
     cfg_header->queue_desc   = get_phys_addr(&queue->desc);
     cfg_header->queue_avail  = get_phys_addr(&queue->avail);
     cfg_header->queue_used   = get_phys_addr(&queue->used);
@@ -109,6 +122,64 @@ setup_queue(struct virtq *queue, volatile struct virtio_pci_common_cfg_t *cfg_he
     }
 }
 
+static void
+notify_queue(struct virtq *queue) {
+    static bool mapped = false;
+
+    if (!mapped) {
+        sys_map_physical_region(queue->notify_reg, CURENVID, (uint64_t *)queue->notify_reg, sizeof(uint64_t), PROT_RW | PROT_CD);
+        mapped = true;
+    }
+
+    *((uint64_t *)queue->notify_reg) = queue->queue_idx;
+}
+
+static void
+queue_avail(struct virtq *queue, uint32_t count) {
+    uint32_t mask = ~-(1 << queue->log2_size);
+
+    bool skip = false;
+    uint32_t avail_head = queue->avail.idx;
+    uint32_t chain_start = ~((uint32_t)0);
+    for (uint32_t i = 0; i < count; ++i) {
+        if (!skip) {
+            chain_start = i;
+        }
+
+        skip = queue->desc[i].flags & VIRTQ_DESC_F_NEXT;
+
+        // Write an entry to the avail ring telling virtio to
+        // look for a chain starting at chain_start, if this is the end
+        // of a chain (end because next is false)
+        if (!skip && chain_start != ~((uint32_t)0))
+            queue->avail.ring[avail_head++ & mask] = chain_start;
+    }
+    // cprintf("avail head %d\n", avail_head);
+    queue->avail.used_event = avail_head - 1;
+
+    // Update idx (tell virtio where we would put the next new item)
+    // enforce ordering until after prior store is globally visible
+    queue->avail.idx = avail_head;
+}
+
+static struct virtq_desc *
+alloc_desc(struct virtq *queue, int writable) {
+    if (queue->desc_free_count == 0)
+        return NULL;
+
+    --queue->desc_free_count;
+
+    struct virtq_desc *desc = &queue->desc[queue->desc_first_free];
+    queue->desc_first_free = desc->next;
+
+    desc->flags = 0;
+    desc->next = -1;
+
+    if (writable)
+        desc->flags |= VIRTQ_DESC_F_WRITE;
+
+    return desc;
+}
 
 static void
 parse_common_cfg(volatile struct virtio_pci_common_cfg_t *cfg_header) {
@@ -155,6 +226,20 @@ parse_common_cfg(volatile struct virtio_pci_common_cfg_t *cfg_header) {
 
     net.recvq.queue_idx = VIRTIO_RECVQ;
     setup_queue(&net.recvq, cfg_header);
+
+    for (int i = 0; i < VIRTQ_SIZE; ++i) {
+        buffers[i]._[0] = 0;
+        net.recvq.desc[i].addr = get_phys_addr(buffers + i);
+        net.recvq.desc[i].len  = sizeof(struct buffer);
+        net.recvq.desc[i].flags |= VIRTQ_DESC_F_WRITE;
+
+        buffers[i + VIRTQ_SIZE]._[0] = 0;
+        net.sendq.desc[i].addr = get_phys_addr(buffers + i + VIRTQ_SIZE);
+        net.sendq.desc[i].len  = sizeof(struct buffer);
+    }
+
+    queue_avail(&net.recvq, 1);
+    notify_queue(&net.recvq);
 
     // Set DRIVER_OK flag
     cfg_header->device_status |= VIRTIO_STATUS_DRIVER_OK;
