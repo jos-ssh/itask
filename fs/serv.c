@@ -285,7 +285,7 @@ serve_sync(envid_t envid, union Fsipc *req) {
 
 int
 serve_remove(envid_t envid, union Fsipc *req) {
-    //TODO implement
+    return file_remove(req->remove.req_path);
 }
 
 int

@@ -392,6 +392,63 @@ file_write(struct File *f, const void *buf, size_t count, off_t offset) {
     return count;
 }
 
+int 
+recursive_block_free(struct File* file) {
+    int res = 0;
+    if (file->f_type == FTYPE_REG) {
+        const blockno_t block_number = file->f_size / BLKSIZE; 
+        for (blockno_t block_i = 0; block_i <  block_number; block_i++) {
+            res = file_free_block(file, block_i);
+            if (res < 0) return res;
+        }
+        return 0;
+    }
+    /* file->f_type == FTYPE_DIR */
+
+    assert((file->f_size % BLKSIZE) == 0);
+    blockno_t nblock = file->f_size / BLKSIZE;
+    for (blockno_t i = 0; i < nblock; i++) {
+        char *blk;
+        res = file_get_block(file, i, &blk);
+        if (res < 0) return res;
+
+        struct File *f = (struct File *)blk;
+        for (blockno_t j = 0; j < BLKFILES; j++) {
+            res = recursive_dir_block_free(&f[j]);
+            if (res < 0) return res;
+        }
+    }
+
+    return 0;
+}
+
+int 
+file_remove(const char *path) {
+    struct File* dir = NULL;
+    struct File* file = NULL;
+    char lastelem[MAXPATHLEN] = {};
+
+    int res = walk_path(path, &dir, &file, lastelem);
+    if (res < 0)
+        return res;
+    if (file == NULL || lastelem[0] != 0)
+        return -E_FILE_EXISTS;
+
+    recursive_block_free(file);
+
+    memset(file->f_name, 0, sizeof(file->f_name));
+    file->f_size = 0;
+    file->f_type = 0;
+    memset(file->f_direct, 0, sizeof(file->f_direct));
+    file->f_indirect = 0;
+
+    flush_block(file);
+    free_block((blockno_t)file);
+
+    flush_bitmap();
+    return 0;
+}
+
 /* Remove a block from file f.  If it's not there, just silently succeed.
  * Returns 0 on success, < 0 on error. */
 static int
