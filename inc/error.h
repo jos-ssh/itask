@@ -27,8 +27,9 @@ enum {
     E_FILE_EXISTS = 17, /* File already exists */
     E_NOT_EXEC = 18,    /* File not a valid executable */
     E_NOT_SUPP = 19,    /* Operation not supported */
+    E_NO_CWD = 20,      /* Attempted relative path access with no cwd */
     /* ACPI errors */
-    E_ACPI_BAD_CHECKSUM = 20, /* ACPI table has wrong checksum */
+    E_ACPI_BAD_CHECKSUM = 21, /* ACPI table has wrong checksum */
 
     /* UsersD errors*/
     E_ENV_ALREADY_REGISTERED = 21,

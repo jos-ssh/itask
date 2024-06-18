@@ -4,6 +4,7 @@
 #include "inc/fs.h"
 #include "inc/kmod/init.h"
 #include "inc/mmu.h"
+#include "kmod/file/cwd.h"
 #include <inc/kmod/request.h>
 #include <inc/kmod/file.h>
 #include <inc/rpc.h>
@@ -109,7 +110,11 @@ filed_serve_open(envid_t from, const void* request,
     if (freq->open.req_fd_vaddr & (PAGE_SIZE - 1)) return -E_INVAL;
     if (freq->open.req_fd_vaddr >= MAX_USER_ADDRESS) return -E_INVAL;
 
-    memcpy(FsBuffer.open.req_path, freq->open.req_path, MAXPATHLEN);
+    const char* abs_path = NULL;
+    res = filed_get_absolute_path(from, freq->open.req_path, &abs_path);
+    if (res < 0) return res;
+
+    memcpy(FsBuffer.open.req_path, abs_path, MAXPATHLEN);
     FsBuffer.open.req_omode = freq->open.req_omode;
 
     int perm = 0;
@@ -136,10 +141,13 @@ filed_serve_spawn(envid_t from, const void* request,
                   void* response, int* response_perm) {
     int res = 0;
     const union FiledRequest* freq = request;
-    // TODO: check permissions
+    const char* abs_path = NULL;
+    res = filed_get_absolute_path(from, freq->spawn.req_path, &abs_path);
+    if (res < 0) return res;
 
+    // TODO: check permissions
     InitdBuffer.spawn.parent = from;
-    memcpy(InitdBuffer.spawn.file, freq->spawn.req_path, MAXPATHLEN);
+    memcpy(InitdBuffer.spawn.file, abs_path, MAXPATHLEN);
     InitdBuffer.spawn.argc = freq->spawn.req_argc;
     memcpy(InitdBuffer.spawn.argv, freq->spawn.req_argv, sizeof(InitdBuffer.spawn.argv));
     memcpy(InitdBuffer.spawn.strtab, freq->spawn.req_strtab, sizeof(InitdBuffer.spawn.strtab));
@@ -159,10 +167,43 @@ filed_serve_spawn(envid_t from, const void* request,
 static int
 filed_serve_remove(envid_t from, const void* request,
                    void* response, int* response_perm) {
+    int res = 0;
     const union FiledRequest* freq = request;
-    // TODO: check permissions
 
-    memcpy(FsBuffer.remove.req_path, freq->remove.req_path, MAXPATHLEN);
+    const char* abs_path = NULL;
+    res = filed_get_absolute_path(from, freq->remove.req_path, &abs_path);
+    if (res < 0) return res;
+
+    // TODO: check permissions
+    memcpy(FsBuffer.remove.req_path, abs_path, MAXPATHLEN);
 
     return fs_rpc_execute(FSREQ_REMOVE, &FsBuffer, NULL, NULL);
+}
+
+static int
+filed_serve_getcwd(envid_t from, const void* request,
+                   void* response, int* response_perm) {
+    union FiledResponse* fresp = response;
+
+    const char* cwd = filed_get_env_cwd(from);
+    if (!cwd) return -E_NO_CWD;
+
+    strncpy(fresp->cwd, cwd, MAXPATHLEN);
+    *response_perm = PROT_R;
+    return 0;
+}
+
+static int
+filed_serve_setcwd(envid_t from, const void* request,
+                   void* response, int* response_perm) {
+    int res = 0;
+    const union FiledRequest* freq = request;
+
+    const char* abs_path = NULL;
+    res = filed_get_absolute_path(from, freq->remove.req_path, &abs_path);
+    if (res < 0) return res;
+
+    // TODO: check permissions
+    filed_set_env_cwd(from, abs_path);
+    return 0;
 }

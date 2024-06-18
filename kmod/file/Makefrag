@@ -1,6 +1,7 @@
 OBJDIRS += kmod/file
 
-FILEDOBJS := $(KMODOBJDIR)/file/main.o
+FILEDOBJS := $(KMODOBJDIR)/file/main.o\ 
+             $(KMODOBJDIR)/file/cwd.o
 
 $(KMODOBJDIR)/file/%.o: kmod/file/%.c inc/lib.h $(OBJDIR)/.vars.USER_CFLAGS
 	@echo + cc[USER] $<
