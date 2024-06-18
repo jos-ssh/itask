@@ -64,6 +64,9 @@ struct RpcServer Server = {
         .HandlerCount = FILED_NREQUESTS,
         .Handlers = {
                 [FILED_REQ_IDENTIFY] = filed_serve_identify,
+                [FILED_REQ_OPEN] = filed_serve_open,
+                [FILED_REQ_SPAWN] = filed_serve_spawn,
+                [FILED_REQ_REMOVE] = filed_serve_remove,
 
                 [FILED_NREQUESTS] = NULL}};
 

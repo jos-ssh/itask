@@ -121,8 +121,8 @@ int32_t ipc_recv_from(envid_t from, void *pg, size_t *psize, int *perm_store);
 envid_t ipc_find_env(enum EnvType type);
 
 /* kmod.c */
-int kmod_find(const char* name_prefix, int min_version, int max_version);
-int kmod_find_any_version(const char* name_prefix);
+int kmod_find(const char *name_prefix, int min_version, int max_version);
+int kmod_find_any_version(const char *name_prefix);
 
 /* fork.c */
 envid_t fork(void);
@@ -135,7 +135,7 @@ uintptr_t get_phys_addr(void *va);
 int get_prot(void *va);
 bool is_page_dirty(void *va);
 bool is_page_present(void *va);
-void force_alloc(void* va, size_t size);
+void force_alloc(void *va, size_t size);
 
 /* fd.c */
 int close(int fd);
@@ -149,7 +149,8 @@ int fstat(int fd, struct Stat *statbuf);
 int stat(const char *path, struct Stat *statbuf);
 
 /* file.c */
-int open(const char *path, int mode, ...);
+int open(const char *path, int mode);
+int open_raw_fs(const char *path, int mode);
 int ftruncate(int fd, off_t size);
 int remove(const char *path);
 int sync(void);
