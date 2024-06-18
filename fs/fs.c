@@ -534,7 +534,34 @@ fs_sync(void) {
 }
 
 int 
-getdents(int fd, struct File* buffer, int count)
+getdents(const char* path, struct File* buffer, int count)
 {
-    //TODO implement
+    assert(0 < count && count <= MAX_GETDENTS_COUNT);
+    int res = 0;
+    struct File* file = NULL;
+    struct File* dir  = NULL;
+    char lastelem[MAXNAMELEN] = {}; 
+
+    res = walk_path(path, &dir, &file, lastelem);
+    if (res < 0)
+        return res;
+    
+    assert((file->f_size % BLKSIZE) == 0);
+    blockno_t nblock = file->f_size / BLKSIZE;
+    int file_counter = 0;
+    for (blockno_t i = 0; i < nblock; i++) {
+        char *blk;
+        res = file_get_block(file, i, &blk);
+        if (res < 0) return res;
+
+        struct File *f = (struct File *)blk;
+        for (blockno_t j = 0; j < BLKFILES; j++) {
+            buffer[file_counter] = f[j];   
+            file_counter++;
+            if (count == file_counter)
+                return 0;
+        }
+    }
+
+    return 0;
 }

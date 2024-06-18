@@ -32,6 +32,9 @@ typedef uint32_t blockno_t;
 #define CLRBIT(v, n) ((v)[(n / 32)] &= ~(1U << ((n) % 32)))
 #define TSTBIT(v, n) ((v)[(n / 32)] & (1U << ((n) % 32)))
 
+/* Max count in getdents request (couldn`t be more than (PAGE_SIZE / sizeof(struct File))) */
+#define MAX_GETDENTS_COUNT 10
+
 struct File {
     char f_name[MAXNAMELEN]; /* filename */
     off_t f_size;            /* file size in bytes */
@@ -119,7 +122,9 @@ union Fsipc {
         const char req_path[MAXPATHLEN]; 
     } mkdir;
     struct Fsreq_getdents {
-        // TODO implement
+        const char req_path[MAXPATHLEN];
+        int count;
+        struct File buffer[MAX_GETDENTS_COUNT];
     } getdents;
 
     /* Ensure Fsipc is one page */
