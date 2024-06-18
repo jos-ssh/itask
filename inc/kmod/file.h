@@ -13,6 +13,7 @@
 #define __INC_KMOD_FILE_C
 
 #include <inc/kmod/request.h>
+#include <inc/kmod/init.h>
 #include <inc/fs.h>
 
 #ifndef FILED_VERSION
@@ -25,14 +26,12 @@ enum FiledRequestType {
     FILED_REQ_IDENTIFY = KMOD_REQ_IDENTIFY,
 
     FILED_REQ_OPEN = KMOD_REQ_FIRST_USABLE,
-    FILED_REQ_CLOSE,
+    FILED_REQ_SPAWN,
     FILED_REQ_REMOVE,
-    FILED_REQ_STAT,
-    FILED_REQ_READ,
-    FILED_REQ_WRITE,
-    FILED_REQ_TRUNCATE,
-    FILED_REQ_FLUSH,
-    FILED_REQ_SYNC,
+    FILED_REQ_CHMOD,
+    FILED_REQ_CHOWN,
+    FILED_GETCWD,
+    FILED_SETCWD,
 
     FILED_NREQUESTS
 };
@@ -42,44 +41,36 @@ union FiledRequest {
         char req_path[MAXPATHLEN];
         int req_omode;
         int req_flags;
+        uintptr_t req_fd_vaddr;
     } open;
-    struct FiledClose {
-        int req_fileid;
-    } close;
+    struct FiledSpawn {
+        char req_path[MAXPATHLEN];
+        uint16_t req_argc;
+        uint16_t req_argv[SPAWN_MAXARGS];
+        char req_strtab[SPAWN_MAXARGS * SPAWN_ARGLEN];
+    } spawn;
     struct FiledRemove {
         char req_path[MAXPATHLEN];
     } remove;
-    struct FiledStat {
-        int req_fileid;
-    } stat;
-    struct FiledRead {
-        int req_fileid;
-        size_t req_n;
-    } read;
-    struct FiledWrite {
-        int req_fileid;
-        size_t req_n;
-        char req_buf[PAGE_SIZE - (2 * sizeof(size_t))];
-    } write;
-    struct FiledTruncate {
-        int req_fileid;
-        off_t req_size;
-    } truncate;
-    struct FiledFlush {
-        int req_fileid;
-    } flush;
+    struct FiledChmod {
+        char req_path[MAXPATHLEN];
+        uint32_t req_mode;
+    } chmod;
+    struct FiledChown {
+        char req_path[MAXPATHLEN];
+        uint64_t req_uid;
+        uint64_t req_gid;
+    } chown;
+    struct FiledSetcwd {
+        char req_path[MAXPATHLEN];
+    } setcwd;
+
 
     uint8_t pad_[PAGE_SIZE];
 } __attribute((aligned(PAGE_SIZE)));
 
 union FiledResponse {
-    struct FiledStatRes {
-      uint32_t st_mode;
-      uint64_t st_uid;
-      uint64_t st_gid;
-      uint64_t st_size;
-    } stat;
-    char read_buf[PAGE_SIZE];
+    char cwd[MAXPATHLEN];
 
     uint8_t pad_[PAGE_SIZE];
 } __attribute__((aligned(PAGE_SIZE)));
