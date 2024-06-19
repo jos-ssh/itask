@@ -8,9 +8,7 @@ setup_queue(struct virtq *queue, volatile struct virtio_pci_common_cfg_t *cfg_he
     cfg_header->queue_select = queue->queue_idx;
 
     // force allocation
-    queue->desc[0].addr = 0;
-    queue->avail.flags = 0;
-    queue->used.flags = 0;
+    force_alloc(queue, sizeof(struct virtq));
 
     cfg_header->queue_desc   = get_phys_addr(&queue->desc);
     cfg_header->queue_avail  = get_phys_addr(&queue->avail);
@@ -28,13 +26,24 @@ setup_queue(struct virtq *queue, volatile struct virtio_pci_common_cfg_t *cfg_he
 
 void
 notify_queue(struct virtq *queue) {
-    static bool mapped = false;
+    static bool mapped = true;
 
-    if (!mapped) {
-        sys_map_physical_region(queue->notify_reg, CURENVID, (uint64_t *)queue->notify_reg, sizeof(uint64_t), PROT_RW | PROT_CD);
-        mapped = true;
+    if (queue->notify_reg == 0) {
+        return; 
     }
 
+    if (!mapped) {
+        int res = sys_map_physical_region(queue->notify_reg, CURENVID, (uint64_t *)queue->notify_reg, sizeof(uint64_t), PROT_RW | PROT_CD);
+        mapped = true;
+        UNWRAP(res, "Failed to map notify reg");
+
+        cprintf("===> Mapped %lx\n", queue->notify_reg);
+    } else {
+        cprintf("===> Already Mapped %lx\n", queue->notify_reg);
+    }
+
+    cprintf("NOTIFY %p = ", (uint64_t *)queue->notify_reg);
+    
     *((uint64_t *)queue->notify_reg) = queue->queue_idx;
 }
 
@@ -96,7 +105,7 @@ process_queue(struct virtq *queue, bool incoming) {
         uint16_t id = used->id;
 
         if (incoming) {
-            analyze_packet(queue, id);
+            process_packet(queue, id);
         }
 
         unsigned freed_count = 1;
