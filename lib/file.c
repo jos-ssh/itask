@@ -78,6 +78,9 @@ open(const char *path, int flags, ...) {
 
     strcpy(fsipcbuf.open.req_path, path);
     fsipcbuf.open.req_oflags = flags;
+    fsipcbuf.open.req_gid = 0;
+    fsipcbuf.open.req_uid = 0;
+
     if (flags & O_CREAT) {
         va_list mode;
         va_start(mode, flags);

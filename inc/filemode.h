@@ -20,13 +20,13 @@
 #define ISGID 02000 // set-group-ID bit
 #define ISVTX 01000 // sticky bit
 
-#define IRWXU 00700 // owner has read, write, and execute
+#define IRWXU 00700 // owner has read, write, and execute permission
 
 #define IRUSR 00400 // owner has read permission
 #define IWUSR 00200 // owner has write permission
 #define S_IXUSR 00100 // owner has execute permission
 
-#define IRWXG 00070 // group has read, write, and execute
+#define IRWXG 00070 // group has read, write, and execute permission
 
 #define IRGRP 00040 // group has read permission
 #define IWGRP 00020 // group has write permission

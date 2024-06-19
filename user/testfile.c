@@ -5,13 +5,15 @@ const char *msg = "This is the NEW message of the day!\n\n";
 
 #define FVA ((struct Fd *)0xA000000)
 
+
 static int
-xopen(const char *path, int flags) {
+xopen2(const char *path, int flags, uint32_t omode) {
     extern union Fsipc fsipcbuf;
     envid_t fsenv;
 
     strcpy(fsipcbuf.open.req_path, path);
     fsipcbuf.open.req_oflags = flags;
+    fsipcbuf.open.req_omode = omode;
 
     fsenv = ipc_find_env(ENV_TYPE_FS);
     size_t sz = PAGE_SIZE;
@@ -19,18 +21,23 @@ xopen(const char *path, int flags) {
     return ipc_recv(NULL, FVA, &sz, NULL);
 }
 
-void increment_file_name(char *buffer, size_t buf_size) {
-  for (size_t i = 0; i < buf_size; ++i) {
-    if (buffer[i] < 'z') {
-      if (buffer[i] == 0)
-      {
-        buffer[i] = 'a';
-      } else {
-        ++buffer[i];
-      }
-      return;
+static int
+xopen(const char *path, int flags) {
+    return xopen2(path, flags, 0);
+}
+
+void
+increment_file_name(char *buffer, size_t buf_size) {
+    for (size_t i = 0; i < buf_size; ++i) {
+        if (buffer[i] < 'z') {
+            if (buffer[i] == 0) {
+                buffer[i] = 'a';
+            } else {
+                ++buffer[i];
+            }
+            return;
+        }
     }
-  }
 }
 
 void
@@ -82,7 +89,7 @@ umain(int argc, char **argv) {
     cprintf("stale fileid is good\n");
 
     /* Try writing */
-    if ((r = xopen("/new-file", O_RDWR | O_CREAT)) < 0) // TODO(egor): add openmode
+    if ((r = xopen2("/new-file", O_RDWR | O_CREAT, IRWXU | IRWXG | IRWXO)) < 0)
         panic("serve_open /new-file: %ld", (long)r);
 
     if ((r = devfile.dev_write(FVA, msg, strlen(msg))) != strlen(msg))
@@ -143,20 +150,19 @@ umain(int argc, char **argv) {
     name_buffer[0] = '/';
 
     // for (size_t file_name = 1; file_name <= 0xA0000 * BLKSIZE / MAXFILESIZE; ++file_name)
-    for (size_t file_name = 1; file_name <= 10; ++file_name)
-    {
-      increment_file_name(name_buffer + 1, MAXNAMELEN);
-      cprintf("writing %s (%lu/%lld)\n", name_buffer, file_name, 0xA0000 * BLKSIZE / MAXFILESIZE);
-      if ((f = open(name_buffer, O_RDWR | O_CREAT)) < 0) { // TODO(egor): add openmode
-        panic("open %s: %ld",name_buffer, f);
-      }
-      memset(buf, 0, sizeof(buf));
-      for (int64_t i = 0; i < MAXFILESIZE; i += sizeof(buf)) {
-          *(int *)buf = i;
-          if ((r = write(f, buf, sizeof(buf))) < 0)
-              panic("write %s@%ld: %ld", name_buffer, (long)i, (long)r);
-      }
-      close(f);
+    for (size_t file_name = 1; file_name <= 10; ++file_name) {
+        increment_file_name(name_buffer + 1, MAXNAMELEN);
+        cprintf("writing %s (%lu/%lld)\n", name_buffer, file_name, 0xA0000 * BLKSIZE / MAXFILESIZE);
+        if ((f = open(name_buffer, O_RDWR | O_CREAT, IRWXU | IRWXG | IRWXO)) < 0) {
+            panic("open %s: %ld", name_buffer, f);
+        }
+        memset(buf, 0, sizeof(buf));
+        for (int64_t i = 0; i < MAXFILESIZE; i += sizeof(buf)) {
+            *(int *)buf = i;
+            if ((r = write(f, buf, sizeof(buf))) < 0)
+                panic("write %s@%ld: %ld", name_buffer, (long)i, (long)r);
+        }
+        close(f);
     }
 
     cprintf("large file is good\n");

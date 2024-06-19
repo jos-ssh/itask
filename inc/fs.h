@@ -82,6 +82,8 @@ union Fsipc {
         char req_path[MAXPATHLEN];
         int req_oflags;
         uint32_t req_omode;
+        uint32_t req_gid;
+        uint32_t req_uid;
     } open;
     struct Fsreq_set_size {
         int req_fileid;

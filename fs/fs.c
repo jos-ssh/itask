@@ -321,7 +321,7 @@ walk_path(const char *path, struct File **pdir, struct File **pf, char *lastelem
 /* Create "path".  On success set *pf to point at the file and return 0.
  * On error return < 0. */
 int
-file_create(const char *path, struct File **pf, uint32_t mode) {
+file_create(const char *path, struct File **pf, uint32_t mode, uint32_t gid, uint32_t uid) {
     char name[MAXNAMELEN];
     int res;
     struct File *dir, *filp;
@@ -331,7 +331,8 @@ file_create(const char *path, struct File **pf, uint32_t mode) {
     if ((res = dir_alloc_file(dir, &filp)) < 0) return res;
 
     strcpy(filp->f_name, name);
-    // TODO(egor): guid, uid
+    filp->f_gid = gid;
+    filp->f_uid = uid;
     filp->f_mode = (mode & ~umask);
     *pf = filp;
     file_flush(dir);

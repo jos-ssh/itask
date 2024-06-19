@@ -115,7 +115,7 @@ serve_open(envid_t envid, struct Fsreq_open *req,
 
     /* Open the file */
     if (req->req_oflags & O_CREAT) {
-        if ((res = file_create(path, &f, req->req_omode)) < 0) {
+        if ((res = file_create(path, &f, req->req_omode, req->req_gid, req->req_uid)) < 0) {
             if (!(req->req_oflags & O_EXCL) && res == -E_FILE_EXISTS)
                 goto try_open;
             if (debug) cprintf("file_create failed: %i", res);
