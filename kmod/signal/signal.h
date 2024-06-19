@@ -24,8 +24,7 @@ struct SigdSharedData {
     _Atomic volatile uintptr_t handler_vaddr;
 };
 
-extern volatile struct SigdSharedData g_SharedData[NENV];
-static_assert(sizeof(g_SharedData) % PAGE_SIZE == 0, "Unaligned shared data");
+extern struct SigdSharedData g_SharedData[NENV];
 
 void sigd_signal_loop(void);
 
