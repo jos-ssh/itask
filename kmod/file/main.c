@@ -45,6 +45,8 @@ static int filed_serve_open(envid_t from, const void* request,
                             void* response, int* response_perm);
 static int filed_serve_spawn(envid_t from, const void* request,
                              void* response, int* response_perm);
+static int filed_serve_fork(envid_t from, const void* request,
+                            void* response, int* response_perm);
 static int filed_serve_remove(envid_t from, const void* request,
                               void* response, int* response_perm);
 static int filed_serve_stat(envid_t from, const void* request,
@@ -67,7 +69,12 @@ struct RpcServer Server = {
                 [FILED_REQ_IDENTIFY] = filed_serve_identify,
                 [FILED_REQ_OPEN] = filed_serve_open,
                 [FILED_REQ_SPAWN] = filed_serve_spawn,
+                [FILED_REQ_FORK] = filed_serve_fork,
                 [FILED_REQ_REMOVE] = filed_serve_remove,
+                [FILED_REQ_CHMOD] = NULL, // TODO: implement
+                [FILED_REQ_CHOWN] = NULL, // TODO: implement
+                [FILED_REQ_GETCWD] = filed_serve_getcwd,
+                [FILED_REQ_SETCWD] = filed_serve_setcwd,
 
                 [FILED_NREQUESTS] = NULL}};
 
@@ -145,6 +152,7 @@ filed_serve_spawn(envid_t from, const void* request,
     res = filed_get_absolute_path(from, freq->spawn.req_path, &abs_path);
     if (res < 0) return res;
 
+
     // TODO: check permissions
     InitdBuffer.spawn.parent = from;
     memcpy(InitdBuffer.spawn.file, abs_path, MAXPATHLEN);
@@ -152,11 +160,35 @@ filed_serve_spawn(envid_t from, const void* request,
     memcpy(InitdBuffer.spawn.argv, freq->spawn.req_argv, sizeof(InitdBuffer.spawn.argv));
     memcpy(InitdBuffer.spawn.strtab, freq->spawn.req_strtab, sizeof(InitdBuffer.spawn.strtab));
 
-    void* recv_data = NULL;
-    res = rpc_execute(initd, INITD_REQ_SPAWN, &InitdBuffer, &recv_data);
+    res = rpc_execute(initd, INITD_REQ_SPAWN, &InitdBuffer, NULL);
     if (res < 0) return res;
 
     envid_t child = res;
+    const char* parent_cwd = filed_get_env_cwd(from);
+    if (parent_cwd) {
+        filed_set_env_cwd(child, parent_cwd);
+    }
+    // TODO: set GID and UID for child
+    res = sys_env_set_status(child, ENV_RUNNABLE);
+    assert(res == 0);
+
+    return child;
+}
+
+static int
+filed_serve_fork(envid_t from, const void* request,
+                 void* response, int* response_perm) {
+    int res = 0;
+    InitdBuffer.fork.parent = from;
+    res = rpc_execute(initd, INITD_REQ_FORK, &InitdBuffer, NULL);
+    if (res < 0) return res;
+
+    envid_t child = res;
+    const char* parent_cwd = filed_get_env_cwd(from);
+    if (parent_cwd) {
+        filed_set_env_cwd(child, parent_cwd);
+    }
+
     // TODO: set GID and UID for child
     res = sys_env_set_status(child, ENV_RUNNABLE);
     assert(res == 0);

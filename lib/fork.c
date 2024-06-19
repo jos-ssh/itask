@@ -1,5 +1,7 @@
 /* implement fork from user space */
 
+#include "inc/kmod/file.h"
+#include "inc/rpc.h"
 #include <inc/env.h>
 #include <inc/string.h>
 #include <inc/lib.h>
@@ -19,6 +21,15 @@
  */
 envid_t
 fork(void) {
+    static envid_t filed = 0;
+    if (!filed) {
+        filed = kmod_find_any_version(FILED_MODNAME);
+    }
+
+    rpc_execute(filed, FILED_REQ_FORK, NULL, NULL);
+    thisenv = &envs[ENVX(sys_getenvid())];
+    return thisenv->env_ipc_value;
+#if 0
     void* parent_upcall = thisenv->env_pgfault_upcall;
     envid_t child = sys_exofork();
 
@@ -40,8 +51,8 @@ fork(void) {
     if (status_res < 0) {
       return status_res;
     }
-
     return child;
+#endif
 }
 
 envid_t
