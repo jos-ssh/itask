@@ -49,6 +49,9 @@ struct Stat {
     char st_name[MAXNAMELEN];
     off_t st_size;
     int st_isdir;
+    uint32_t st_mode;
+    uint32_t st_uid;
+    uint32_t st_gid;
     struct Dev *st_dev;
 };
 

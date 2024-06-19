@@ -63,7 +63,7 @@ again:
                 cprintf("syntax error: > not followed by word\n");
                 exit();
             }
-            if ((fd = open(t, O_WRONLY | O_CREAT | O_TRUNC)) < 0) {
+            if ((fd = open(t, O_WRONLY | O_CREAT | O_TRUNC, IRUSR | IWUSR | IRGRP | IROTH)) < 0) {
                 cprintf("open %s for write: %i\n", t, fd);
                 exit();
             }
