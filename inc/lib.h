@@ -149,8 +149,9 @@ int fstat(int fd, struct Stat *statbuf);
 int stat(const char *path, struct Stat *statbuf);
 
 /* file.c */
-int open(const char *path, int mode);
-int open_raw_fs(const char *path, int mode);
+int open(const char *path, int mode, ...);
+int open_raw_fs(const char *path, int mode, ...);
+
 int ftruncate(int fd, off_t size);
 int remove(const char *path);
 int sync(void);

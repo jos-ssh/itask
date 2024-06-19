@@ -95,7 +95,7 @@ open(const char *path, int flags, ...) {
     if ((res = fd_alloc(&fd)) < 0) return res;
 
     strncpy(filed_req.open.req_path, path, MAXPATHLEN);
-    filed_req.open.req_omode = mode;
+    filed_req.open.req_omode = flags;
     filed_req.open.req_fd_vaddr = (uintptr_t)fd;
 
     if ((res = filed_rpc_execute(FILED_REQ_OPEN, &filed_req, NULL)) < 0) {
@@ -107,7 +107,7 @@ open(const char *path, int flags, ...) {
 }
 
 int
-open_raw_fs(const char *path, int mode) {
+open_raw_fs(const char *path, int flags, ...) {
     /* Find an unused file descriptor page using fd_alloc.
      * Then send a file-open request to the file server.
      * Include 'path' and 'omode' in request,
