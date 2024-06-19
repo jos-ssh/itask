@@ -59,6 +59,7 @@ umain(int argc, char** argv) {
     cprintf("[%08x: initd] Starting up module...\n", thisenv->env_id);
     initd_load_module("/acpid");
     initd_load_module("/pcid");
+    initd_load_module("/sigd");
     while (1) {
         rpc_listen(&Server, NULL);
     }
