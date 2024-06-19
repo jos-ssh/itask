@@ -100,7 +100,7 @@ serve_open(envid_t envid, struct Fsreq_open *req,
     struct OpenFile *o;
 
     if (debug) {
-        cprintf("serve_open %08x %s 0x%x\n", envid, req->req_path, req->req_omode);
+        cprintf("serve_open %08x %s 0x%x\n", envid, req->req_path, req->req_oflags);
     }
 
     /* Copy in the path, making sure it's null-terminated */
@@ -114,9 +114,9 @@ serve_open(envid_t envid, struct Fsreq_open *req,
     }
 
     /* Open the file */
-    if (req->req_omode & O_CREAT) {
-        if ((res = file_create(path, &f)) < 0) {
-            if (!(req->req_omode & O_EXCL) && res == -E_FILE_EXISTS)
+    if (req->req_oflags & O_CREAT) {
+        if ((res = file_create(path, &f, req->req_omode, req->req_gid, req->req_uid)) < 0) {
+            if (!(req->req_oflags & O_EXCL) && res == -E_FILE_EXISTS)
                 goto try_open;
             if (debug) cprintf("file_create failed: %i", res);
             return res;
@@ -130,7 +130,7 @@ serve_open(envid_t envid, struct Fsreq_open *req,
     }
 
     /* Truncate */
-    if (req->req_omode & O_TRUNC) {
+    if (req->req_oflags & O_TRUNC) {
         if ((res = file_set_size(f, 0)) < 0) {
             if (debug) cprintf("file_set_size failed: %i", res);
             return res;
@@ -146,9 +146,9 @@ serve_open(envid_t envid, struct Fsreq_open *req,
 
     /* Fill out the Fd structure */
     o->o_fd->fd_file.id = o->o_fileid;
-    o->o_fd->fd_omode = req->req_omode & O_ACCMODE;
+    o->o_fd->fd_omode = req->req_oflags & O_ACCMODE;
     o->o_fd->fd_dev_id = devfile.dev_id;
-    o->o_mode = req->req_omode;
+    o->o_mode = req->req_oflags;
 
     if (debug) cprintf("sending success, page %08lx\n", (unsigned long)o->o_fd);
 
@@ -199,17 +199,17 @@ serve_read(envid_t envid, union Fsipc *ipc) {
                 envid, req->req_fileid, (uint32_t)req->req_n);
     }
 
-    struct OpenFile* file = NULL;
+    struct OpenFile *file = NULL;
     int lookup_res = openfile_lookup(envid, req->req_fileid, &file);
     if (lookup_res < 0) {
-      return lookup_res;
+        return lookup_res;
     }
 
     const size_t bufsize = sizeof(ipc->readRet.ret_buf);
     int read_res = file_read(file->o_file, ipc->readRet.ret_buf,
                              MIN(req->req_n, bufsize), file->o_fd->fd_offset);
     if (read_res > 0) {
-      file->o_fd->fd_offset += read_res;
+        file->o_fd->fd_offset += read_res;
     }
     return read_res;
 }
@@ -224,17 +224,17 @@ serve_write(envid_t envid, union Fsipc *ipc) {
     if (debug)
         cprintf("serve_write %08x %08x %08x\n", envid, req->req_fileid, (uint32_t)req->req_n);
 
-    struct OpenFile* file = NULL;
+    struct OpenFile *file = NULL;
     int lookup_res = openfile_lookup(envid, req->req_fileid, &file);
     if (lookup_res < 0) {
-      return lookup_res;
+        return lookup_res;
     }
 
     const size_t bufsize = sizeof(req->req_buf);
     int write_res = file_write(file->o_file, req->req_buf,
-                             MIN(req->req_n, bufsize), file->o_fd->fd_offset);
+                               MIN(req->req_n, bufsize), file->o_fd->fd_offset);
     if (write_res > 0) {
-      file->o_fd->fd_offset += write_res;
+        file->o_fd->fd_offset += write_res;
     }
 
     return write_res;
@@ -255,7 +255,11 @@ serve_stat(envid_t envid, union Fsipc *ipc) {
 
     strcpy(ret->ret_name, o->o_file->f_name);
     ret->ret_size = o->o_file->f_size;
-    ret->ret_isdir = (o->o_file->f_type == FTYPE_DIR);
+    ret->ret_isdir = (ISDIR(o->o_file->f_mode));
+    ret->ret_uid = o->o_file->f_uid;
+    ret->ret_gid = o->o_file->f_gid;
+    ret->ret_mode = o->o_file->f_mode;
+
     return 0;
 }
 

@@ -31,7 +31,7 @@ check_dir(struct File *dir) {
                 cprintf("checking consistency of %s\n", f->f_name);
 
                 for (blockno_t k = 0; k < CEILDIV(f->f_size, BLKSIZE); ++k) {
-                    if (f->f_type == FTYPE_DIR) {
+                    if (ISDIR(f->f_mode)) {
                         check_dir(f);
                     }
                     if (file_block_walk(f, k, &pdiskbno, 0) < 0 || pdiskbno == NULL || *pdiskbno == 0) {

@@ -152,6 +152,8 @@ static int
 devpipe_stat(struct Fd *fd, struct Stat *stat) {
     struct Pipe *p = (struct Pipe *)fd2data(fd);
     strcpy(stat->st_name, "<pipe>");
+
+    stat->st_mode = IFIFO;
     stat->st_size = p->p_wpos - p->p_rpos;
     stat->st_isdir = 0;
     stat->st_dev = &devpipe;
