@@ -119,10 +119,10 @@ union Fsipc {
         char req_path[MAXPATHLEN];
     } remove;
     struct Fsreq_mkdir {
-        const char req_path[MAXPATHLEN]; 
+        char req_path[MAXPATHLEN]; 
     } mkdir;
     struct Fsreq_getdents {
-        const char req_path[MAXPATHLEN];
+        char req_path[MAXPATHLEN];
         int count;
         struct File buffer[MAX_GETDENTS_COUNT];
     } getdents;

@@ -312,8 +312,7 @@ fshandler handlers[] = {
         [FSREQ_SET_SIZE] = serve_set_size,
         [FSREQ_SYNC] = serve_sync,
         [FSREQ_REMOVE] = serve_remove,
-        [FSREQ_MKDIR] = serve_mkdir,
-        [FSREQ_GETDENTS] = serve_getdents,};
+        [FSREQ_MKDIR] = serve_mkdir};
 #define NHANDLERS (sizeof(handlers) / sizeof(handlers[0]))
 
 void

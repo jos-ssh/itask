@@ -180,7 +180,7 @@ i386_init(void) {
 #else
     /* Touch all you want. */
     ENV_CREATE(bin_init, ENV_TYPE_USER);
-    ENV_CREATE(testmkdir, ENV_TYPE_USER);
+    ENV_CREATE(user_testmkdir, ENV_TYPE_USER);
 #endif /* TEST* */
 #endif
 

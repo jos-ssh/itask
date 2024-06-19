@@ -115,6 +115,7 @@ KERN_BINFILES :=	user/hello \
 			user/memlayout \
 			user/primespipe \
 			user/testkbd \
+			user/testmkdir \
 			user/spawnhello \
 			user/testpteshare \
 			user/testshell \
@@ -122,7 +123,6 @@ KERN_BINFILES :=	user/hello \
 			user/implicitconv \
 			user/signedoverflow \
 			user/testremove	\
-			user/testmkdir \
 			user/testgetdents \
 			bin/init
 KERN_BINFILES := $(patsubst %, $(OBJDIR)/%, $(KERN_BINFILES))
