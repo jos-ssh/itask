@@ -1,6 +1,8 @@
 /* ### Static declarations ####
 */
 // #include "inc/stdio.h"
+#include "inc/memlayout.h"
+#include "inc/pool_alloc.h"
 #include "inc/stdio.h"
 #include "net.h"
 #include "inc/assert.h"
@@ -22,18 +24,15 @@ find_module(envid_t initd, const char* name);
 static void
 setup_device(struct PciHeaderGeneral*);
 
-struct buffer {
+struct recv_buffer {
     _Alignas(PAGE_SIZE) char _[PAGE_SIZE];
 };
 
-// TODO: Smarter reallocate & reuse policy for buffers
-struct buffer buffers[VIRTQ_SIZE];
+struct recv_buffer recv_buffers[VIRTQ_SIZE];
+struct virtio_packet_t send_buffers[SEND_BUF_NUM];
 
-// Да, костыль, лол
-// потом придется как-то хранить соответствие
-// и скорее всего не в init.c, а queue.c
-void *reverse_buffer_addr(int64_t index) {
-    return &buffers[index]; // для sendq там indx -> indx;
+void *reverse_recv_buffer_addr(int64_t index) {
+    return &recv_buffers[index]; // для sendq там indx -> indx;
 }
 
 /* #### Initialization ####
@@ -53,13 +52,15 @@ void initialize() {
     res = sys_map_physical_region(response->dev_confspace, CURENVID, pci_header, PAGE_SIZE, PROT_RW | PROT_CD);
     UNWRAP(res, "Failed to map conf space");
 
-    cprintf("pci_header: %p\n", pci_header);
-
-   // 0000000800000000-0000000800003fff
+    // Map MMIO
     res = sys_map_physical_region(0x800000000, CURENVID, (void*)0x800000000, 0x4000, PROT_RW | PROT_CD);
     UNWRAP(res, "Failed to map MMIO");
 
     setup_device(pci_header);
+
+    // Setup allocator for send buffers
+    net.alloc = MAKE_ALLOCATOR(send_buffers);
+    pool_allocator_init(&net.alloc);
 
     g_IsNetdInitialized = true;
 } 
@@ -143,9 +144,9 @@ parse_common_cfg(volatile struct virtio_pci_common_cfg_t *cfg_header) {
     cfg_header->queue_select = VIRTIO_SENDQ;
 
     for (int i = 0; i < VIRTQ_SIZE; ++i) {
-        buffers[i]._[0] = 0; // force alloc
-        net.recvq.desc[i].addr = get_phys_addr(buffers + i);
-        net.recvq.desc[i].len  = sizeof(struct buffer);
+        recv_buffers[i]._[0] = 0; // force alloc
+        net.recvq.desc[i].addr = get_phys_addr(recv_buffers + i);
+        net.recvq.desc[i].len  = sizeof(struct recv_buffer);
         net.recvq.desc[i].flags |= VIRTQ_DESC_F_WRITE;
     }
 
@@ -178,7 +179,6 @@ setup_device(struct PciHeaderGeneral* header) {
         }
 
         uint64_t addr;
-        uint64_t notify_reg;
         uint64_t bar_addr;
 
         struct virtio_pci_common_cfg_t *common_cfg_ptr;
@@ -188,11 +188,14 @@ setup_device(struct PciHeaderGeneral* header) {
             bar_addr = get_bar(header->bar, cap_header.bar);
             addr = cap_header.offset + bar_addr;
             common_cfg_ptr = (struct virtio_pci_common_cfg_t *)addr;
-            cprintf("common_cfg_ptr = %p\n", common_cfg_ptr);
-            // sys_map_physical_region(addr, CURENVID, common_cfg_ptr, sizeof(*common_cfg_ptr), PROT_RW | PROT_CD);
+            
+            // RECVQ notify
+            common_cfg_ptr->queue_select = VIRTIO_RECVQ;
+            net.recvq.notify_reg += notify_cap_offset + common_cfg_ptr->queue_notify_off * notify_off_multiplier;
+            
+            // SENDQ notify
             common_cfg_ptr->queue_select = VIRTIO_SENDQ;
-            notify_reg = notify_cap_offset + common_cfg_ptr->queue_notify_off * notify_off_multiplier;
-            net.sendq.notify_reg += notify_reg; // ????
+            net.sendq.notify_reg += notify_cap_offset + common_cfg_ptr->queue_notify_off * notify_off_multiplier;
 
             if (notify_cap_size < common_cfg_ptr->queue_notify_off * notify_off_multiplier + 2) {
                 panic("Wrong size\n");
@@ -207,19 +210,17 @@ setup_device(struct PciHeaderGeneral* header) {
             notify_cap_size = cap_header.length;
 
             notify_cap_offset = cap_header.offset;
-            net.sendq.notify_reg += get_bar(header->bar, cap_header.bar); // ????
+            net.sendq.notify_reg += get_bar(header->bar, cap_header.bar);
+            net.recvq.notify_reg += get_bar(header->bar, cap_header.bar);
 
             notify_off_multiplier = *(uint32_t *)(((char*) header) + cap_offset_old + sizeof(cap_header));
             break;
         case VIRTIO_PCI_CAP_ISR_CFG:
             addr = cap_header.offset + get_bar(header->bar, cap_header.bar);
             net.isr_status = (uint8_t *)addr;
-            // sys_map_physical_region(addr, CURENVID, net.isr_status, sizeof(uint8_t), PROT_RW | PROT_CD);
             break;
         case VIRTIO_PCI_CAP_DEVICE_CFG:
             net.conf = (struct virtio_net_config_t *)(cap_header.offset + get_bar(header->bar, cap_header.bar));
-            // MAYBE???
-            // sys_map_physical_region((uint64_t)net.conf, CURENVID, net.conf, sizeof(*net.conf), PROT_RW | PROT_CD);
             break;
         case VIRTIO_PCI_CAP_PCI_CFG: break;
         default: break;

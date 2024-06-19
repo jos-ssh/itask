@@ -1,7 +1,9 @@
 #pragma once
 
 #include <inc/types.h>
+#include <inc/pool_alloc.h>
 #include <stdint.h>
+#include "ethernet.h"
 
 #define VIRTQ_SIZE 256
 /* This marks a buffer as continuing via the next field. */
@@ -182,6 +184,8 @@ struct virtio_net_device_t {
     struct virtq sendq;
     struct virtq recvq;
 
+    PoolAllocator alloc;
+
     uint8_t *isr_status;
     struct virtio_net_config_t *conf;
 };
@@ -205,6 +209,13 @@ struct virtio_net_hdr {
     // uint16_t num_buffers; // не будет, так как не согласовано склеивание буферов + мы легаси драйвер (хз почему...)
 };
 
+struct virtio_packet_t {
+    // hw driver side (send_virtio_packet) 
+    struct virtio_net_hdr vheader;
+    // sf driver side (process_packet)
+    struct ethernet_pkt_t data;
+};
+
 static inline int
 virtq_need_event(uint16_t event_idx, uint16_t new_idx, uint16_t old_idx) {
     return (uint16_t)(new_idx - event_idx - 1) < (uint16_t)(new_idx - old_idx);
@@ -224,3 +235,6 @@ alloc_desc(struct virtq *queue, int writable);
 
 void
 process_queue(struct virtq *queue, bool incoming);
+
+struct virtio_packet_t* allocate_virtio_packet();
+void send_virtio_packet(struct virtio_packet_t* packet);

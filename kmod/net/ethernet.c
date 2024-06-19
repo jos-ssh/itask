@@ -4,7 +4,7 @@
 #include "queue.h"
 
 void process_packet(struct virtq *queue, uint64_t indx) {
-    struct virtio_net_hdr* net_hdr = (struct virtio_net_hdr *) reverse_buffer_addr(indx);
+    struct virtio_net_hdr* net_hdr = (struct virtio_net_hdr *) reverse_recv_buffer_addr(indx);
     // struct virtq_desc* desc = &queue->desc[indx];
 
     cprintf(" PACKET \n");

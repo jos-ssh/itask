@@ -23,8 +23,6 @@ void serve_teapot() {
 
     uint8_t status = *net.isr_status;
     if (status & VIRTIO_PCI_ISR_NOTIFY) {
-        cprintf("== KURWA == \n");
-
         process_queue(&net.recvq, true);
         process_queue(&net.sendq, false);
     }
