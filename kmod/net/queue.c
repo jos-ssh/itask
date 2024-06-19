@@ -1,7 +1,13 @@
 #include "queue.h"
+#include "inc/assert.h"
+#include "inc/pool_alloc.h"
 #include "inc/stdio.h"
 #include "net.h"
 #include <inc/lib.h>
+#include <stdbool.h>
+#include <string.h>
+
+static void* sendq_index_to_ptr[VIRTQ_SIZE];
 
 void
 setup_queue(struct virtq *queue, volatile struct virtio_pci_common_cfg_t *cfg_header) {
@@ -26,24 +32,6 @@ setup_queue(struct virtq *queue, volatile struct virtio_pci_common_cfg_t *cfg_he
 
 void
 notify_queue(struct virtq *queue) {
-    static bool mapped = true;
-
-    if (queue->notify_reg == 0) {
-        return; 
-    }
-
-    if (!mapped) {
-        int res = sys_map_physical_region(queue->notify_reg, CURENVID, (uint64_t *)queue->notify_reg, sizeof(uint64_t), PROT_RW | PROT_CD);
-        mapped = true;
-        UNWRAP(res, "Failed to map notify reg");
-
-        cprintf("===> Mapped %lx\n", queue->notify_reg);
-    } else {
-        cprintf("===> Already Mapped %lx\n", queue->notify_reg);
-    }
-
-    cprintf("NOTIFY %p = ", (uint64_t *)queue->notify_reg);
-    
     *((uint64_t *)queue->notify_reg) = queue->queue_idx;
 }
 
@@ -94,8 +82,30 @@ alloc_desc(struct virtq *queue, int writable) {
     return desc;
 }
 
+struct virtio_packet_t* allocate_virtio_packet() {
+    return pool_allocator_alloc_object(&net.alloc);
+}
+
+void send_virtio_packet(struct virtio_packet_t* packet) {
+    struct virtq_desc* desc = alloc_desc(&net.sendq, 0);
+    desc->len = sizeof(*packet);
+    desc->addr = get_phys_addr(packet);
+    packet->vheader.gso_type = VIRTIO_NET_HDR_GSO_NONE;
+
+    size_t desc_indx = desc - net.sendq.desc;
+    sendq_index_to_ptr[desc_indx] = packet;
+
+    queue_avail(&net.sendq, 1);
+    notify_queue(&net.sendq);
+}
+
+// TODO: INVESTIGATE
 void
 process_queue(struct virtq *queue, bool incoming) {
+    // Костыль, ибо чета код этого GC иногда много раз прозодит по одному элементу
+    bool processed[VIRTQ_SIZE];
+    memset(processed, 0, sizeof(processed));
+
     size_t tail = queue->used_tail;
     size_t const mask = ~-(1 << queue->log2_size);
     size_t const done_idx = queue->used.idx;
@@ -104,8 +114,16 @@ process_queue(struct virtq *queue, bool incoming) {
         struct virtq_used_elem *used = &queue->used.ring[tail & mask];
         uint16_t id = used->id;
 
-        if (incoming) {
-            process_packet(queue, id);
+        if (!processed[id]) {
+            processed[id] = true;
+
+            if (incoming) {
+                process_packet(queue, id);
+            } else if (sendq_index_to_ptr[id] != NULL) { // максимальная хуета, по идее должно отсеиваться processed, но нет
+                void* packet_ptr = sendq_index_to_ptr[id];
+                pool_allocator_free_object(&net.alloc, packet_ptr);
+                sendq_index_to_ptr[id] = NULL;
+            }
         }
 
         unsigned freed_count = 1;
@@ -114,6 +132,9 @@ process_queue(struct virtq *queue, bool incoming) {
         while (queue->desc[end].flags & VIRTQ_DESC_F_NEXT) {
             end = queue->desc[end].next;
             ++freed_count;
+
+            // This loop is unexpected, because all packages fit into one buffer
+            panic("Mem leak in this case, consider move mem managment code from above here");
         }
 
         queue->desc[end].next = queue->desc_first_free;
