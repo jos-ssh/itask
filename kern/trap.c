@@ -274,7 +274,7 @@ trap_dispatch(struct Trapframe *tf) {
         return;
     case T_PGFLT:
         /* Handle processor exceptions. */
-        if (curenv->env_pgfault_upcall) 
+        if (curenv->env_pgfault_upcall)
             page_fault_handler(tf);
         else
             panic("Unhandled Page fault");
@@ -413,7 +413,7 @@ trap(struct Trapframe *tf) {
     /* If we made it to this point, then no other environment was
      * scheduled, so we should return to the current environment
      * if doing so makes sense */
-    if (curenv && curenv->env_status == ENV_RUNNING)
+    if (curenv && env_check_sched_status(curenv->env_status, ENV_RUNNING))
         env_run(curenv);
     else
         sched_yield();

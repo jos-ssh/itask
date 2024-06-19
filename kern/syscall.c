@@ -33,31 +33,31 @@
 #define PRINT_ARGS_1_END
 #define PRINT_ARGS_2_END
 
-#define TRACE_SYSCALL_ENTER(...)                                      \
-    do {                                                              \
+#define TRACE_SYSCALL_ENTER(...)                                       \
+    do {                                                               \
         if (trace_syscalls || trace_syscalls_from == curenv->env_id) { \
-            cprintf("[%08x] ", curenv->env_id);                       \
-            cprintf("called %s( ", __func__);                         \
-            PRINT_ARGS(__VA_ARGS__);                                  \
-            cprintf(")\n");                                           \
-        }                                                             \
+            cprintf("[%08x] ", curenv->env_id);                        \
+            cprintf("called %s( ", __func__);                          \
+            PRINT_ARGS(__VA_ARGS__);                                   \
+            cprintf(")\n");                                            \
+        }                                                              \
     } while (0)
 
-#define TRACE_SYSCALL_LEAVE(fmt, ret)                                 \
-    do {                                                              \
+#define TRACE_SYSCALL_LEAVE(fmt, ret)                                  \
+    do {                                                               \
         if (trace_syscalls || trace_syscalls_from == curenv->env_id) { \
-            cprintf("[%08x] ", curenv->env_id);                       \
-            cprintf("returning " fmt " from %s(", (ret), __func__);   \
-            cprintf(") at line %d\n", __LINE__);                      \
-        }                                                             \
+            cprintf("[%08x] ", curenv->env_id);                        \
+            cprintf("returning " fmt " from %s(", (ret), __func__);    \
+            cprintf(") at line %d\n", __LINE__);                       \
+        }                                                              \
     } while (0)
 
-#define TRACE_SYSCALL_NORETURN()                                      \
-    do {                                                              \
+#define TRACE_SYSCALL_NORETURN()                                       \
+    do {                                                               \
         if (trace_syscalls || trace_syscalls_from == curenv->env_id) { \
-            cprintf("[%08x] ", curenv->env_id);                       \
-            cprintf("yielding from %s()\n", __func__);                \
-        }                                                             \
+            cprintf("[%08x] ", curenv->env_id);                        \
+            cprintf("yielding from %s()\n", __func__);                 \
+        }                                                              \
     } while (0)
 
 static inline int
@@ -177,7 +177,7 @@ sys_exofork(void) {
 
     memcpy(&child_env->env_tf, &curenv->env_tf, sizeof(child_env->env_tf));
     child_env->env_tf.tf_regs.reg_rax = 0;
-    child_env->env_status = ENV_NOT_RUNNABLE;
+    env_set_sched_status(&child_env->env_status, ENV_NOT_RUNNABLE);
 
     TRACE_SYSCALL_LEAVE("%x", child_env->env_id);
     return child_env->env_id;
@@ -199,7 +199,8 @@ sys_env_set_status(envid_t envid, int status) {
      * envid's status. */
 #define ARGS ("%x", envid)("%x", status)
     TRACE_SYSCALL_ENTER(ARGS);
-    if (status != ENV_NOT_RUNNABLE && status != ENV_RUNNABLE) {
+    if (!env_check_sched_status(status, ENV_NOT_RUNNABLE) &&
+        !env_check_sched_status(status, ENV_RUNNABLE)) {
         TRACE_SYSCALL_LEAVE("'%i'", -E_INVAL);
         return -E_INVAL;
     }
@@ -216,11 +217,12 @@ sys_env_set_status(envid_t envid, int status) {
         return -E_INVAL;
     }
 
+    int old_status = target->env_status;
     target->env_status = status;
     target->env_ipc_recving = false;
 
-    TRACE_SYSCALL_LEAVE("%d", 0);
-    return 0;
+    TRACE_SYSCALL_LEAVE("%d", old_status);
+    return old_status;
 #undef ARGS
 }
 
@@ -256,7 +258,7 @@ sys_env_set_parent(envid_t target, envid_t parent) {
     struct Env* parent_env = NULL;
     res = envid2env(parent, &parent_env, false);
     SYSCALL_ASSERT(res == 0, res);
-    
+
     struct Env* target_env = NULL;
     res = envid2env(target, &target_env, false);
     SYSCALL_ASSERT(res == 0, res);
@@ -275,7 +277,7 @@ sys_env_downgrade(envid_t target) {
     struct Env* target_env = NULL;
     int res = envid2env(target, &target_env, false);
     SYSCALL_ASSERT(res == 0, res);
-    
+
     target_env->env_type = ENV_TYPE_USER;
     TRACE_SYSCALL_LEAVE("%d", 0);
     return 0;
@@ -467,13 +469,11 @@ sys_map_physical_region(uintptr_t pa, envid_t envid, uintptr_t va, size_t size, 
     // TIP: Use map_physical_region() with (perm | PROT_USER_ | MAP_USER_MMIO)
     //      And don't forget to validate arguments as always.
     TRACE_SYSCALL_ENTER(("0x%lx", pa)("%x", envid)("0x%lx", va)("0x%zx", size)("%x", perm));
-    SYSCALL_ASSERT(curenv->env_type == ENV_TYPE_FS
-                || curenv->env_type == ENV_TYPE_KERNEL, E_BAD_ENV);
+    SYSCALL_ASSERT(curenv->env_type == ENV_TYPE_FS || curenv->env_type == ENV_TYPE_KERNEL, E_BAD_ENV);
     struct Env* target = NULL;
     int lookup_res = envid2env(envid, &target, true);
     SYSCALL_ASSERT(lookup_res == 0, E_BAD_ENV);
-    SYSCALL_ASSERT(target->env_type == ENV_TYPE_FS
-                || target->env_type == ENV_TYPE_KERNEL, E_BAD_ENV);
+    SYSCALL_ASSERT(target->env_type == ENV_TYPE_FS || target->env_type == ENV_TYPE_KERNEL, E_BAD_ENV);
     SYSCALL_ASSERT(va < MAX_USER_ADDRESS, E_INVAL);
     SYSCALL_ASSERT(va % PAGE_SIZE == 0, E_INVAL);
     SYSCALL_ASSERT(pa % PAGE_SIZE == 0, E_INVAL);
@@ -581,7 +581,7 @@ sys_ipc_try_send(envid_t envid, uint32_t value, uintptr_t srcva, size_t size, in
     target->env_ipc_recving = false;
 
     target->env_tf.tf_regs.reg_rax = 0;
-    target->env_status = ENV_RUNNABLE;
+    env_set_sched_status(&target->env_status, ENV_RUNNABLE);
 
     TRACE_SYSCALL_LEAVE("%d", 0);
     return 0;
@@ -619,7 +619,7 @@ sys_ipc_recv(envid_t from, uintptr_t dstva, uintptr_t maxsize) {
     curenv->env_ipc_value = 0;
 
     curenv->env_ipc_recving = true;
-    curenv->env_status = ENV_NOT_RUNNABLE;
+    env_set_sched_status(&curenv->env_status, ENV_NOT_RUNNABLE);
 
     TRACE_SYSCALL_NORETURN();
     sched_yield();
@@ -703,18 +703,18 @@ sys_region_refs(uintptr_t addr, size_t size, uintptr_t addr2, size_t size2) {
 
 static int
 sys_get_rsdp_paddr(physaddr_t* phys_addr) {
-  TRACE_SYSCALL_ENTER(("%p", phys_addr));
-  SYSCALL_ASSERT(curenv->env_type == ENV_TYPE_KERNEL, E_BAD_ENV);
-  user_mem_assert(curenv, phys_addr, sizeof(*phys_addr), PROT_USER_ | PROT_R | PROT_W);
+    TRACE_SYSCALL_ENTER(("%p", phys_addr));
+    SYSCALL_ASSERT(curenv->env_type == ENV_TYPE_KERNEL, E_BAD_ENV);
+    user_mem_assert(curenv, phys_addr, sizeof(*phys_addr), PROT_USER_ | PROT_R | PROT_W);
 
-  physaddr_t root = 0;
-  struct AddressSpace* old = switch_address_space(&kspace);
-  root = uefi_lp->ACPIRoot;
-  switch_address_space(old);
+    physaddr_t root = 0;
+    struct AddressSpace* old = switch_address_space(&kspace);
+    root = uefi_lp->ACPIRoot;
+    switch_address_space(old);
 
-  *phys_addr = root;
-  TRACE_SYSCALL_LEAVE("%d", 0);
-  return 0;
+    *phys_addr = root;
+    TRACE_SYSCALL_LEAVE("%d", 0);
+    return 0;
 }
 
 /* Dispatches to the correct kernel function, passing the arguments. */

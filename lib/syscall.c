@@ -126,8 +126,14 @@ sys_unmap_region(envid_t envid, void *va, size_t size) {
 /* sys_exofork is inlined in lib.h */
 
 int
-sys_env_set_status(envid_t envid, int status) {
-    return syscall(SYS_env_set_status, 1, envid, status, 0, 0, 0, 0);
+sys_env_set_status(envid_t env, int status) {
+    int res = sys_env_exchange_status(env, status);
+    return res < 0 ? res : 0;
+}
+
+int
+sys_env_exchange_status(envid_t envid, int status) {
+    return syscall(SYS_env_set_status, 0, envid, status, 0, 0, 0, 0);
 }
 
 int
