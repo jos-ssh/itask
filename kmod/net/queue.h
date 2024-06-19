@@ -3,7 +3,7 @@
 #include <inc/types.h>
 #include <stdint.h>
 
-#define VIRTQ_SIZE 512
+#define VIRTQ_SIZE 256
 /* This marks a buffer as continuing via the next field. */
 #define VIRTQ_DESC_F_NEXT 1
 /* This marks a buffer as write-only (otherwise read-only). */
