@@ -16,16 +16,19 @@
 #include <inc/env.h>
 
 struct SigdSharedData {
-    _Atomic volatile envid_t env;
-    _Atomic volatile uint64_t recv_signals;
-    _Atomic volatile uint64_t sigmask;
-    _Atomic volatile uint64_t alarm_countdown;
-
-    _Atomic volatile uintptr_t handler_vaddr;
+    _Atomic volatile uint64_t recvd_signals;
+    _Atomic volatile uint64_t timer_countdown;
 };
 
 extern struct SigdSharedData g_SharedData[NENV];
 
-void sigd_signal_loop(void);
+#define ENV_IN_SIGHANDLER 0x8
+
+static int
+env_status_accepts_signals(int status) {
+    return (status & (ENV_SCHED_STATUS_MASK | ENV_IN_SIGHANDLER)) == ENV_RUNNABLE;
+}
+
+void sigd_signal_loop(envid_t parent);
 
 #endif /* signal.h */

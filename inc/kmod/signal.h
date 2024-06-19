@@ -30,7 +30,7 @@ enum SigdRequestType {
     SIGD_REQ_SET_HANDLER,
 
     /* internal requests, unavailable for users and other modules */
-    SIGD_REQ_CALL_HANDLER_,
+    SIGD_REQ_TRY_CALL_HANDLER_,
 
     SIGD_NREQUESTS
 };
@@ -55,9 +55,10 @@ union SigdRequest {
 
     /* Signal loop is user process and cannot modify trapframes, so this action
      * must be delegated to server */
-    struct SigdCallHandler_ {
-        envid_t target;
-    } call_handler_;
+    struct SigdTryCallHandler_ {
+        size_t target_idx;
+        uint8_t sig_no;
+    } try_call_handler_;
 
     uint8_t pad_[PAGE_SIZE];
 } __attribute__((aligned(PAGE_SIZE)));
