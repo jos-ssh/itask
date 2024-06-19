@@ -1,18 +1,21 @@
 #include <inc/lib.h>
 
+const char* directory = "/great_directory_52";
+const char* file      = "/great_directory_52/very_great_directory_52";
+
+void test_mkdir() {
+    cprintf("\n==========================\nSTART TEST MKDIR\n==========================\n");
+    int res = 0;
+
+    res = mkdir(directory);
+    cprintf("MKDIR TEST: During mkdir \"%s\" <%i>(%d)\n", directory, res, res);
+ 
+    int fd = open(file, O_RDWR | O_CREAT);
+    cprintf("MKDIR TEST: open \"%s\" <%i>(%d)\n", file, fd, fd);
+    cprintf("fd after open \"%s\" %d\n", file, fd);
+    cprintf("\n==========================\nEND TEST MKDIR\n==========================\n");
+}
+
 void
 umain(int argc, char **argv) {
-    int res = 0;
-    res = open("/new_folder/hello", O_RDWR);
-    cprintf("Res during open \"/new_folder/hello\" %i\n", res);
-
-    res = mkdir("/new_folder");
-    if (res < 0)
-        panic("mkdir \"/new_folder\" %i", res);
-    cprintf("mkdir \"/new_folder\"\n");
-
-    int fd = open("/new_folder/hello", O_RDWR);
-    if (fd < 0)
-        open("mkdir \"/new_folder/hello\" %i", fd);
-    cprintf("fd after open \"/new_folder/hello\" %i\n", res);
 }
