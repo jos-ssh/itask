@@ -30,6 +30,9 @@ enum {
     /* ACPI errors */
     E_ACPI_BAD_CHECKSUM = 20, /* ACPI table has wrong checksum */
 
+    /* UsersD errors*/
+    E_ENV_ALREADY_REGISTERED = 21,
+    E_NOT_ENOUGH_PRIVILEGES = 22,
     MAXERROR
 };
 

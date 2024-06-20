@@ -1,4 +1,7 @@
+#include <inc/kmod/users.h>
+
 #include <inc/lib.h>
+
 #include <inc/random.h>
 #include <inc/stdio.h>
 #include <inc/crypto.h>
@@ -6,7 +9,7 @@
 const char* kPasswdPath = "/passwd";
 const char* kShadowPath = "/shadow";
 
-const size_t kMaxLoginAndPasswordLength = 256;
+const size_t kMaxLoginAndPasswordLength = MAX_USERNAME_LENGTH > MAX_PASSWORD_LENGTH ? MAX_USERNAME_LENGTH : MAX_PASSWORD_LENGTH;
 const size_t kMaxLineBufLength = kMaxLoginAndPasswordLength * 2 + 256;
 const size_t kMaxDelay = 1000;
 const size_t kMaxLoginAttempts = 3;
@@ -16,14 +19,14 @@ static void no_users_login(void);
 static bool login(void);
 
 /* Parsed line of etc/passwd
-   username:UID:GUI:homedir:shell
+   username:UID:GID:homedir:shell
 
    P.s. Must be implemented as array of char*
 */
 struct PasswParsed {
     const char* username;
     const char* uid;
-    const char* guid;
+    const char* gid;
     const char* homedir;
     const char* shell;
 };
