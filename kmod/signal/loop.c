@@ -19,15 +19,13 @@ static void send_signals(envid_t server);
 
 void
 sigd_signal_loop(envid_t parent) {
+    assert(parent == kmod_find_any_version(SIGD_MODNAME));
+
     static uint64_t current_time = 0;
 
     cprintf("[%08x: sigd-loop] Starting up main loop...\n", thisenv->env_id);
 
     current_time = vsys_gettime();
-
-    // FIXME: wrong parent envid in fork
-    parent = kmod_find_any_version(SIGD_MODNAME);
-
 
     for (;;) {
         update_timers(&current_time);
@@ -62,7 +60,7 @@ send_signals(envid_t server) {
 
 static void
 update_timers(uint64_t* current_time) {
-    uint64_t time_now = vsys_gettime();
+    uint64_t time_now = vsys_gettime(); // TODO: another time function
     if (time_now - *current_time < 1) {
         return;
     }
@@ -70,7 +68,7 @@ update_timers(uint64_t* current_time) {
     *current_time = time_now;
 
     for (size_t idx = 0; idx < NENV; ++idx) {
-        // maybe cmpxhg
+        // TODO: maybe cmpxhg
 
         uint32_t time = atomic_load(&g_SharedData[idx].timer_countdown);
 

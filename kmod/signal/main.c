@@ -57,7 +57,7 @@ sigd_invoke_handler(size_t env_idx, uint8_t sig_no) {
 
     // change rip to handler
     if (EnvData[env_idx].handler_vaddr == 0) {
-        panic("handler vaddr doesnt set");
+        panic("handler vaddr doesn't set");
     }
 
     tf_copy.tf_rip = EnvData[env_idx].handler_vaddr;
@@ -348,6 +348,7 @@ sigd_start_loop(void) {
     void* res_data = NULL;
 
     initd_req.fork.parent = CURENVID;
+    envid_t parent = thisenv->env_id;
     rpc_execute(InitdEnvid, INITD_REQ_FORK, &initd_req, &res_data);
     thisenv = &envs[ENVX(sys_getenvid())];
 
@@ -355,7 +356,7 @@ sigd_start_loop(void) {
     if (res < 0) return res;
 
     if (res == 0) {
-        sigd_signal_loop(thisenv->env_id);
+        sigd_signal_loop(parent);
         panic("Unreachable code");
     }
 
