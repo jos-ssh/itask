@@ -291,7 +291,7 @@ serve_remove(envid_t envid, union Fsipc *req) {
 int
 serve_mkdir(envid_t envid, union Fsipc *req) {
     struct File* f = NULL;
-    return file_create(req->mkdir.req_path, &f, IFDIR, req->mkdir.req_gid, req->mkdir.req_uid);
+    return file_create(req->mkdir.req_path, &f, IFDIR | req->mkdir.req_omode, req->mkdir.req_gid, req->mkdir.req_uid);
 }
 
 int

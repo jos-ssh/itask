@@ -152,7 +152,7 @@ int open(const char *path, int mode, ...);
 int ftruncate(int fd, off_t size);
 int remove(const char *path);
 int sync(void);
-int mkdir(const char *path);
+int mkdir(const char *path, int mode);
 int getdents(const char* path, struct FileInfo* buffer, uint32_t count);
 
 /* spawn.c */

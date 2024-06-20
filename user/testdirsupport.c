@@ -9,7 +9,7 @@ void test_mkdir() {
     cprintf("\n==========================\nSTART TEST MKDIR\n==========================\n");
     int res = 0;
 
-    res = mkdir(directory);
+    res = mkdir(directory, 0);
     cprintf("MKDIR TEST: During mkdir \"%s\" <%i>(%d)\n", directory, res, res);
  
     int fd = open(file1, O_RDWR | O_CREAT);
@@ -23,7 +23,7 @@ void test_remove() {
     cprintf("\n==========================\nSTART TEST REMOVE\n==========================\n");
     int res = 0;
 
-    res = mkdir(directory);
+    res = mkdir(directory, 0);
     cprintf("REMOVE TEST: During mkdir \"%s\" <%i>(%d)\n", directory, res, res);
  
     int fd1 = open(file1, O_RDWR | O_CREAT);
@@ -56,7 +56,7 @@ void test_getdents_small_number()
     cprintf("\n==========================\nSTART TEST GETDENTS SMALL N\n==========================\n");
     int res = 0;
 
-    res = mkdir(directory);
+    res = mkdir(directory, 0);
     cprintf("GETDENTS SMALL N TEST: During mkdir \"%s\" <%i>(%d)\n", directory, res, res);
 
     int fd1 = open(file1, O_RDWR | O_CREAT);
@@ -90,7 +90,7 @@ void test_getdents_big_number()
     cprintf("\n==========================\nSTART TEST GETDENTS BIG N\n==========================\n");
     int res = 0;
 
-    res = mkdir(directory);
+    res = mkdir(directory, 0);
     if (res < 0)
         cprintf("GETDENTS BIG N TEST: During mkdir \"%s\" <%i>(%d)\n", directory, res, res);
 

@@ -225,12 +225,13 @@ remove(const char *path) {
 }
 
 int 
-mkdir(const char *path) {
+mkdir(const char *path, int mode) {
     if (strlen(path) >= MAXPATHLEN)
         return -E_BAD_PATH;
 
     fsipcbuf.mkdir.req_gid = 0;
     fsipcbuf.mkdir.req_uid = 0;
+    fsipcbuf.mkdir.req_omode = mode;
     strlcpy(fsipcbuf.mkdir.req_path, path, MAXPATHLEN);
     return fsipc(FSREQ_MKDIR, &fsipcbuf);
 }

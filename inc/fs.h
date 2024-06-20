@@ -135,6 +135,7 @@ union Fsipc {
         char req_path[MAXPATHLEN]; 
         uint32_t req_gid;
         uint32_t req_uid;
+        uint32_t req_omode;
     } mkdir;
     struct Fsreq_getdents {
         char req_path[MAXPATHLEN];
