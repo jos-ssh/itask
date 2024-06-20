@@ -43,7 +43,7 @@ KERNMODS := $(OBJDIR)/kmod/acpid \
 TESTS := $(OBJDIR)/test/test_initd \
       $(OBJDIR)/test/test_acpid \
       $(OBJDIR)/test/test_pcid \
-	  $(OBJDIR)/test/test_hello
+	  $(OBJDIR)/test/test_sigd
 
 FSIMGFILES := $(FSIMGTXTFILES) $(BINAPPS) $(USERAPPS) $(KERNMODS) $(TESTS)
 

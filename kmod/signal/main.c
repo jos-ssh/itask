@@ -12,7 +12,7 @@
 #include "signal.h"
 
 
-#define signal_debug 1
+#define signal_debug 0
 
 struct SigdSharedData g_SharedData[NENV] __attribute__((aligned(PAGE_SIZE)));
 
@@ -227,17 +227,27 @@ sigd_serve_alarm(envid_t from, const void* request,
     }
 
 
+    if (signal_debug) {
+        cprintf("[sigd] serve alarm from %d\n", env_id);
+    }
+
     size_t idx = ENVX(env_id);
     if (EnvData[idx].env != env_id) {
         sigd_reset_env_data(env_id);
+        return 0;
     }
-
 
     if (EnvData[idx].handler_vaddr == 0) {
+        if (signal_debug) {
+            cprintf("[sigd] no handler for alarm\n");
+        }
         return -E_INVAL;
     }
-    if (EnvData[idx].sigmask & ~(1ULL << SIGALRM)) {
-        // sigalrm ignored
+
+    if (is_ignored_signal(EnvData[idx].sigmask, SIGALRM)) {
+        if (signal_debug) {
+            cprintf("[sigd] SIGALRM ignored\n");
+        }
         return -E_INVAL;
     }
     atomic_store(&g_SharedData[idx].timer_countdown, sigd_req->alarm.time);

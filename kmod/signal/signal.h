@@ -26,7 +26,7 @@ extern struct SigdSharedData g_SharedData[NENV];
 
 static int
 env_status_accepts_signals(int status) {
-    return (status & (ENV_SCHED_STATUS_MASK | ENV_IN_SIGHANDLER)) == ENV_RUNNABLE;
+    return (status & ENV_IN_SIGHANDLER) == 0;
 }
 
 void sigd_signal_loop(envid_t parent);

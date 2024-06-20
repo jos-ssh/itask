@@ -25,11 +25,10 @@ global_signal_handler(uint8_t sig_no, struct Trapframe *saved_tf) {
     assert(sig_no < NSIGNAL);
 
     sighandler_t handler = signal_handlers[sig_no];
-    if (handler) {
-        handler(sig_no);
-    } else {
-        printf("no handler for signal %d\n", sig_no);
+    if (!handler) {
+        panic("no handler for signal %d\n", sig_no);
     }
+    handler(sig_no);
 
     sys_env_set_status(CURENVID, ENV_RUNNABLE);
     sys_env_set_trapframe(CURENVID, saved_tf);
@@ -41,6 +40,11 @@ static void
 _exit(int sig_no) {
     printf("Killed\n");
     exit();
+}
+
+static void
+_alarm(int sig_no) {
+    // No-op
 }
 
 void
@@ -85,6 +89,7 @@ libmain(int argc, char **argv) {
 
         signal(SIGKILL, _exit);
         signal(SIGTERM, _exit);
+        signal(SIGALRM, _alarm);
     }
 
     /* Call user main routine */

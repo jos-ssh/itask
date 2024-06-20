@@ -25,12 +25,11 @@ sigd_signal_loop(envid_t parent) {
 
     current_time = vsys_gettime();
 
-    // FIXME: wrong parent envid in fork 
+    // FIXME: wrong parent envid in fork
     parent = kmod_find_any_version(SIGD_MODNAME);
 
 
     for (;;) {
-        // cprintf("loop...\n");
         update_timers(&current_time);
         send_signals(parent);
         sys_yield();
@@ -57,7 +56,6 @@ send_signals(envid_t server) {
         req.try_call_handler_.sig_no = sig;
 
         void* res_data = NULL;
-        cprintf("[sigd-loop] get signal %d\n", sig);
         rpc_execute(server, SIGD_REQ_TRY_CALL_HANDLER_, &req, &res_data);
     }
 }
@@ -77,8 +75,9 @@ update_timers(uint64_t* current_time) {
         uint32_t time = atomic_load(&g_SharedData[idx].timer_countdown);
 
         if (time != 0) {
-            uint64_t old_time = atomic_fetch_sub(&g_SharedData[idx].timer_countdown, 1);
-            if (old_time == 1) {
+            atomic_fetch_sub(&g_SharedData[idx].timer_countdown, 1);
+            if (time == 1) {
+                // set SIGALRM
                 atomic_fetch_or(&g_SharedData[idx].recvd_signals, (1 << SIGALRM));
             }
         }
