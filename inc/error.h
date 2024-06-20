@@ -33,6 +33,9 @@ enum {
     /* UsersD errors*/
     E_ENV_ALREADY_REGISTERED = 21,
     E_NOT_ENOUGH_PRIVILEGES = 22,
+    E_ALREADY_LOGGED_IN = 23,
+    E_ACCESS_DENIED = 24,
+    
     MAXERROR
 };
 

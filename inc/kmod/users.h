@@ -36,8 +36,8 @@ struct EnvInfo {
 
 union UsersdRequest {
     struct UsersdLogin {
-        const char username[MAX_USERNAME_LENGTH];
-        const char password[MAX_PASSWORD_LENGTH];
+        char username[MAX_USERNAME_LENGTH];
+        char password[MAX_PASSWORD_LENGTH];
     } login;
 
     struct UsersdRegisterEnv {

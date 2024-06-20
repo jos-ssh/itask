@@ -12,7 +12,8 @@ LIB_SRCFILES :=		lib/console.c \
 			lib/rpc.c \
       		lib/pool_alloc.c \
 			lib/syscall.c \
-			lib/stdio.c
+			lib/stdio.c \
+			lib/passw.c
 
 ifeq ($(CONFIG_KSPACE),y)
 LIB_SRCFILES +=		lib/random.c \

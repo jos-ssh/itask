@@ -1,7 +1,12 @@
 #include <inc/kmod/users.h>
 #include <inc/rpc.h>
-
+#include <inc/crypto.h>
+#include <inc/random.h>
+#include <inc/passw.h>
 #include <inc/lib.h>
+
+const size_t kMaxDelay = 1000;
+const size_t kMaxLineBufLength = 512;
 
 static int usersd_serve_identify(envid_t from, const void* request,
                                  void* response, int* response_perm);
@@ -49,13 +54,45 @@ usersd_serve_identify(envid_t from, const void* request,
     return 0;
 }
 
+static void
+sleep(int nanosecons) {
+    while (nanosecons--) {
+        // No-op
+    }
+}
 
 static int
 usersd_serve_login(envid_t from, const void* request,
                    void* response, int* response_perm) {
+    srand(vsys_gettime());
     static uid_t sCurrentUser;
-    (void)sCurrentUser;
-    return 0;
+
+    const struct UsersdLogin* req = request;
+
+    if (sCurrentUser)
+        return -E_ALREADY_LOGGED_IN;
+
+    char passwd_line_buf[kMaxLineBufLength];
+    char shadow_line_buf[kMaxLineBufLength];
+
+    struct PasswParsed passw;
+    struct ShadowParsed shadow;
+
+    int res1 = find_passw_line(req->username, passwd_line_buf, kMaxLineBufLength, &passw);
+    int res2 = find_shadow_line(req->password, shadow_line_buf, kMaxLineBufLength, &shadow);
+
+    if (res1 == 0 && res2 == 0) {
+        // Jos Security
+        sleep(rand() & kMaxDelay);
+
+        if (check_PBKDF2(shadow.hashed, shadow.salt, req->password)) {
+            spawnl(passw.shell, passw.shell, NULL);
+
+            return 0;
+        }
+    }
+
+    return -E_ACCESS_DENIED;
 }
 
 struct FullEnvInfo {
