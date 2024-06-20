@@ -51,7 +51,7 @@ struct Dev devfile = {
  *  -E_BAD_PATH if the path is too long (>= MAXPATHLEN)
  *  < 0 for other errors. */
 int
-open(const char *path, int mode) {
+open(const char *path, int flags, ...) {
     /* Find an unused file descriptor page using fd_alloc.
      * Then send a file-open request to the file server.
      * Include 'path' and 'omode' in request,
@@ -77,7 +77,18 @@ open(const char *path, int mode) {
 
 
     strcpy(fsipcbuf.open.req_path, path);
-    fsipcbuf.open.req_omode = mode;
+    fsipcbuf.open.req_oflags = flags;
+    fsipcbuf.open.req_gid = 0;
+    fsipcbuf.open.req_uid = 0;
+
+    if (flags & O_CREAT) {
+        va_list mode;
+        va_start(mode, flags);
+
+        fsipcbuf.open.req_omode = va_arg(mode, uint32_t);
+
+        va_end(mode);
+    }
 
     if ((res = fsipc(FSREQ_OPEN, fd)) < 0) {
         fd_close(fd, 0);
@@ -114,21 +125,20 @@ devfile_read(struct Fd *fd, void *buf, size_t n) {
      * system server. */
 
     size_t remaining = n;
-    while (remaining > 0)
-    {
-      fsipcbuf.read.req_fileid = fd->fd_file.id;
-      fsipcbuf.read.req_n = MIN(remaining, sizeof(fsipcbuf.readRet.ret_buf));
-      int res = fsipc(FSREQ_READ, &fsipcbuf);
-      if (res < 0) {
-        return res;
-      }
+    while (remaining > 0) {
+        fsipcbuf.read.req_fileid = fd->fd_file.id;
+        fsipcbuf.read.req_n = MIN(remaining, sizeof(fsipcbuf.readRet.ret_buf));
+        int res = fsipc(FSREQ_READ, &fsipcbuf);
+        if (res < 0) {
+            return res;
+        }
 
-      if (res == 0) {
-        break;
-      }
+        if (res == 0) {
+            break;
+        }
 
-      memcpy(buf + n - remaining, fsipcbuf.readRet.ret_buf, res);
-      remaining -= res;
+        memcpy(buf + n - remaining, fsipcbuf.readRet.ret_buf, res);
+        remaining -= res;
     }
 
     return n - remaining;
@@ -149,23 +159,22 @@ devfile_write(struct Fd *fd, const void *buf, size_t n) {
 
     // LAB 10: Your code here:
     size_t remaining = n;
-    while (remaining > 0)
-    {
-      const size_t bufsize = sizeof(fsipcbuf.write.req_buf);
-      fsipcbuf.write.req_fileid = fd->fd_file.id;
-      fsipcbuf.write.req_n = MIN(remaining, bufsize);
-      memcpy(fsipcbuf.write.req_buf, buf + n - remaining, MIN(bufsize, remaining));
+    while (remaining > 0) {
+        const size_t bufsize = sizeof(fsipcbuf.write.req_buf);
+        fsipcbuf.write.req_fileid = fd->fd_file.id;
+        fsipcbuf.write.req_n = MIN(remaining, bufsize);
+        memcpy(fsipcbuf.write.req_buf, buf + n - remaining, MIN(bufsize, remaining));
 
-      int res = fsipc(FSREQ_WRITE, &fsipcbuf);
-      if (res < 0) {
-        return res;
-      }
+        int res = fsipc(FSREQ_WRITE, &fsipcbuf);
+        if (res < 0) {
+            return res;
+        }
 
-      if (res == 0) {
-        break;
-      }
+        if (res == 0) {
+            break;
+        }
 
-      remaining -= res;
+        remaining -= res;
     }
 
     return n - remaining;
@@ -181,6 +190,9 @@ devfile_stat(struct Fd *fd, struct Stat *st) {
     strcpy(st->st_name, fsipcbuf.statRet.ret_name);
     st->st_size = fsipcbuf.statRet.ret_size;
     st->st_isdir = fsipcbuf.statRet.ret_isdir;
+    st->st_mode = fsipcbuf.statRet.ret_mode;
+    st->st_gid = fsipcbuf.statRet.ret_gid;
+    st->st_uid = fsipcbuf.statRet.ret_uid;
 
     return 0;
 }

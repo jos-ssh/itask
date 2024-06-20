@@ -1,12 +1,61 @@
+#include "spawn.h"
+
+#include "inc/env.h"
+#include "inc/fd.h"
+#include "inc/memlayout.h"
 #include "inc/mmu.h"
+#include "inc/stdio.h"
+#include "inc/trap.h"
 #include "inc/types.h"
 #include <inc/lib.h>
 #include <inc/elf.h>
 
+envid_t
+initd_fork(envid_t parent) {
+    int res = 0;
+    const volatile struct Env* parent_env = &envs[ENVX(parent)];
+
+    void *parent_upcall = parent_env->env_pgfault_upcall;
+    res = sys_exofork();
+
+    if (res < 0)
+        return res;
+    envid_t child = res;
+
+    if (child == 0) {
+        panic("Unreachable code");
+    }
+
+    // FIXME: remove when kmod-user fork is implemented
+    res = sys_env_set_parent(child, parent);
+    if (res < 0) goto error;
+
+    struct Trapframe child_tf;
+    memcpy(&child_tf, (const void*) &parent_env->env_tf, sizeof(child_tf));
+    child_tf.tf_regs.reg_rax = 0;
+
+    res = sys_env_set_trapframe(child, &child_tf);
+    if (res < 0) goto error;
+
+    res = sys_map_region(parent, NULL, child, NULL,
+                   MAX_USER_ADDRESS, PROT_ALL | PROT_LAZY | PROT_COMBINE);
+    if (res < 0) goto error;
+
+    if (parent_upcall) {
+      res = sys_env_set_pgfault_upcall(child, parent_upcall);
+      if (res < 0) goto error;
+    }
+
+    return child;
+error:
+    sys_env_destroy(child);
+    return res;
+}
+
 #define UTEMP2USTACK(addr) ((void *)(addr) + (USER_STACK_TOP - USER_STACK_SIZE) - UTEMP)
 
-/* Helper functions for spawn. */
-static int load_executable(envid_t child, int fd, const char** argv);
+/* Helper functions for spawn and exec. */
+static int load_executable(envid_t child, int fd, const char **argv);
 
 static int init_stack(envid_t child, const char **argv, struct Trapframe *tf);
 static int map_segment(envid_t child, uintptr_t va, size_t memsz,
@@ -19,7 +68,21 @@ static int copy_shared_region(void *start, void *end, void *arg);
  *   which will be passed to the child as its command-line arguments.
  * Returns child envid on success, < 0 on failure. */
 int
-spawn(const char *prog, const char **argv) {
+initd_spawn(envid_t parent, const char *prog, const char **argv) {
+#if 0
+    cprintf("initd_spawn(parent=%08x, prog=%s, argv=[", parent, prog);
+    const char** argp = argv;
+    while (*argp)
+    {
+      cprintf("\"%s\"", *argp);
+      ++argp;
+      if (*argp) {
+        cprintf(", ");
+      }
+    }
+    cprintf("])\n");
+#endif
+
     int res;
 
     /* This code follows this procedure:
@@ -28,20 +91,30 @@ spawn(const char *prog, const char **argv) {
      *   - TODO: check file is executable
      *   - Use sys_exofork() to create a new environment.
      *   - Load child with code from file
-     *   - Start the child process running with sys_env_set_status(). */
+     *   - Copy open file descriptors */
 
     int fd = open(prog, O_RDONLY);
     if (fd < 0) return fd;
 
     /* Create new child environment */
+    // TODO: set parent appropriately
     if ((int)(res = sys_exofork()) < 0) goto error2;
     envid_t child = res;
+
+    // FIXME: remove when kmod-user spawn is implemented
+    if ((int)(res = sys_env_set_parent(child, parent)) < 0) goto error;
 
     if ((int)(res = load_executable(child, fd, argv)) < 0) goto error;
     close(fd);
 
-    if ((res = sys_env_set_status(child, ENV_RUNNABLE)) < 0)
-        panic("sys_env_set_status: %i", res);
+    /* TODO: copy file descriptors separately to handle possible O_CLOEXEC */
+    /* Copy file descriptors. */
+    res = sys_map_region(parent, (void *)FDTABLE, child, (void *)FDTABLE,
+                   2 * MAXFD * PAGE_SIZE, PROT_ALL | PROT_SHARE | PROT_COMBINE);
+   
+    if (res < 0) {
+      panic("FD copy: %i\n", res);
+    }
 
     return child;
 
@@ -53,38 +126,8 @@ error2:
     return res;
 }
 
-/* Spawn, taking command-line arguments array directly on the stack.
- * NOTE: Must have a sentinal of NULL at the end of the args
- * (none of the args may be NULL). */
-int
-spawnl(const char *prog, const char *arg0, ...) {
-    /* We calculate argc by advancing the args until we hit NULL.
-     * The contract of the function guarantees that the last
-     * argument will always be NULL, and that none of the other
-     * arguments will be NULL. */
-    int argc = 0;
-    va_list vl;
-    va_start(vl, arg0);
-    while (va_arg(vl, void *) != NULL) argc++;
-    va_end(vl);
-
-    /* Now that we have the size of the args, do a second pass
-     * and store the values in a VLA, which has the format of argv */
-    const char *argv[argc + 2];
-    argv[0] = arg0;
-    argv[argc + 1] = NULL;
-
-    va_start(vl, arg0);
-    unsigned i;
-    for (i = 0; i < argc; i++) {
-        argv[i + 1] = va_arg(vl, const char *);
-    }
-    va_end(vl);
-
-    return spawn(prog, argv);
-}
-
-static int load_executable(envid_t child, int fd, const char** argv) {
+static int
+load_executable(envid_t child, int fd, const char **argv) {
     unsigned char elf_buf[512];
     int res;
     /*
@@ -178,11 +221,6 @@ static int load_executable(envid_t child, int fd, const char** argv) {
                                fd, ph->p_filesz, ph->p_offset, perm)) < 0)
             goto error;
     }
-
-    /* TODO: copy file descriptors separately to handle possible O_CLOEXEC */
-    /* Copy shared library state. */
-    if ((res = foreach_shared_region(copy_shared_region, &child)) < 0)
-        panic("copy_shared_region: %i", res);
 
     if ((res = sys_env_set_trapframe(child, &child_tf)) < 0)
         panic("sys_env_set_trapframe: %i", res);

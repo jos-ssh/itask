@@ -3,3 +3,5 @@ OBJDIRS += $(KMODDIRNAME)
 KMODOBJDIR := $(OBJDIR)/$(KMODDIRNAME)
 
 include kmod/init/Makefrag
+include kmod/acpi/Makefrag
+include kmod/pci/Makefrag

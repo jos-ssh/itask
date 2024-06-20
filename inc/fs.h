@@ -4,6 +4,7 @@
 #define JOS_INC_FS_H
 
 #include <inc/types.h>
+#include <inc/filemode.h>
 #include <inc/mmu.h>
 
 typedef uint32_t blockno_t;
@@ -40,7 +41,9 @@ typedef uint32_t blockno_t;
 struct File {
     char f_name[MAXNAMELEN]; /* filename */
     off_t f_size;            /* file size in bytes */
-    uint32_t f_type;         /* file type */
+    uint32_t f_mode;         /* file type and access rights */
+    uint32_t f_uid;          /* file user id */
+    uint32_t f_gid;          /* file group id */
 
     /* Block pointers. */
     /* A block is allocated iff its value is != 0. */
@@ -49,15 +52,11 @@ struct File {
 
     /* Pad out to 256 bytes; must do arithmetic in case we're compiling
      * fsformat on a 64-bit machine. */
-    uint8_t f_pad[256 - MAXNAMELEN - 8 - 4 * NDIRECT - 4];
+    uint8_t f_pad[256 - sizeof(char) * MAXNAMELEN - sizeof(off_t) - sizeof(uint32_t) * 3 - sizeof(blockno_t) * NDIRECT - sizeof(blockno_t)];
 } __attribute__((packed)); /* required only on some 64-bit machines */
 
 /* An inode block contains exactly BLKFILES 'struct File's */
 #define BLKFILES (BLKSIZE / sizeof(struct File))
-
-/* File types */
-#define FTYPE_REG 0 /* Regular file */
-#define FTYPE_DIR 1 /* Directory */
 
 /* File system super-block (both in-memory and on-disk) */
 
@@ -94,7 +93,10 @@ struct FileInfo {
 union Fsipc {
     struct Fsreq_open {
         char req_path[MAXPATHLEN];
-        int req_omode;
+        int req_oflags;
+        uint32_t req_omode;
+        uint32_t req_gid;
+        uint32_t req_uid;
     } open;
     struct Fsreq_set_size {
         int req_fileid;
@@ -118,6 +120,9 @@ union Fsipc {
     struct Fsret_stat {
         char ret_name[MAXNAMELEN];
         off_t ret_size;
+        uint32_t ret_mode;
+        uint32_t ret_uid;
+        uint32_t ret_gid;
         int ret_isdir;
     } statRet;
     struct Fsreq_flush {
@@ -128,6 +133,8 @@ union Fsipc {
     } remove;
     struct Fsreq_mkdir {
         char req_path[MAXPATHLEN]; 
+        uint32_t req_gid;
+        uint32_t req_uid;
     } mkdir;
     struct Fsreq_getdents {
         char req_path[MAXPATHLEN];

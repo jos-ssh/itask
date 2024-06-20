@@ -218,7 +218,7 @@ write(int fdnum, const void *buf, size_t n) {
     }
 
     if (debug) {
-        cprintf("write %d %p %lu via dev %s\n",
+        cprintf("[%08x] write %d %p %lu via dev %s\n", thisenv->env_id,
                 fdnum, buf, (unsigned long)n, dev->dev_name);
     }
 
@@ -275,6 +275,10 @@ fstat(int fdnum, struct Stat *stat) {
     stat->st_size = 0;
     stat->st_isdir = 0;
     stat->st_dev = dev;
+
+    stat->st_gid = 0;
+    stat->st_uid = 0;
+    stat->st_mode = 0;
 
     return (*dev->dev_stat)(fd, stat);
 }

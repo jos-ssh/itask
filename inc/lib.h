@@ -87,6 +87,8 @@ static envid_t sys_exofork(void);
 int sys_env_set_status(envid_t env, int status);
 int sys_env_set_trapframe(envid_t env, struct Trapframe *tf);
 int sys_env_set_pgfault_upcall(envid_t env, void *upcall);
+int sys_env_set_parent(envid_t target, envid_t parent);
+int sys_env_downgrade(envid_t target);
 int sys_alloc_region(envid_t env, void *pg, size_t size, int perm);
 int sys_map_region(envid_t src_env, void *src_pg,
                    envid_t dst_env, void *dst_pg, size_t size, int perm);
@@ -97,6 +99,7 @@ int sys_ipc_try_send(envid_t to_env, uint64_t value, void *pg, size_t size, int 
 int sys_ipc_recv(void *rcv_pg, size_t size);
 int sys_ipc_recv_from(envid_t from, void *rcv_pg, size_t size);
 int sys_gettime(void);
+int sys_get_rsdp_paddr(physaddr_t* paddr);
 
 int vsys_gettime(void);
 
@@ -115,6 +118,10 @@ void ipc_send(envid_t to_env, uint32_t value, void *pg, size_t size, int perm);
 int32_t ipc_recv(envid_t *from_env_store, void *pg, size_t *psize, int *perm_store);
 int32_t ipc_recv_from(envid_t from, void *pg, size_t *psize, int *perm_store);
 envid_t ipc_find_env(enum EnvType type);
+
+/* kmod.c */
+int kmod_find(const char* name_prefix, int min_version, int max_version);
+int kmod_find_any_version(const char* name_prefix);
 
 /* fork.c */
 envid_t fork(void);
@@ -141,7 +148,7 @@ int fstat(int fd, struct Stat *statbuf);
 int stat(const char *path, struct Stat *statbuf);
 
 /* file.c */
-int open(const char *path, int mode);
+int open(const char *path, int mode, ...);
 int ftruncate(int fd, off_t size);
 int remove(const char *path);
 int sync(void);

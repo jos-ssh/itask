@@ -1,5 +1,6 @@
 /* System call stubs. */
 
+#include "inc/types.h"
 #include <inc/syscall.h>
 #include <inc/lib.h>
 
@@ -83,8 +84,7 @@ sys_alloc_region(envid_t envid, void *va, size_t size, int perm) {
     int res = syscall(SYS_alloc_region, 1, envid, (uintptr_t)va, size, perm, 0, 0);
 #ifdef SANITIZE_USER_SHADOW_BASE
     /* Unpoison the allocated page */
-    if (!res && thisenv && (envid == CURENVID || envid == thisenv->env_id)
-        && ((uintptr_t)va < SANITIZE_USER_SHADOW_BASE || (uintptr_t)va >= SANITIZE_USER_SHADOW_SIZE + SANITIZE_USER_SHADOW_BASE)) {
+    if (!res && thisenv && (envid == CURENVID || envid == thisenv->env_id) && ((uintptr_t)va < SANITIZE_USER_SHADOW_BASE || (uintptr_t)va >= SANITIZE_USER_SHADOW_SIZE + SANITIZE_USER_SHADOW_BASE)) {
         platform_asan_unpoison(va, size);
     }
 #endif
@@ -141,6 +141,16 @@ sys_env_set_pgfault_upcall(envid_t envid, void *upcall) {
 }
 
 int
+sys_env_set_parent(envid_t target, envid_t parent) {
+    return syscall(SYS_env_set_parent, 0, target, parent, 0, 0, 0, 0);
+}
+
+int
+sys_env_downgrade(envid_t target) {
+    return syscall(SYS_env_downgrade, 0, target, 0, 0, 0, 0, 0);
+}
+
+int
 sys_ipc_try_send(envid_t envid, uintptr_t value, void *srcva, size_t size, int perm) {
     return syscall(SYS_ipc_try_send, 0, envid, value, (uintptr_t)srcva, size, perm, 0);
 }
@@ -156,10 +166,15 @@ sys_ipc_recv_from(envid_t from, void *dstva, size_t size) {
 
 int
 sys_ipc_recv(void *rcv_pg, size_t size) {
-  return sys_ipc_recv_from(0, rcv_pg, size);
+    return sys_ipc_recv_from(0, rcv_pg, size);
 }
 
 int
 sys_gettime(void) {
     return syscall(SYS_gettime, 0, 0, 0, 0, 0, 0, 0);
+}
+
+int
+sys_get_rsdp_paddr(physaddr_t *paddr) {
+    return syscall(SYS_get_rsdp_paddr, 1, (uintptr_t)paddr, 0, 0, 0, 0, 0);
 }

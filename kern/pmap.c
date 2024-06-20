@@ -16,7 +16,6 @@
 #include <kern/pmap.h>
 #include <kern/traceopt.h>
 #include <kern/trap.h>
-#include <stdint.h>
 
 /*
  * Term "page" used here does not
@@ -77,55 +76,6 @@ extern char pfstacktop[], pfstack[];
 #define assert_physical(n) ({ if (trace_memory_more) _assert_root(__FILE__, __LINE__, n, 1); assert(((n)->state & NODE_TYPE_MASK) >= PARTIAL_NODE); })
 #define assert_virtual(n)  ({if (trace_memory_more) _assert_root(__FILE__, __LINE__, n, 0); assert(((n)->state & NODE_TYPE_MASK) < PARTIAL_NODE); })
 
-inline static bool __attribute__((always_inline))
-list_empty(struct List *list) {
-    return list->next == list;
-}
-
-inline static void __attribute__((always_inline))
-list_init(struct List *list) {
-    list->next = list->prev = list;
-}
-
-/*
- * Appends list element 'new' after list element 'list'
- */
-inline static void __attribute__((always_inline))
-list_append(struct List *list, struct List *new) {
-    if (list == NULL || new == NULL) {
-        panic("Invalid call to list_append!");
-    }
-    if (list->next == NULL || list->prev == NULL) {
-        panic("list_append called for corrupted list!");
-    }
-    new->next = list->next;
-    new->next->prev = new;
-    new->prev = list;
-    list->next = new;
-}
-
-/*
- * Deletes list element from list.
- * NOTE: Use list_init() on deleted List element
- */
-inline static struct List *__attribute__((always_inline))
-list_del(struct List *list) {
-    if (list == NULL) {
-        panic("Invalid call to list_del!");
-    }
-    if (list->next == NULL || list->prev == NULL) {
-        panic("list_del called for corrupted list");
-    }
-    struct List *prev = list->prev;
-    struct List *next = list->next;
-
-    prev->next = next;
-    next->prev = prev;
-
-    list_init(list);
-    return list;
-}
-
 static struct Page *alloc_page(int class, int flags);
 
 void
@@ -137,7 +87,7 @@ ensure_free_desc(size_t count) {
     }
 
     assert(free_desc_count >= count);
-    assert(!list_empty(&free_descriptors));
+    assert(!list_is_empty(&free_descriptors));
 }
 
 static struct Page *
@@ -331,7 +281,7 @@ page_unref(struct Page *page) {
                 par->right = NULL;
 
                 if (par->state == ALLOCATABLE_NODE) {
-                    assert(list_empty((struct List *)par));
+                    assert(list_is_empty((struct List *)par));
                     list_append(&free_classes[par->class], (struct List *)par);
                 }
                 page = par;
@@ -583,7 +533,7 @@ check_physical_tree(struct Page *page) {
     }
     if (!page->refc) {
         assert(page->head.next && page->head.prev);
-        if (!list_empty((struct List *)page)) {
+        if (!list_is_empty((struct List *)page)) {
             for (struct List *n = page->head.next;
                  n != &free_classes[page->class]; n = n->next) {
                 assert(n != &page->head);
@@ -1293,7 +1243,8 @@ map_physical_region(struct AddressSpace *dst, uintptr_t dstart, uintptr_t pstart
             struct Page *page = page_lookup(NULL, pstart, class, PARTIAL_NODE, 1);
             if (flags & MAP_USER_MMIO) {
                 if (!page) return -E_NO_MEM;
-                if (page->refc) return -E_NO_ENT;
+                // FIXME: Find a way to release kernel MMIO memory
+                // if (page->refc) return -E_NO_ENT;
             }
             assert(page);
             if ((res = map_page(dst, start, page, flags)) < 0) return res;
@@ -1307,7 +1258,8 @@ map_physical_region(struct AddressSpace *dst, uintptr_t dstart, uintptr_t pstart
             struct Page *page = page_lookup(NULL, pstart, class, PARTIAL_NODE, 1);
             if (flags & MAP_USER_MMIO) {
                 if (!page) return -E_NO_MEM;
-                if (page->refc) return -E_NO_ENT;
+                // FIXME: Find a way to release kernel MMIO memory
+                // if (page->refc) return -E_NO_ENT;
             }
             assert(page);
             if ((res = map_page(dst, start, page, flags)) < 0) return res;

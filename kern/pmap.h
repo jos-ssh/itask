@@ -8,8 +8,9 @@
 
 #include <inc/memlayout.h>
 #include <inc/assert.h>
-#include <inc/env.h>
 #include <inc/x86.h>
+#include <inc/env.h>
+#include <inc/list.h>
 
 #define CLASS_BASE    12
 #define CLASS_SIZE(c) (1ULL << ((c) + CLASS_BASE))
@@ -79,6 +80,12 @@ enum PageState {
 
 extern __attribute__((aligned(HUGE_PAGE_SIZE))) uint8_t zero_page_raw[HUGE_PAGE_SIZE];
 extern __attribute__((aligned(HUGE_PAGE_SIZE))) uint8_t one_page_raw[HUGE_PAGE_SIZE];
+
+/*
+struct List {
+    struct List *prev, *next;
+};
+*/
 
 struct Page {
     struct List head; /* This should be first member */

@@ -12,5 +12,8 @@ umain(int argc, char **argv) {
     mktime(now, &tnow);
 
     snprint_datetime(time, 20, &tnow);
-    cprintf("DATE: %s\n", time);
+    int res = printf("DATE: %s\n", time);
+    if (res < 0) {
+      panic("printf: %i", res);
+    }
 }

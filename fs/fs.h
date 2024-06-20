@@ -23,7 +23,7 @@ void bc_init(void);
 /* fs.c */
 void fs_init(void);
 int file_get_block(struct File *f, blockno_t file_blockno, char **pblk);
-int file_create(const char *path, struct File **f, const uint32_t file_type);
+int file_create(const char *path, struct File **f, uint32_t mode, uint32_t gid, uint32_t uid);
 int file_block_walk(struct File *f, blockno_t filebno, blockno_t **ppdiskbno, bool alloc);
 int file_open(const char *path, struct File **f);
 ssize_t file_read(struct File *f, void *buf, size_t count, off_t offset);

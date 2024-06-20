@@ -10,6 +10,7 @@ LIB_SRCFILES :=		lib/console.c \
 			lib/string.c \
 			lib/readline.c \
 			lib/rpc.c \
+      lib/pool_alloc.c \
 			lib/syscall.c
 
 ifeq ($(CONFIG_KSPACE),y)
@@ -29,7 +30,8 @@ LIB_SRCFILES :=		$(LIB_SRCFILES) \
 			lib/spawn.c \
 			lib/pipe.c \
 			lib/wait.c \
-			lib/uvpt.c
+			lib/uvpt.c \
+      lib/kmod.c
 
 LIB_SRCFILES :=		$(LIB_SRCFILES) \
 			lib/vsyscall.c

@@ -1,6 +1,9 @@
 /* See COPYRIGHT for copyright information. */
+#include "inc/env.h"
 #include "inc/mmu.h"
 #include "inc/trap.h"
+#include "inc/types.h"
+#include "inc/uefi.h"
 #include <inc/memlayout.h>
 #include <inc/stdio.h>
 #include <inc/syscall.h>
@@ -45,7 +48,7 @@
         if (trace_syscalls || trace_syscalls_from == curenv->env_id) { \
             cprintf("[%08x] ", curenv->env_id);                       \
             cprintf("returning " fmt " from %s(", (ret), __func__);   \
-            cprintf(") at line %d\n", __LINE__ + 1);                  \
+            cprintf(") at line %d\n", __LINE__);                      \
         }                                                             \
     } while (0)
 
@@ -202,12 +205,19 @@ sys_env_set_status(envid_t envid, int status) {
     }
 
     struct Env* target = NULL;
-    int lookup_res = envid2env(envid, &target, true);
+    int lookup_res = envid2env(envid, &target, curenv->env_type != ENV_TYPE_KERNEL);
     if (lookup_res < 0) {
         TRACE_SYSCALL_LEAVE("'%i'", lookup_res);
         return lookup_res;
     }
+    if (curenv->env_type != ENV_TYPE_KERNEL &&
+        target->env_ipc_recving && status == ENV_RUNNABLE) {
+        TRACE_SYSCALL_LEAVE("'%i'", -E_INVAL);
+        return -E_INVAL;
+    }
+
     target->env_status = status;
+    target->env_ipc_recving = false;
 
     TRACE_SYSCALL_LEAVE("%d", 0);
     return 0;
@@ -224,12 +234,50 @@ sys_env_set_status(envid_t envid, int status) {
  *      or the caller doesn't have permission to change envid. */
 static int
 sys_env_set_pgfault_upcall(envid_t envid, void* func) {
+    TRACE_SYSCALL_ENTER(("%08x", envid)("%p", func));
     struct Env* target = NULL;
-    int result = envid2env(envid, &target, true);
-    if (result < 0)
+    int result = envid2env(envid, &target, curenv->env_type != ENV_TYPE_KERNEL);
+    if (result < 0) {
+        TRACE_SYSCALL_LEAVE("%i", -E_BAD_ENV);
         return -E_BAD_ENV;
+    }
 
     target->env_pgfault_upcall = func;
+    TRACE_SYSCALL_LEAVE("%d", 0);
+    return 0;
+}
+
+static int
+sys_env_set_parent(envid_t target, envid_t parent) {
+    int res = 0;
+    TRACE_SYSCALL_ENTER(("%08x", target)("%08x", parent));
+    SYSCALL_ASSERT(curenv->env_type == ENV_TYPE_KERNEL, -E_BAD_ENV);
+
+    struct Env* parent_env = NULL;
+    res = envid2env(parent, &parent_env, false);
+    SYSCALL_ASSERT(res == 0, res);
+    
+    struct Env* target_env = NULL;
+    res = envid2env(target, &target_env, false);
+    SYSCALL_ASSERT(res == 0, res);
+
+    target_env->env_parent_id = parent;
+
+    TRACE_SYSCALL_LEAVE("%d", 0);
+    return 0;
+}
+
+static int
+sys_env_downgrade(envid_t target) {
+    TRACE_SYSCALL_ENTER(("%08x", target));
+    SYSCALL_ASSERT(curenv->env_type == ENV_TYPE_KERNEL, -E_BAD_ENV);
+
+    struct Env* target_env = NULL;
+    int res = envid2env(target, &target_env, false);
+    SYSCALL_ASSERT(res == 0, res);
+    
+    target_env->env_type = ENV_TYPE_USER;
+    TRACE_SYSCALL_LEAVE("%d", 0);
     return 0;
 }
 
@@ -274,7 +322,7 @@ sys_alloc_region(envid_t envid, uintptr_t addr, size_t size, int perm) {
     }
 
     struct Env* target = NULL;
-    int lookup_res = envid2env(envid, &target, true);
+    int lookup_res = envid2env(envid, &target, curenv->env_type != ENV_TYPE_KERNEL);
     if (lookup_res < 0) {
         TRACE_SYSCALL_LEAVE("'%i'", lookup_res);
         return lookup_res;
@@ -284,11 +332,7 @@ sys_alloc_region(envid_t envid, uintptr_t addr, size_t size, int perm) {
         perm |= ALLOC_ZERO;
     }
 
-    if (target->env_type != ENV_TYPE_KERNEL) {
-        perm |= PROT_USER_;
-    }
-
-    perm |= PROT_LAZY;
+    perm |= PROT_USER_ | PROT_LAZY;
 
     int map_res = map_region(&target->address_space, addr, NULL, 0, size, perm);
     if (map_res != 0) {
@@ -341,20 +385,18 @@ sys_map_region(envid_t srcenvid, uintptr_t srcva,
     int lookup_res = 0;
     struct Env* src = NULL;
     struct Env* dst = NULL;
-    lookup_res = envid2env(srcenvid, &src, true);
+    lookup_res = envid2env(srcenvid, &src, curenv->env_type != ENV_TYPE_KERNEL);
     if (lookup_res < 0) {
         TRACE_SYSCALL_LEAVE("'%i'", lookup_res);
         return lookup_res;
     }
-    lookup_res = envid2env(dstenvid, &dst, true);
+    lookup_res = envid2env(dstenvid, &dst, curenv->env_type != ENV_TYPE_KERNEL);
     if (lookup_res < 0) {
         TRACE_SYSCALL_LEAVE("'%i'", lookup_res);
         return lookup_res;
     }
 
-    if (dst->env_type != ENV_TYPE_KERNEL) {
-        perm |= PROT_USER_;
-    }
+    perm |= PROT_USER_;
 
     /*
     if (user_mem_check(src, (const void*)srcva, size, (perm & PROT_RWX) | PROT_USER_) != 0) {
@@ -393,7 +435,7 @@ sys_unmap_region(envid_t envid, uintptr_t va, size_t size) {
     }
 
     struct Env* target = NULL;
-    int lookup_res = envid2env(envid, &target, true);
+    int lookup_res = envid2env(envid, &target, curenv->env_type != ENV_TYPE_KERNEL);
     if (lookup_res < 0) {
         TRACE_SYSCALL_LEAVE("'%i'", lookup_res);
         return lookup_res;
@@ -425,10 +467,13 @@ sys_map_physical_region(uintptr_t pa, envid_t envid, uintptr_t va, size_t size, 
     // TIP: Use map_physical_region() with (perm | PROT_USER_ | MAP_USER_MMIO)
     //      And don't forget to validate arguments as always.
     TRACE_SYSCALL_ENTER(("0x%lx", pa)("%x", envid)("0x%lx", va)("0x%zx", size)("%x", perm));
+    SYSCALL_ASSERT(curenv->env_type == ENV_TYPE_FS
+                || curenv->env_type == ENV_TYPE_KERNEL, E_BAD_ENV);
     struct Env* target = NULL;
     int lookup_res = envid2env(envid, &target, true);
     SYSCALL_ASSERT(lookup_res == 0, E_BAD_ENV);
-    SYSCALL_ASSERT(target->env_type == ENV_TYPE_FS, E_BAD_ENV);
+    SYSCALL_ASSERT(target->env_type == ENV_TYPE_FS
+                || target->env_type == ENV_TYPE_KERNEL, E_BAD_ENV);
     SYSCALL_ASSERT(va < MAX_USER_ADDRESS, E_INVAL);
     SYSCALL_ASSERT(va % PAGE_SIZE == 0, E_INVAL);
     SYSCALL_ASSERT(pa % PAGE_SIZE == 0, E_INVAL);
@@ -609,7 +654,7 @@ sys_env_set_trapframe(envid_t envid, struct Trapframe* tf) {
     tf_copy.tf_rflags |= FL_IOPL_3 | FL_IF;
 
     struct Env* target = NULL;
-    int lookup_res = envid2env(envid, &target, true);
+    int lookup_res = envid2env(envid, &target, curenv->env_type != ENV_TYPE_KERNEL);
     SYSCALL_ASSERT(lookup_res == 0, E_BAD_ENV);
 
     memcpy(&target->env_tf, &tf_copy, sizeof(tf_copy));
@@ -656,6 +701,22 @@ sys_region_refs(uintptr_t addr, size_t size, uintptr_t addr2, size_t size2) {
 #undef ARGS
 }
 
+static int
+sys_get_rsdp_paddr(physaddr_t* phys_addr) {
+  TRACE_SYSCALL_ENTER(("%p", phys_addr));
+  SYSCALL_ASSERT(curenv->env_type == ENV_TYPE_KERNEL, E_BAD_ENV);
+  user_mem_assert(curenv, phys_addr, sizeof(*phys_addr), PROT_USER_ | PROT_R | PROT_W);
+
+  physaddr_t root = 0;
+  struct AddressSpace* old = switch_address_space(&kspace);
+  root = uefi_lp->ACPIRoot;
+  switch_address_space(old);
+
+  *phys_addr = root;
+  TRACE_SYSCALL_LEAVE("%d", 0);
+  return 0;
+}
+
 /* Dispatches to the correct kernel function, passing the arguments. */
 uintptr_t
 syscall(uintptr_t syscallno, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4, uintptr_t a5, uintptr_t a6) {
@@ -690,6 +751,10 @@ syscall(uintptr_t syscallno, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t
         return sys_env_set_trapframe(a1, (struct Trapframe*)a2);
     case SYS_env_set_pgfault_upcall:
         return sys_env_set_pgfault_upcall(a1, (void*)a2);
+    case SYS_env_set_parent:
+        return sys_env_set_parent(a1, a2);
+    case SYS_env_downgrade:
+        return sys_env_downgrade(a1);
     case SYS_yield:
         sys_yield();
         panic("Unreachable");
@@ -700,6 +765,8 @@ syscall(uintptr_t syscallno, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t
         return sys_ipc_recv(a1, a2, a3);
     case SYS_gettime:
         return sys_gettime();
+    case SYS_get_rsdp_paddr:
+        return sys_get_rsdp_paddr((physaddr_t*)a1);
     case NSYSCALLS:
     default:
         return -E_NO_SYS;

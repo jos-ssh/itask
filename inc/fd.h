@@ -8,6 +8,14 @@
 #include <inc/types.h>
 #include <inc/fs.h>
 
+/* Maximum number of file descriptors a program may hold open concurrently */
+#define MAXFD 32
+/* Bottom of file descriptor area */
+#define FDTABLE 0xD0000000LL
+/* Bottom of file data area.  We reserve one data page for each FD,
+ * which devices can use if they choose. */
+#define FILEDATA (FDTABLE + MAXFD * PAGE_SIZE)
+
 struct Fd;
 struct Stat;
 struct Dev;
@@ -41,6 +49,9 @@ struct Stat {
     char st_name[MAXNAMELEN];
     off_t st_size;
     int st_isdir;
+    uint32_t st_mode;
+    uint32_t st_uid;
+    uint32_t st_gid;
     struct Dev *st_dev;
 };
 

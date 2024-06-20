@@ -33,7 +33,7 @@ typedef int bool;
 
 #define ROUNDUP(n, v) ((n)-1 + (v) - ((n)-1) % (v))
 #define MAX_DIR_ENTS  128
-#define DISKSIZE 0xC0000000
+#define DISKSIZE      0xC0000000
 
 struct Dir {
     struct File *f;
@@ -105,7 +105,7 @@ opendisk(const char *name) {
     super = alloc(BLKSIZE);
     super->s_magic = FS_MAGIC;
     super->s_nblocks = nblocks;
-    super->s_root.f_type = FTYPE_DIR;
+    super->s_root.f_mode = IFDIR;
     strcpy(super->s_root.f_name, "/");
 
     nbitblocks = (nblocks + BLKBITSIZE - 1) / BLKBITSIZE;
@@ -147,12 +147,12 @@ startdir(struct File *f, struct Dir *dout) {
 }
 
 struct File *
-diradd(struct Dir *d, uint32_t type, const char *name) {
+diradd(struct Dir *d, uint32_t mode, const char *name) {
     struct File *out = &d->ents[d->n++];
     if (d->n > MAX_DIR_ENTS)
         panic("too many directory entries");
     strcpy(out->f_name, name);
-    out->f_type = type;
+    out->f_mode = mode;
     return out;
 }
 
@@ -189,7 +189,7 @@ writefile(struct Dir *dir, const char *name) {
     else
         last = name;
 
-    f = diradd(dir, FTYPE_REG, last);
+    f = diradd(dir, IFREG | IRWXU | IRWXG | IRWXO, last);
     start = alloc(st.st_size);
     readn(fd, start, st.st_size);
     finishfile(f, blockof(start), st.st_size);
