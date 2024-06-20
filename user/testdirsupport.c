@@ -51,35 +51,70 @@ void test_remove() {
     cprintf("\n==========================\nEND TEST REMOVE\n==========================\n");
 }
 
-void test_getdents() {
-    cprintf("\n==========================\nSTART TEST GETDENTS\n==========================\n");
+void test_getdents_small_number()
+{
+    cprintf("\n==========================\nSTART TEST GETDENTS SMALL N\n==========================\n");
     int res = 0;
 
     res = mkdir(directory);
-    cprintf("GETDENTS TEST: During mkdir \"%s\" <%i>(%d)\n", directory, res, res);
+    cprintf("GETDENTS SMALL N TEST: During mkdir \"%s\" <%i>(%d)\n", directory, res, res);
 
     int fd1 = open(file1, O_RDWR | O_CREAT);
     int fd2 = open(file2, O_RDWR | O_CREAT);
     int fd3 = open(file3, O_RDWR | O_CREAT);
-    cprintf("GETDENTS TEST: open \"%s\" <%i>(%d)\n", file1, fd1, fd1);
-    cprintf("GETDENTS TEST: open \"%s\" <%i>(%d)\n", file2, fd2, fd2);
-    cprintf("GETDENTS TEST: open \"%s\" <%i>(%d)\n", file3, fd3, fd3);
+    cprintf("GETDENTS SMALL N TEST: open \"%s\" <%i>(%d)\n", file1, fd1, fd1);
+    cprintf("GETDENTS SMALL N TEST: open \"%s\" <%i>(%d)\n", file2, fd2, fd2);
+    cprintf("GETDENTS SMALL N TEST: open \"%s\" <%i>(%d)\n", file3, fd3, fd3);
     close(fd1);
     close(fd2);
     close(fd3);
 
     struct File files[3];
     res = getdents(directory, files, 2);
-    cprintf("GETDENTS TEST: getdents \"%s\", 2 <%i>(%d)\n", directory, res, res);
-    cprintf("GETDENTS TEST: file[0] = <%s>\n", files[0].f_name);
-    cprintf("GETDENTS TEST: file[1] = <%s>\n", files[1].f_name);
+    cprintf("GETDENTS SMALL N TEST: getdents \"%s\", 2 <%i>(%d)\n", directory, res, res);
+    cprintf("GETDENTS SMALL N TEST: file[0] = <%s>\n", files[0].f_name);
+    cprintf("GETDENTS SMALL N TEST: file[1] = <%s>\n", files[1].f_name);
     res = getdents(directory, files, 3);
-    cprintf("GETDENTS TEST: getdents \"%s\", 3 <%i>(%d)\n", directory, res, res);
-    cprintf("GETDENTS TEST: file[0] = <%s>\n", files[0].f_name);
-    cprintf("GETDENTS TEST: file[1] = <%s>\n", files[1].f_name);
-    cprintf("GETDENTS TEST: file[1] = <%s>\n", files[2].f_name);
+    cprintf("GETDENTS SMALL N TEST: getdents \"%s\", 3 <%i>(%d)\n", directory, res, res);
+    cprintf("GETDENTS SMALL N TEST: file[0] = <%s>\n", files[0].f_name);
+    cprintf("GETDENTS SMALL N TEST: file[1] = <%s>\n", files[1].f_name);
+    cprintf("GETDENTS SMALL N TEST: file[1] = <%s>\n", files[2].f_name);
 
-    cprintf("\n==========================\nEND TEST GETDENTS\n==========================\n");
+    cprintf("\n==========================\nEND TEST GETDENTS SMALL N\n==========================\n");
+}
+
+void test_getdents_big_number()
+{
+    const uint32_t file_number = 22;
+    
+    cprintf("\n==========================\nSTART TEST GETDENTS BIG N\n==========================\n");
+    int res = 0;
+
+    res = mkdir(directory);
+    if (res < 0)
+        cprintf("GETDENTS BIG N TEST: During mkdir \"%s\" <%i>(%d)\n", directory, res, res);
+
+    char file_path[MAXPATHLEN];
+    for (int i = 0; i < file_number; i++)
+    {
+        snprintf(file_path, MAXPATHLEN, "%s/file%d", directory, i);
+        res = open(file_path, O_RDWR | O_CREAT);
+        if (res < 0)
+            cprintf("GETDENTS BIG N TEST: open \"%s\" <%i>(%d)\n", file_path, res, res);
+        close(res);
+    }
+
+    struct File files[file_number];
+    res = getdents(directory, files, file_number);
+    for (int i = 0; i < file_number; i++)
+        cprintf("GETDENTS BIG N TEST: [%d] <%s>\n", i, files[i].f_name);
+
+    cprintf("\n==========================\nEND TEST GETDENTS BIG N\n==========================\n");
+}
+
+void test_getdents() {
+    test_getdents_small_number();
+    test_getdents_big_number();
 }
 
 void

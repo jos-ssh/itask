@@ -476,8 +476,9 @@ fs_sync(void) {
     }
 }
 
+/* Copy to buffer count files, counting start from from_which_count */
 int 
-file_getdents(const char* path, struct File* buffer, int count)
+file_getdents(const char* path, struct File* buffer, uint32_t count, uint32_t from_which_count)
 {
     if (debug)
     {
@@ -485,7 +486,8 @@ file_getdents(const char* path, struct File* buffer, int count)
         cprintf("path = <%s>\n", path);
     }
 
-    assert(0 < count && count <= MAX_GETDENTS_COUNT);
+    if (count == 0 || count > MAX_GETDENTS_COUNT)
+        return -E_INVAL;
     int res = 0;
     struct File* file = NULL;
     struct File* dir  = NULL;
@@ -499,8 +501,6 @@ file_getdents(const char* path, struct File* buffer, int count)
     blockno_t nblock = file->f_size / BLKSIZE;
     int file_counter = 0;
     for (blockno_t i = 0; i < nblock; i++) {
-        if (debug)
-            cprintf("blockno = %d\n", i);
         
         char *blk;
         res = file_get_block(file, i, &blk);
@@ -508,6 +508,16 @@ file_getdents(const char* path, struct File* buffer, int count)
 
         struct File *f = (struct File *)blk;
         for (blockno_t j = 0; j < BLKFILES; j++) {
+            if (from_which_count > 0)
+            {
+                if (debug)
+                    cprintf("from_which_count = %d\n", from_which_count);
+                from_which_count--;
+                continue;
+            }
+
+            if (debug)
+                cprintf("file_counter = %d\n", file_counter);
             buffer[file_counter] = f[j];   
             file_counter++;
             if (count == file_counter)

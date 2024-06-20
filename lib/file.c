@@ -222,14 +222,24 @@ mkdir(const char *path) {
 }
 
 int
-getdents(const char* path, struct File* buffer, int count) {
-    fsipcbuf.getdents.count = count;
+getdents(const char* path, struct File* buffer, uint32_t count) {
     strlcpy(fsipcbuf.getdents.req_path, path, MAXPATHLEN);
-    int res = fsipc(FSREQ_GETDENTS, &fsipcbuf);
-    if (res < 0)
-        return res;
-    
-    memcpy(buffer, fsipcbuf.getdents.buffer, sizeof(struct File) * count);
-    
+
+    int remaining = count;
+    while (remaining > 0)
+    {
+        if (debug)
+            cprintf("remaining = %d\n", remaining);
+        const uint32_t getdents_count = MIN(remaining, MAX_GETDENTS_COUNT); 
+        fsipcbuf.getdents.count            = getdents_count;
+        fsipcbuf.getdents.from_which_count = remaining - getdents_count;
+        int res = fsipc(FSREQ_GETDENTS, &fsipcbuf);
+        if (res < 0)
+            return res;
+        
+        memcpy(buffer + remaining - getdents_count, fsipcbuf.getdents.buffer, sizeof(struct File) * getdents_count);
+        remaining -= getdents_count;
+    }
+
     return 0;
 }

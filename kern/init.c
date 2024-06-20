@@ -172,6 +172,7 @@ i386_init(void) {
 #if LAB >= 10
     ENV_CREATE(fs_fs, ENV_TYPE_FS);
 #endif
+    ENV_CREATE(user_testdirsupport, ENV_TYPE_USER);
     ENV_CREATE(kmod_initd, ENV_TYPE_KERNEL);
 
 #if defined(TEST)

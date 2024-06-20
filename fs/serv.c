@@ -297,7 +297,7 @@ serve_mkdir(envid_t envid, union Fsipc *req) {
 int
 serve_getdents(envid_t envid, union Fsipc *req, void** page) {
     *page = (void*)req;
-    return file_getdents(req->getdents.req_path, req->getdents.buffer, req->getdents.count);
+    return file_getdents(req->getdents.req_path, req->getdents.buffer, req->getdents.count, req->getdents.from_which_count);
 }
 
 typedef int (*fshandler)(envid_t envid, union Fsipc *req);

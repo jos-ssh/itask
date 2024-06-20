@@ -124,6 +124,7 @@ union Fsipc {
     struct Fsreq_getdents {
         char req_path[MAXPATHLEN];
         int count;
+        int from_which_count;
         struct File buffer[MAX_GETDENTS_COUNT];
     } getdents;
 
