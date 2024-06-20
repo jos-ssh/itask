@@ -50,6 +50,7 @@ union SigdRequest {
     } alarm;
     struct SigdSetHandler {
         envid_t target;
+        uintptr_t trapframe_vaddr;
         uintptr_t handler_vaddr;
     } set_handler;
 

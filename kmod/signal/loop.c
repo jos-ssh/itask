@@ -14,15 +14,24 @@ get_any_signal(uint64_t signals) {
     return -1;
 }
 
-static void update_timers();
+static void update_timers(uint64_t* current_time);
 static void send_signals(envid_t server);
 
 void
 sigd_signal_loop(envid_t parent) {
+    static uint64_t current_time = 0;
+
     cprintf("[%08x: sigd-loop] Starting up main loop...\n", thisenv->env_id);
 
+    current_time = vsys_gettime();
+
+    // FIXME: wrong parent envid in fork 
+    parent = kmod_find_any_version(SIGD_MODNAME);
+
+
     for (;;) {
-        update_timers();
+        // cprintf("loop...\n");
+        update_timers(&current_time);
         send_signals(parent);
         sys_yield();
     }
@@ -48,11 +57,30 @@ send_signals(envid_t server) {
         req.try_call_handler_.sig_no = sig;
 
         void* res_data = NULL;
+        cprintf("[sigd-loop] get signal %d\n", sig);
         rpc_execute(server, SIGD_REQ_TRY_CALL_HANDLER_, &req, &res_data);
     }
 }
 
 static void
-update_timers() {
-    /* TODO: implement (decrement timers and set SIGALRM flag in recvd_signals */
+update_timers(uint64_t* current_time) {
+    uint64_t time_now = vsys_gettime();
+    if (time_now - *current_time < 1) {
+        return;
+    }
+
+    *current_time = time_now;
+
+    for (size_t idx = 0; idx < NENV; ++idx) {
+        // maybe cmpxhg
+
+        uint32_t time = atomic_load(&g_SharedData[idx].timer_countdown);
+
+        if (time != 0) {
+            uint64_t old_time = atomic_fetch_sub(&g_SharedData[idx].timer_countdown, 1);
+            if (old_time == 1) {
+                atomic_fetch_or(&g_SharedData[idx].recvd_signals, (1 << SIGALRM));
+            }
+        }
+    }
 }

@@ -1,6 +1,8 @@
 /* Called from entry.S to get us going.
  * entry.S already took care of defining envs, pages, uvpd, and uvpt */
 
+#include <inc/rpc.h>
+#include <inc/kmod/signal.h>
 #include <inc/lib.h>
 #include <inc/x86.h>
 
@@ -9,9 +11,37 @@ extern void umain(int argc, char **argv);
 const volatile struct Env *thisenv;
 const char *binaryname = "<unknown>";
 
+// FIXME:
+static char SavedTrapframeBuf[PAGE_SIZE] __attribute__((aligned(PAGE_SIZE)));
+extern sighandler_t signal_handlers[NSIGNAL];
+
 #ifdef JOS_PROG
 void (*volatile sys_exit)(void);
 #endif
+
+
+static void
+global_signal_handler(uint8_t sig_no, struct Trapframe *saved_tf) {
+    assert(sig_no < NSIGNAL);
+
+    sighandler_t handler = signal_handlers[sig_no];
+    if (handler) {
+        handler(sig_no);
+    } else {
+        printf("no handler for signal %d\n", sig_no);
+    }
+
+    sys_env_set_status(CURENVID, ENV_RUNNABLE);
+    sys_env_set_trapframe(CURENVID, saved_tf);
+    panic("Unreachable");
+}
+
+
+static void
+_exit(int sig_no) {
+    printf("Killed\n");
+    exit();
+}
 
 void
 libmain(int argc, char **argv) {
@@ -29,20 +59,33 @@ libmain(int argc, char **argv) {
     const size_t env_count = UENVS_SIZE / sizeof(*envs);
 
     envid_t envid = sys_getenvid();
-    const volatile struct Env* env = NULL;
-    for (size_t i = 0; i < env_count; ++i)
-    {
-      if (envs[i].env_id == envid)
-      {
-        env = envs + i;
-        break;
-      }
+    const volatile struct Env *env = NULL;
+    for (size_t i = 0; i < env_count; ++i) {
+        if (envs[i].env_id == envid) {
+            env = envs + i;
+            break;
+        }
     }
-    if (!env)
-    {
-      panic("Env not available");
+    if (!env) {
+        panic("Env not available");
     }
     thisenv = env;
+
+    if (thisenv->env_type == ENV_TYPE_USER) {
+        envid_t sigdEnv = kmod_find_any_version(SIGD_MODNAME);
+
+        static union SigdRequest request;
+        request.set_handler.handler_vaddr = (uintptr_t)global_signal_handler;
+        request.set_handler.trapframe_vaddr = (uintptr_t)SavedTrapframeBuf;
+        request.set_handler.target = envid;
+
+        void *res_data = NULL;
+
+        rpc_execute(sigdEnv, SIGD_REQ_SET_HANDLER, &request, &res_data);
+
+        signal(SIGKILL, _exit);
+        signal(SIGTERM, _exit);
+    }
 
     /* Call user main routine */
     umain(argc, argv);

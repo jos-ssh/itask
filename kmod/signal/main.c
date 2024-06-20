@@ -11,12 +11,18 @@
 #include "inc/kmod/signal.h"
 #include "signal.h"
 
+
+#define signal_debug 1
+
 struct SigdSharedData g_SharedData[NENV] __attribute__((aligned(PAGE_SIZE)));
+
+static char SavedTrapframeBuf[PAGE_SIZE] __attribute((aligned(PAGE_SIZE)));
 
 struct SigdEnvData {
     envid_t env;
     uint64_t sigmask;
 
+    uintptr_t trapframe_vaddr;
     uintptr_t handler_vaddr;
 };
 static struct SigdEnvData EnvData[NENV];
@@ -39,9 +45,35 @@ sigd_reset_env_data(envid_t env) {
 }
 
 static int
-sigd_invoke_handler(envid_t env, uint8_t sig_no) {
-    /* TODO: implement */
-    panic("Unimplemented");
+sigd_invoke_handler(size_t env_idx, uint8_t sig_no) {
+    struct Env* env = (struct Env*)&envs[env_idx];
+    struct Trapframe tf_copy;
+    memcpy(&tf_copy, &env->env_tf, sizeof(tf_copy));
+
+    memcpy(SavedTrapframeBuf, &env->env_tf, sizeof(struct Trapframe));
+
+    int res = sys_map_region(thisenv->env_id, SavedTrapframeBuf, env->env_id, (void*)EnvData[env_idx].trapframe_vaddr, PAGE_SIZE, PROT_RW);
+    assert(res >= 0);
+
+    // change rip to handler
+    if (EnvData[env_idx].handler_vaddr == 0) {
+        panic("handler vaddr doesnt set");
+    }
+
+    tf_copy.tf_rip = EnvData[env_idx].handler_vaddr;
+
+    // change rdi to sig_no
+    tf_copy.tf_regs.reg_rdi = sig_no;
+
+    // change rsi to ptr to saved trapframe
+    tf_copy.tf_regs.reg_rsi = EnvData[env_idx].trapframe_vaddr;
+
+    // change trapframe
+    sys_env_set_trapframe(env->env_id, &tf_copy);
+
+    // change env status to ENV_RUNNABLE | ENV_IN_SIGHANDLER (to prevent recursive signals)
+    sys_env_set_status(envs[env_idx].env_id, ENV_RUNNABLE | ENV_IN_SIGHANDLER);
+    return 0;
 }
 
 static int sigd_serve_identify(envid_t from, const void* request,
@@ -67,6 +99,10 @@ struct RpcServer Server = {
         .HandlerCount = SIGD_NREQUESTS,
         .Handlers = {
                 [SIGD_REQ_IDENTIFY] = sigd_serve_identify,
+                [SIGD_REQ_SIGNAL] = sigd_serve_signal,
+                [SIGD_REQ_SETPROCMASK] = sigd_serve_setprocmask,
+                [SIGD_REQ_ALARM] = sigd_serve_alarm,
+                [SIGD_REQ_SET_HANDLER] = sigd_serve_set_handler,
 
                 [SIGD_REQ_TRY_CALL_HANDLER_] = sigd_serve_try_call_handler,
 
@@ -111,17 +147,152 @@ sigd_serve_identify(envid_t from, const void* request,
     return 0;
 }
 
+
+static inline int
+is_ignored_signal(uint64_t sigmask, uint8_t signal) {
+    return (sigmask & ~(1ULL << signal));
+}
+
+static int
+sigd_serve_signal(envid_t from, const void* request,
+                  void* response, int* response_perm) {
+
+    const union SigdRequest* sigd_req = request;
+    const uint8_t signal = sigd_req->signal.signal;
+    const envid_t env_id = sigd_req->signal.target;
+
+    if (signal_debug) {
+        cprintf("[sigd] setting up signal %d to env %d\n", signal, env_id);
+    }
+
+    size_t idx = ENVX(env_id);
+    if (EnvData[idx].env != env_id) {
+        if (signal_debug) {
+            cprintf("[sigd] reset\n");
+        }
+        sigd_reset_env_data(env_id);
+    }
+
+    if (EnvData[idx].handler_vaddr == 0) {
+        if (signal_debug) {
+            cprintf("[sigd] empty handler\n");
+        }
+        return -E_INVAL;
+    }
+
+    if (is_ignored_signal(EnvData[idx].sigmask, signal)) {
+        if (signal_debug) {
+            cprintf("[sigd] signal %d ignored\n", signal);
+        }
+        return -E_INVAL;
+    }
+
+    // set signal to recvd mask
+    atomic_fetch_or(
+            &g_SharedData[idx].recvd_signals, 1ULL << signal);
+
+    if (signal_debug) {
+        cprintf("[sigd] recieved signals %lx\n", atomic_load(&g_SharedData[idx].recvd_signals));
+    }
+    return 0;
+}
+
+
+static int
+sigd_serve_setprocmask(envid_t from, const void* request,
+                       void* response, int* response_perm) {
+    const union SigdRequest* sigd_req = request;
+    const envid_t env_id = sigd_req->setprocmask.target;
+    if (env_id != from) {
+        return -E_BAD_ENV;
+    }
+
+    size_t idx = ENVX(env_id);
+    if (EnvData[idx].env != env_id) {
+        sigd_reset_env_data(env_id);
+    }
+    EnvData[idx].sigmask = sigd_req->setprocmask.new_mask;
+
+    return 0;
+}
+
+
+static int
+sigd_serve_alarm(envid_t from, const void* request,
+                 void* response, int* response_perm) {
+    const union SigdRequest* sigd_req = request;
+    const envid_t env_id = sigd_req->alarm.target;
+    if (env_id != from) {
+        return -E_BAD_ENV;
+    }
+
+
+    size_t idx = ENVX(env_id);
+    if (EnvData[idx].env != env_id) {
+        sigd_reset_env_data(env_id);
+    }
+
+
+    if (EnvData[idx].handler_vaddr == 0) {
+        return -E_INVAL;
+    }
+    if (EnvData[idx].sigmask & ~(1ULL << SIGALRM)) {
+        // sigalrm ignored
+        return -E_INVAL;
+    }
+    atomic_store(&g_SharedData[idx].timer_countdown, sigd_req->alarm.time);
+    return 0;
+}
+
+
+static int
+sigd_serve_set_handler(envid_t from, const void* request,
+                       void* response, int* response_perm) {
+    const union SigdRequest* sigd_req = request;
+    const envid_t env_id = sigd_req->set_handler.target;
+
+
+    if (signal_debug) {
+        cprintf("[sigd] setting up handler with vaddr 0x%08lx for env %d\n", sigd_req->set_handler.handler_vaddr, sigd_req->set_handler.target);
+    }
+
+    if (env_id != from) {
+        return -E_BAD_ENV;
+    }
+
+    size_t idx = ENVX(env_id);
+    if (EnvData[idx].env != env_id) {
+        if (signal_debug) {
+            cprintf("[sigd] reset data\n");
+        }
+        sigd_reset_env_data(env_id);
+    }
+
+    EnvData[idx].handler_vaddr = sigd_req->set_handler.handler_vaddr;
+    EnvData[idx].trapframe_vaddr = sigd_req->set_handler.trapframe_vaddr;
+
+    return 0;
+}
+
 static int
 sigd_serve_try_call_handler(envid_t from, const void* request,
                             void* response, int* response_perm) {
-    if (from != LoopEnvid)
+    if (from != LoopEnvid) {
+        if (signal_debug) {
+            cprintf("[sigd] bad env\n");
+        }
         return -E_BAD_ENV;
+    }
 
     int res = 0;
     const union SigdRequest* sigd_req = request;
 
     const size_t idx = sigd_req->try_call_handler_.target_idx;
     envid_t env_id = envs[idx].env_id;
+
+    if (signal_debug) {
+        cprintf("[sigd] try call handler for signal %d\n", sigd_req->try_call_handler_.sig_no);
+    }
 
     /* Reused env */
     /* NOTE: this snippet should probably go into all other RPC functions here */
@@ -156,7 +327,7 @@ sigd_serve_try_call_handler(envid_t from, const void* request,
         return 0;
     }
 
-    sigd_invoke_handler(env_id, sig_no);
+    sigd_invoke_handler(idx, sig_no);
 
     return 0;
 }

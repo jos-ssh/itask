@@ -171,6 +171,20 @@ int pipeisclosed(int pipefd);
 /* wait.c */
 void wait(envid_t env);
 
+/* signal.c */
+typedef void (*sighandler_t)(int);
+unsigned int alarm(unsigned int seconds);
+sighandler_t signal(int signo, sighandler_t handler);
+
+enum Signal {
+    SIGALRM,
+    SIGKILL,
+    SIGTERM,
+
+    NSIGNAL,
+};
+
+
 /* File open modes */
 #define O_RDONLY  0x0000 /* open for reading only */
 #define O_WRONLY  0x0001 /* open for writing only */
