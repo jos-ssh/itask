@@ -37,6 +37,7 @@ void umain(int argc, char** argv) {
   cprintf("[%08x: netd] Starting up module...\n", thisenv->env_id);
 
   while (1) {
+    // serve_teapot();
     rpc_listen(&Server, NULL);
   }
 }
@@ -59,7 +60,6 @@ static int netd_serve_teapot(envid_t from, const void* request,
                                   void* response, int* response_perm) {
   const union NetdRequest* req = request;
 
-  cprintf("[%08x: netd] Requested teapot with code %d\n", thisenv->env_id, (int)req->req);
   union NetdResponce* res = response;
   memset(res, 0, sizeof(*res));
   res->res = req->req;

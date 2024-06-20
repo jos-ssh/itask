@@ -50,7 +50,6 @@ find_netd(envid_t initd) {
 }
 
 void check_teapot(envid_t netd) {
-    cprintf("Checking teapot 42...\n");
     union NetdResponce* response = (void*) RECEIVE_ADDR;
 
     static union NetdRequest req;
@@ -63,8 +62,6 @@ void check_teapot(envid_t netd) {
       panic("teapot check failed: %i\n", res);
     }
 
-    cprintf("Teapt returned %d\n", response->res);
-
     sys_unmap_region(CURENVID, response, PAGE_SIZE);
 }
 
@@ -75,5 +72,7 @@ umain(int argc, char** argv) {
     envid_t netd = find_netd(initd);
     cprintf("Found 'netd' in env [%08x]\n", netd);
 
-    check_teapot(netd);
+    while(true) {
+        check_teapot(netd);
+    }
 }
