@@ -1,7 +1,6 @@
 #include "queue.h"
 #include "inc/assert.h"
 #include "inc/pool_alloc.h"
-#include "inc/stdio.h"
 #include "net.h"
 #include <inc/lib.h>
 #include <stdbool.h>

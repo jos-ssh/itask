@@ -1,9 +1,4 @@
-/* ### Static declarations ####
-*/
-// #include "inc/stdio.h"
-#include "inc/memlayout.h"
 #include "inc/pool_alloc.h"
-#include "inc/stdio.h"
 #include "net.h"
 #include "inc/assert.h"
 #include "inc/kmod/pci.h"
