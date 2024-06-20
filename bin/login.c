@@ -79,6 +79,7 @@ login(void) {
 
     strncpy(request.login.username, readline("Enter login: "), MAX_USERNAME_LENGTH);
     strncpy(request.login.password, readline_noecho("Enter password: "), MAX_PASSWORD_LENGTH);
+    printf("\n");
 
     static envid_t sUsersService;
     if (!sUsersService) {
@@ -89,7 +90,7 @@ login(void) {
     void* dummy = NULL;
     int res = rpc_execute(sUsersService, USERSD_REQ_LOGIN, &request, &dummy);
 
-    if (res) {
+    if (res == 0) {
         printf("Hello '%s', welcome back!\n", request.login.username);
         return true;
     }

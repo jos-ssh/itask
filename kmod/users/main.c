@@ -79,7 +79,7 @@ usersd_serve_login(envid_t from, const void* request,
     struct ShadowParsed shadow;
 
     int res1 = find_passw_line(req->username, passwd_line_buf, kMaxLineBufLength, &passw);
-    int res2 = find_shadow_line(req->password, shadow_line_buf, kMaxLineBufLength, &shadow);
+    int res2 = find_shadow_line(req->username, shadow_line_buf, kMaxLineBufLength, &shadow);
 
     if (res1 == 0 && res2 == 0) {
         // Jos Security

@@ -34,7 +34,7 @@ find_line(const char* username, const char* path_to_file,
         parse_line(result, n_of_fields, buff);
 
         // result[0] must be username
-        if (strncmp(result[0], username, strlen(username))) {
+        if (!strncmp(result[0], username, result[1] - result[0] - 1)) {
             res = 0;
             break;
         }
