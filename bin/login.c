@@ -39,6 +39,21 @@ umain(int argc, char** argv) {
     if (passwd_stat.st_size == 0)
         return no_users_login();
 
+    // workaround for prety console print
+    sys_yield();
+    sys_yield();
+    sys_yield();
+    sys_yield();
+    sys_yield();
+    sys_yield();
+    sys_yield();
+    sys_yield();
+    sys_yield();
+    sys_yield();
+    sys_yield();
+    sys_yield();
+
+
     size_t attempt = 0;
     while (attempt++ < kMaxLoginAttempts && !login()) {}
     if (attempt == kMaxLoginAttempts) {

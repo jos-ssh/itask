@@ -37,7 +37,7 @@ struct RpcServer Server = {
 
 void
 umain(int argc, char** argv) {
-    printf("[%08x: usersd] Starting up module...\n", thisenv->env_id);
+    cprintf("[%08x: usersd] Starting up module...\n", thisenv->env_id);
     while (1) {
         rpc_listen(&Server, NULL);
     }
