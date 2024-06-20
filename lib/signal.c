@@ -1,3 +1,4 @@
+#include <inc/kmod/init.h>
 #include <inc/lib.h>
 #include <inc/rpc.h>
 #include <inc/kmod/signal.h>
@@ -41,5 +42,23 @@ alarm(unsigned int seconds) {
     void *res_data = NULL;
 
     rpc_execute(sigdEnv, SIGD_REQ_ALARM, &request, &res_data);
+    return 0;
+}
+
+int
+kill(envid_t env, int sig_no) {
+    if (!env || env == kmod_find_any_version(INITD_MODNAME)) {
+        return -E_INVAL;
+    }
+
+    envid_t sigdEnv = kmod_find_any_version(SIGD_MODNAME);
+
+    static union SigdRequest request;
+    request.signal.target = env;
+    request.signal.signal = sig_no;
+
+    void *res_data = NULL;
+
+    rpc_execute(sigdEnv, SIGD_REQ_SIGNAL, &request, &res_data);
     return 0;
 }

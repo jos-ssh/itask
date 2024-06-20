@@ -85,6 +85,10 @@ libmain(int argc, char **argv) {
         signal(SIGKILL, _exit);
         signal(SIGTERM, _exit);
         signal(SIGALRM, _exit);
+        signal(SIGCHLD, SIG_IGN);
+
+        // TODO: add signal logic in pipe.c
+        signal(SIGPIPE, SIG_IGN);
     }
 
     /* Call user main routine */

@@ -172,9 +172,10 @@ int pipeisclosed(int pipefd);
 void wait(envid_t env);
 
 /* signal.c */
-typedef void (*sighandler_t)(int);
 unsigned int alarm(unsigned int seconds);
+int kill(envid_t env, int sig_no);
 
+typedef void (*sighandler_t)(int);
 sighandler_t signal(int signo, sighandler_t handler);
 
 /* Fake signal functions.  */
@@ -187,10 +188,11 @@ enum Signal {
     SIGALRM,
     SIGKILL,
     SIGTERM,
+    SIGCHLD,
+    SIGPIPE,
 
     NSIGNAL,
 };
-
 
 /* File open modes */
 #define O_RDONLY  0x0000 /* open for reading only */
