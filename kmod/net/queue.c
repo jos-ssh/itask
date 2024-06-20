@@ -1,6 +1,7 @@
 #include "queue.h"
 #include "inc/assert.h"
 #include "inc/pool_alloc.h"
+#include "inc/stdio.h"
 #include "net.h"
 #include <inc/lib.h>
 #include <stdbool.h>
@@ -82,7 +83,8 @@ alloc_desc(struct virtq *queue, int writable) {
 }
 
 struct virtio_packet_t* allocate_virtio_packet() {
-    return pool_allocator_alloc_object(&net.alloc);
+    struct send_buffer_t *buff = pool_allocator_alloc_object(&net.alloc);
+    return &buff->packet;
 }
 
 void send_virtio_packet(struct virtio_packet_t* packet) {
@@ -119,8 +121,8 @@ process_queue(struct virtq *queue, bool incoming) {
             if (incoming) {
                 process_packet(queue, id);
             } else if (sendq_index_to_ptr[id] != NULL) { // максимальная хуета, по идее должно отсеиваться processed, но нет
-                void* packet_ptr = sendq_index_to_ptr[id];
-                pool_allocator_free_object(&net.alloc, packet_ptr);
+                char* packet_ptr = (char*) sendq_index_to_ptr[id];
+                pool_allocator_free_object(&net.alloc, packet_ptr - offsetof(struct send_buffer_t, packet));
                 sendq_index_to_ptr[id] = NULL;
             }
         }

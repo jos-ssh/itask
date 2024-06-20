@@ -124,4 +124,17 @@ void process_tcp_packet(struct tcp_hdr_t* packet) {
     if ((packet->th_flags & TH_SYN) && !(packet->th_flags & TH_ACK)) {
         return reply_syn(packet);
     }
+
+
+    // Some data must be flowing... Currently just ACK and let it slay
+    struct virtio_packet_t* reply_packet = allocate_virtio_packet();
+    struct tcp_hdr_t* reply = (struct tcp_hdr_t *)(&reply_packet->data);
+
+    in_num += ntohs(packet->ipv4_hdr.len) - (packet->ipv4_hdr.header_len<<2) - (packet->th_off<<2);
+
+    fill_reply_to(reply, packet);
+
+    reply->th_flags |= TH_ACK;
+    tcp_checksum(reply);
+    send_virtio_packet(reply_packet);
 }

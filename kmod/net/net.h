@@ -16,9 +16,14 @@ extern struct virtio_net_device_t net;
 #define VENDOR_ID 0x1AF4
 #define DEVICE_ID 0x1000
 
-#define SEND_BUF_NUM 16
+#define SEND_BUF_NUM 512
 
 #define UNWRAP(res, line) do { if (res != 0) { panic(line ": %i", res); } } while (0)
+
+struct send_buffer_t {
+    struct List _;
+    struct virtio_packet_t packet;
+};
 
 void initialize();
 
