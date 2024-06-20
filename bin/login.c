@@ -75,23 +75,25 @@ no_users_login(void) {
 
 static bool
 login(void) {
-    struct UsersdLogin request = {};
+    static union UsersdRequest request = {};
 
-    strncpy(request.username, readline("Enter login: "), MAX_USERNAME_LENGTH);
-    strncpy(request.password, readline_noecho("Enter password: "), MAX_PASSWORD_LENGTH);
+    strncpy(request.login.username, readline("Enter login: "), MAX_USERNAME_LENGTH);
+    strncpy(request.login.password, readline_noecho("Enter password: "), MAX_PASSWORD_LENGTH);
 
     static envid_t sUsersService;
-    if (!sUsersService)
+    if (!sUsersService) {
         sUsersService = kmod_find_any_version(USERSD_MODNAME);
+        assert(sUsersService > 0);
+    }
 
-    void* dummy;
+    void* dummy = NULL;
     int res = rpc_execute(sUsersService, USERSD_REQ_LOGIN, &request, &dummy);
 
     if (res) {
-        printf("Hello '%s', welcome back!\n", request.username);
+        printf("Hello '%s', welcome back!\n", request.login.username);
         return true;
     }
 
-    printf("Wrong login '%s' or password\n", request.username);
+    printf("Wrong login '%s' or password\n", request.login.username);
     return false;
 }
