@@ -480,3 +480,112 @@ fs_sync(void) {
         flush_block(diskaddr(i));
     }
 }
+
+void cpy_file_to_file_info(struct FileInfo* file_info, struct File* file)
+{
+    strlcpy(file_info->f_name, file->f_name, MAXNAMELEN);
+    file_info->f_size = file->f_size;
+    file_info->f_type = file->f_mode;
+}
+
+/* Copy to buffer count files, counting start from from_which_count */
+int
+file_getdents(const char* path, struct FileInfo* buffer, uint32_t count, uint32_t from_which_count)
+{
+    if (debug)
+    {
+        printf("Start file_getdents(path = %ld)\n", (uint64_t)path);
+        printf("path = <%s>\n", path);
+    }
+
+    if (count == 0 || count > MAX_GETDENTS_COUNT)
+        return -E_INVAL;
+    int res = 0;
+    struct File* file = NULL;
+    struct File* dir  = NULL;
+    char lastelem[MAXNAMELEN] = {}; 
+
+    res = walk_path(path, &dir, &file, lastelem);
+    if (res < 0)
+        return res;
+    
+    assert((file->f_size % BLKSIZE) == 0);
+    blockno_t nblock = file->f_size / BLKSIZE;
+    int file_counter = 0;
+    for (blockno_t i = 0; i < nblock; i++) {
+        
+        char *blk;
+        res = file_get_block(file, i, &blk);
+        if (res < 0) return res;
+
+        struct File *f = (struct File *)blk;
+        for (blockno_t j = 0; j < BLKFILES; j++) {
+            if (from_which_count > 0)
+            {
+                if (debug)
+                    printf("from_which_count = %d\n", from_which_count);
+                from_which_count--;
+                continue;
+            }
+
+            if (debug)
+                printf("file_counter = %d\n", file_counter);
+            cpy_file_to_file_info(&buffer[file_counter], &f[j]);   
+            file_counter++;
+            if (count == file_counter)
+                return 0;
+        }
+    }
+
+    if (debug)
+        printf("End file_getdents successfully\n");
+    return 0;
+}
+
+int 
+free_file_blocks(struct File* file) {
+    int res = 0;
+    
+    const blockno_t block_number = file->f_size / BLKSIZE; 
+    for (blockno_t block_i = 0; block_i <  block_number; block_i++) {
+        res = file_free_block(file, block_i);
+        if (res < 0) return res;
+    }
+    
+    return 0;
+}
+
+/* Remove file
+ * return -E_BAD_PATH if path to directory
+ */
+int 
+file_remove(const char *path) {
+    struct File* dir = NULL;
+    struct File* file = NULL;
+    char lastelem[MAXPATHLEN] = {};
+
+    int res = walk_path(path, &dir, &file, lastelem);
+    if (res < 0)
+        return res;
+    if (file == NULL || lastelem[0] != 0)
+        return -E_FILE_EXISTS;
+
+    if (ISDIR(file->f_mode))
+        return -E_BAD_PATH;
+
+    free_file_blocks(file);
+
+    memset(file->f_name, 0, sizeof(file->f_name));
+    file->f_size = 0;
+    file->f_gid = 0;
+    file->f_uid = 0;
+    file->f_mode = 0;
+    memset(file->f_direct, 0, sizeof(file->f_direct));
+    file->f_indirect = 0;
+
+    flush_block(file);
+    free_block((uint64_t)file);
+
+    flush_bitmap();
+    return 0;
+}

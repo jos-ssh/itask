@@ -283,6 +283,23 @@ serve_sync(envid_t envid, union Fsipc *req) {
     return 0;
 }
 
+int
+serve_remove(envid_t envid, union Fsipc *req) {
+    return file_remove(req->remove.req_path);
+}
+
+int
+serve_mkdir(envid_t envid, union Fsipc *req) {
+    struct File* f = NULL;
+    return file_create(req->mkdir.req_path, &f, IFDIR | req->mkdir.req_omode, req->mkdir.req_gid, req->mkdir.req_uid);
+}
+
+int
+serve_getdents(envid_t envid, union Fsipc *req, void** page) {
+    *page = (void*)req;
+    return file_getdents(req->getdents.req_path, req->getdents.buffer, req->getdents.count, req->getdents.from_which_count);
+}
+
 typedef int (*fshandler)(envid_t envid, union Fsipc *req);
 
 fshandler handlers[] = {
@@ -293,7 +310,9 @@ fshandler handlers[] = {
         [FSREQ_FLUSH] = serve_flush,
         [FSREQ_WRITE] = serve_write,
         [FSREQ_SET_SIZE] = serve_set_size,
-        [FSREQ_SYNC] = serve_sync};
+        [FSREQ_SYNC] = serve_sync,
+        [FSREQ_REMOVE] = serve_remove,
+        [FSREQ_MKDIR] = serve_mkdir};
 #define NHANDLERS (sizeof(handlers) / sizeof(handlers[0]))
 
 void
@@ -321,6 +340,9 @@ serve(void) {
         pg = NULL;
         if (req == FSREQ_OPEN) {
             res = serve_open(whom, (struct Fsreq_open *)fsreq, &pg, &perm);
+        } 
+        else if (req == FSREQ_GETDENTS) {
+            res = serve_getdents(whom, fsreq, &pg);
         } else if (req < NHANDLERS && handlers[req]) {
             res = handlers[req](whom, fsreq);
         } else {
