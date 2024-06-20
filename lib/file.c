@@ -214,3 +214,45 @@ sync(void) {
 
     return fsipc(FSREQ_SYNC, NULL);
 }
+
+int 
+remove(const char *path) {
+    if (strlen(path) >= MAXPATHLEN)
+        return -E_BAD_PATH;
+
+    strlcpy(fsipcbuf.remove.req_path, path, MAXPATHLEN);
+    return fsipc(FSREQ_REMOVE, &fsipcbuf);
+}
+
+int 
+mkdir(const char *path, int mode) {
+    if (strlen(path) >= MAXPATHLEN)
+        return -E_BAD_PATH;
+
+    fsipcbuf.mkdir.req_gid = 0;
+    fsipcbuf.mkdir.req_uid = 0;
+    fsipcbuf.mkdir.req_omode = mode;
+    strlcpy(fsipcbuf.mkdir.req_path, path, MAXPATHLEN);
+    return fsipc(FSREQ_MKDIR, &fsipcbuf);
+}
+
+int
+getdents(const char* path, struct FileInfo* buffer, uint32_t count) {
+    strlcpy(fsipcbuf.getdents.req_path, path, MAXPATHLEN);
+
+    int remaining = count;
+    while (remaining > 0)
+    {
+        const uint32_t getdents_count = MIN(remaining, MAX_GETDENTS_COUNT); 
+        fsipcbuf.getdents.count = getdents_count;
+        fsipcbuf.getdents.from_which_count = remaining - getdents_count;
+        int res = fsipc(FSREQ_GETDENTS, &fsipcbuf);
+        if (res < 0)
+            return res;
+        
+        memcpy(buffer + remaining - getdents_count, fsipcbuf.getdents.buffer, sizeof(struct FileInfo) * getdents_count);
+        remaining -= getdents_count;
+    }
+
+    return 0;
+}
