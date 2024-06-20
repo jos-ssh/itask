@@ -80,7 +80,6 @@ void test_getdents() {
     cprintf("REMOVE TEST: file[1] = <%s>\n", files[1].f_name);
     cprintf("REMOVE TEST: file[1] = <%s>\n", files[2].f_name);
 
-
     cprintf("\n==========================\nEND TEST GETDENTS\n==========================\n");
 }
 

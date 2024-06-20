@@ -296,8 +296,9 @@ serve_mkdir(envid_t envid, union Fsipc *req) {
 
 int
 serve_getdents(envid_t envid, union Fsipc *req, void** page) {
+    cprintf("Start serve_getdents\n");
     *page = (void*)req;
-    return getdents(req->getdents.req_path, req->getdents.buffer, req->getdents.count);
+    return file_getdents(req->getdents.req_path, req->getdents.buffer, req->getdents.count);
 }
 
 typedef int (*fshandler)(envid_t envid, union Fsipc *req);
@@ -342,7 +343,8 @@ serve(void) {
             res = serve_open(whom, (struct Fsreq_open *)fsreq, &pg, &perm);
         } 
         else if (req == FSREQ_GETDENTS) {
-            res = serve_getdents(whom, fsreq, pg);
+            cprintf("Serve(FSREQ_GETDENTS)\n");
+            res = serve_getdents(whom, fsreq, &pg);
         } else if (req < NHANDLERS && handlers[req]) {
             res = handlers[req](whom, fsreq);
         } else {
