@@ -32,8 +32,10 @@ typedef uint32_t blockno_t;
 #define CLRBIT(v, n) ((v)[(n / 32)] &= ~(1U << ((n) % 32)))
 #define TSTBIT(v, n) ((v)[(n / 32)] & (1U << ((n) % 32)))
 
-/* Max count in getdents request (couldn`t be more than (PAGE_SIZE / sizeof(struct FileInfo))) */
-#define MAX_GETDENTS_COUNT 10
+/* Max count in getdents request 
+ * (calculated from the fact that 
+ * sizeof(struct Fsreq_getdents) < PAGE_SIZE) */
+#define MAX_GETDENTS_COUNT 22
 
 struct File {
     char f_name[MAXNAMELEN]; /* filename */
