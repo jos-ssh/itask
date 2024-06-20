@@ -11,6 +11,7 @@
 #include <inc/error.h>
 #include <inc/string.h>
 #include <inc/assert.h>
+#include <inc/crypto.h>
 
 #include <kern/console.h>
 #include <kern/env.h>
@@ -717,6 +718,11 @@ sys_get_rsdp_paddr(physaddr_t* phys_addr) {
   return 0;
 }
 
+static int
+sys_crypto(const char* hashed, const char* salt, const char* password) {
+    return check_PBKDF2(hashed, salt, password);
+}
+
 /* Dispatches to the correct kernel function, passing the arguments. */
 uintptr_t
 syscall(uintptr_t syscallno, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4, uintptr_t a5, uintptr_t a6) {
@@ -767,6 +773,8 @@ syscall(uintptr_t syscallno, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t
         return sys_gettime();
     case SYS_get_rsdp_paddr:
         return sys_get_rsdp_paddr((physaddr_t*)a1);
+    case SYS_crypto:
+        return sys_crypto((char*) a1, (char*) a2, (char*) a3);
     case NSYSCALLS:
     default:
         return -E_NO_SYS;

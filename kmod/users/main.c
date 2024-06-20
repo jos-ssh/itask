@@ -85,7 +85,7 @@ usersd_serve_login(envid_t from, const void* request,
         // Jos Security
         sleep(rand() & kMaxDelay);
 
-        if (check_PBKDF2(shadow.hashed, shadow.salt, req->password)) {
+        if (sys_crypto(shadow.hashed, shadow.salt, req->password)) {
             spawnl(passw.shell, passw.shell, NULL);
 
             return 0;
