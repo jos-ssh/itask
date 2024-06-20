@@ -12,7 +12,7 @@
 #include "signal.h"
 
 
-#define signal_debug 0
+#define signal_debug debug
 
 struct SigdSharedData g_SharedData[NENV] __attribute__((aligned(PAGE_SIZE)));
 
