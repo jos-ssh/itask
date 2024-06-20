@@ -42,11 +42,6 @@ _exit(int sig_no) {
     exit();
 }
 
-static void
-_alarm(int sig_no) {
-    // No-op
-}
-
 void
 libmain(int argc, char **argv) {
     /* Perform global constructor initialisation (e.g. asan)
@@ -89,7 +84,7 @@ libmain(int argc, char **argv) {
 
         signal(SIGKILL, _exit);
         signal(SIGTERM, _exit);
-        signal(SIGALRM, _alarm);
+        signal(SIGALRM, _exit);
     }
 
     /* Call user main routine */

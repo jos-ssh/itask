@@ -41,7 +41,5 @@ alarm(unsigned int seconds) {
     void *res_data = NULL;
 
     rpc_execute(sigdEnv, SIGD_REQ_ALARM, &request, &res_data);
-    // FIXME: maybe bug with alarm(0)
-    sys_env_set_status(CURENVID, ENV_NOT_RUNNABLE);
     return 0;
 }

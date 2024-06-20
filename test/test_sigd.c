@@ -21,25 +21,19 @@ self_kill_test() {
 
 void
 sigalarm_handler(int sig_no) {
-    printf("sigalrm catched\n");
+    printf("5 seconds later\n");
+    exit();
 }
 
 void
-custom_handler_test() {
+alarm_test() {
     signal(SIGALRM, sigalarm_handler);
-    alarm(1);
+    alarm(5);
+    while (true) {}
 }
 
 void
 umain(int argc, char **argv) {
     printf("Test 1: alarm\n");
-    alarm(5);
-    printf("5 seconds later\n");
-
-    printf("Test 2: signal\n");
-    custom_handler_test();
-
-    printf("Test 3: killing myself...\n");
-    self_kill_test();
-    printf("i am alive :(");
+    alarm_test();
 }

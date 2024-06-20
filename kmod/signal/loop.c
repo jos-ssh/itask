@@ -68,13 +68,8 @@ update_timers(uint64_t* current_time) {
     *current_time = time_now;
 
     for (size_t idx = 0; idx < NENV; ++idx) {
-        // TODO: maybe cmpxhg
-
-        uint32_t time = atomic_load(&g_SharedData[idx].timer_countdown);
-
-        if (time != 0) {
-            atomic_fetch_sub(&g_SharedData[idx].timer_countdown, 1);
-            if (time == 1) {
+        if (atomic_load(&g_SharedData[idx].timer_countdown)) {
+            if (atomic_fetch_sub(&g_SharedData[idx].timer_countdown, 1) == 1) {
                 // set SIGALRM
                 atomic_fetch_or(&g_SharedData[idx].recvd_signals, (1 << SIGALRM));
             }
