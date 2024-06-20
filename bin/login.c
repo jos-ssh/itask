@@ -11,6 +11,15 @@ static void help(void);
 static void no_users_login(void);
 static bool login(void);
 
+// Workaround for preventing overlapping of initd output
+static void
+sleep(int secons) {
+    secons *= 1000;
+    while (secons--) {
+        sys_yield();
+    }
+}
+
 void
 umain(int argc, char** argv) {
     int r;
@@ -40,18 +49,7 @@ umain(int argc, char** argv) {
         return no_users_login();
 
     // workaround for prety console print
-    sys_yield();
-    sys_yield();
-    sys_yield();
-    sys_yield();
-    sys_yield();
-    sys_yield();
-    sys_yield();
-    sys_yield();
-    sys_yield();
-    sys_yield();
-    sys_yield();
-    sys_yield();
+    sleep(1);
 
 
     size_t attempt = 0;
