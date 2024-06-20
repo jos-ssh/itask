@@ -106,14 +106,13 @@ static void reply_syn(struct tcp_hdr_t* syn) {
     fill_reply_to(reply, syn);
     reply->th_ack = htonl(ntohl(reply->th_ack) + 1);
 
-    reply->th_flags |= TH_ACK;
+    reply->th_flags |= TH_ACK | TH_SYN;
     tcp_checksum(reply);
     send_virtio_packet(reply_packet);
 }
 
-
 void process_tcp_packet(struct tcp_hdr_t* packet) {
-    if (ntohl(packet->th_seq) >= in_num) {
+    if (ntohl(packet->th_seq) < in_num) {
         cprintf("Runaway detected, %u with remembered %u", ntohl(packet->th_seq), in_num);
     }
 
