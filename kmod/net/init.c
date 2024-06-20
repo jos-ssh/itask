@@ -1,3 +1,4 @@
+#include "inc/list.h"
 #include "inc/pool_alloc.h"
 #include "net.h"
 #include "inc/assert.h"
@@ -24,7 +25,7 @@ struct recv_buffer {
 };
 
 struct recv_buffer recv_buffers[VIRTQ_SIZE];
-struct virtio_packet_t send_buffers[SEND_BUF_NUM];
+struct send_buffer_t send_buffers[SEND_BUF_NUM];
 
 void *reverse_recv_buffer_addr(int64_t index) {
     return &recv_buffers[index]; // для sendq там indx -> indx;
