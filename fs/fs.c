@@ -531,35 +531,21 @@ file_getdents(const char* path, struct File* buffer, uint32_t count, uint32_t fr
 }
 
 int 
-recursive_block_free(struct File* file) {
+free_file_blocks(struct File* file) {
     int res = 0;
-    if (file->f_type == FTYPE_REG) {
-        const blockno_t block_number = file->f_size / BLKSIZE; 
-        for (blockno_t block_i = 0; block_i <  block_number; block_i++) {
-            res = file_free_block(file, block_i);
-            if (res < 0) return res;
-        }
-        return 0;
-    }
-    /* file->f_type == FTYPE_DIR */
-
-    assert((file->f_size % BLKSIZE) == 0);
-    blockno_t nblock = file->f_size / BLKSIZE;
-    for (blockno_t i = 0; i < nblock; i++) {
-        char *blk;
-        res = file_get_block(file, i, &blk);
+    
+    const blockno_t block_number = file->f_size / BLKSIZE; 
+    for (blockno_t block_i = 0; block_i <  block_number; block_i++) {
+        res = file_free_block(file, block_i);
         if (res < 0) return res;
-
-        struct File *f = (struct File *)blk;
-        for (blockno_t j = 0; j < BLKFILES; j++) {
-            res = recursive_block_free(&f[j]);
-            if (res < 0) return res;
-        }
     }
-
+    
     return 0;
 }
 
+/* Remove file
+ * return -E_BAD_PATH if path to directory
+ */
 int 
 file_remove(const char *path) {
     struct File* dir = NULL;
@@ -572,7 +558,10 @@ file_remove(const char *path) {
     if (file == NULL || lastelem[0] != 0)
         return -E_FILE_EXISTS;
 
-    recursive_block_free(file);
+    if (file->f_type == FTYPE_DIR)
+        return -E_BAD_PATH;
+
+    free_file_blocks(file);
 
     memset(file->f_name, 0, sizeof(file->f_name));
     file->f_size = 0;
