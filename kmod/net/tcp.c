@@ -116,12 +116,12 @@ void process_tcp_packet(struct tcp_hdr_t* packet) {
         cprintf("Runaway detected, %u with remembered %u", ntohl(packet->th_seq), in_num);
     }
 
+    cprintf("Received tcp packet to port %d\n", ntohs(packet->th_dport));
+
     in_num = ntohl(packet->th_seq);
 
     // Is this SYN only?
     if ((packet->th_flags & TH_SYN) && !(packet->th_flags & TH_ACK)) {
-        reply_syn(packet);
+        return reply_syn(packet);
     }
-
-    cprintf("Received tcp packet to port %d\n", ntohs(packet->th_dport));
 }
