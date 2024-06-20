@@ -479,17 +479,19 @@ fs_sync(void) {
 int 
 file_getdents(const char* path, struct File* buffer, int count)
 {
-    cprintf("Start file_getdents\n");
-    printf("path = %ld\n", (uint64_t)path);
+    if (debug)
+    {
+        cprintf("Start file_getdents(path = %ld)\n", (uint64_t)path);
+        cprintf("path = <%s>\n", path);
+    }
+
     assert(0 < count && count <= MAX_GETDENTS_COUNT);
     int res = 0;
     struct File* file = NULL;
     struct File* dir  = NULL;
     char lastelem[MAXNAMELEN] = {}; 
 
-    cprintf("path = <%s>\n", path);
     res = walk_path(path, &dir, &file, lastelem);
-    cprintf("End walk_path\n");
     if (res < 0)
         return res;
     
@@ -497,7 +499,9 @@ file_getdents(const char* path, struct File* buffer, int count)
     blockno_t nblock = file->f_size / BLKSIZE;
     int file_counter = 0;
     for (blockno_t i = 0; i < nblock; i++) {
-        cprintf("blockno = %d\n", i);
+        if (debug)
+            cprintf("blockno = %d\n", i);
+        
         char *blk;
         res = file_get_block(file, i, &blk);
         if (res < 0) return res;
@@ -511,7 +515,8 @@ file_getdents(const char* path, struct File* buffer, int count)
         }
     }
 
-    cprintf("End file_getdents successfully\n");
+    if (debug)
+        cprintf("End file_getdents successfully\n");
     return 0;
 }
 
