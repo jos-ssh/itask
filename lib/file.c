@@ -229,6 +229,8 @@ mkdir(const char *path) {
     if (strlen(path) >= MAXPATHLEN)
         return -E_BAD_PATH;
 
+    fsipcbuf.mkdir.req_gid = 0;
+    fsipcbuf.mkdir.req_uid = 0;
     strlcpy(fsipcbuf.mkdir.req_path, path, MAXPATHLEN);
     return fsipc(FSREQ_MKDIR, &fsipcbuf);
 }

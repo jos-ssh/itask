@@ -485,7 +485,7 @@ void cpy_file_to_file_info(struct FileInfo* file_info, struct File* file)
 {
     strlcpy(file_info->f_name, file->f_name, MAXNAMELEN);
     file_info->f_size = file->f_size;
-    file_info->f_type = file->f_type;
+    file_info->f_type = file->f_mode;
 }
 
 /* Copy to buffer count files, counting start from from_which_count */
