@@ -229,7 +229,7 @@ getdents(const char* path, struct File* buffer, uint32_t count) {
     while (remaining > 0)
     {
         if (debug)
-            cprintf("remaining = %d\n", remaining);
+            printf("remaining = %d\n", remaining);
         const uint32_t getdents_count = MIN(remaining, MAX_GETDENTS_COUNT); 
         fsipcbuf.getdents.count            = getdents_count;
         fsipcbuf.getdents.from_which_count = remaining - getdents_count;

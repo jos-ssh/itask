@@ -482,8 +482,8 @@ file_getdents(const char* path, struct File* buffer, uint32_t count, uint32_t fr
 {
     if (debug)
     {
-        cprintf("Start file_getdents(path = %ld)\n", (uint64_t)path);
-        cprintf("path = <%s>\n", path);
+        printf("Start file_getdents(path = %ld)\n", (uint64_t)path);
+        printf("path = <%s>\n", path);
     }
 
     if (count == 0 || count > MAX_GETDENTS_COUNT)
@@ -511,13 +511,13 @@ file_getdents(const char* path, struct File* buffer, uint32_t count, uint32_t fr
             if (from_which_count > 0)
             {
                 if (debug)
-                    cprintf("from_which_count = %d\n", from_which_count);
+                    printf("from_which_count = %d\n", from_which_count);
                 from_which_count--;
                 continue;
             }
 
             if (debug)
-                cprintf("file_counter = %d\n", file_counter);
+                printf("file_counter = %d\n", file_counter);
             buffer[file_counter] = f[j];   
             file_counter++;
             if (count == file_counter)
@@ -526,7 +526,7 @@ file_getdents(const char* path, struct File* buffer, uint32_t count, uint32_t fr
     }
 
     if (debug)
-        cprintf("End file_getdents successfully\n");
+        printf("End file_getdents successfully\n");
     return 0;
 }
 
