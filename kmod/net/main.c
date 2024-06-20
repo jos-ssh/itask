@@ -16,6 +16,10 @@ static int netd_serve_identify(envid_t from, const void* request,
 static int netd_serve_teapot(envid_t from, const void* request,
                                     void* response, int* response_perm);
 
+envid_t g_InitdEnvid;
+envid_t g_PcidEnvid;
+struct virtio_net_device_t net;
+
 static union NetdResponce ResponseBuffer;
 
 struct RpcServer Server = {
@@ -24,7 +28,6 @@ struct RpcServer Server = {
         .HandlerCount = NETD_NREQUESTS,
         .Handlers = {
                 [NETD_IDENTITY] = netd_serve_identify,
-                [NETD_IS_TEAPOT] = netd_serve_teapot
         }};
 
 void umain(int argc, char** argv) {
@@ -36,9 +39,19 @@ void umain(int argc, char** argv) {
 
   cprintf("[%08x: netd] Starting up module...\n", thisenv->env_id);
 
+  // Answer initd
+  rpc_listen(&Server, NULL);
+
+  initialize();
+
   while (1) {
-    // serve_teapot();
-    rpc_listen(&Server, NULL);
+    uint8_t status = *net.isr_status;
+    if (status & VIRTIO_PCI_ISR_NOTIFY) {
+        process_queue(&net.recvq, true);
+        process_queue(&net.sendq, false);
+    }
+
+    sys_yield();
   }
 }
 
@@ -54,18 +67,4 @@ netd_serve_identify(envid_t from, const void* request,
     strncpy(ident->info.name, NETD_MODNAME, MAXNAMELEN);
     *response_perm = PROT_R;
     return 0;
-}
-
-static int netd_serve_teapot(envid_t from, const void* request,
-                                  void* response, int* response_perm) {
-  const union NetdRequest* req = request;
-
-  union NetdResponce* res = response;
-  memset(res, 0, sizeof(*res));
-  res->res = req->req;
-
-  serve_teapot();
-
-  *response_perm = PROT_R;
-  return 0;
 }

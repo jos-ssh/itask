@@ -56,8 +56,6 @@ void initialize() {
     // Setup allocator for send buffers
     net.alloc = MAKE_ALLOCATOR(send_buffers);
     pool_allocator_init(&net.alloc);
-
-    g_IsNetdInitialized = true;
 } 
 
 static bool
