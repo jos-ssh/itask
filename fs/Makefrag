@@ -40,7 +40,8 @@ USERAPPS :=		$(OBJDIR)/user/num \
 			$(OBJDIR)/user/hello
 
 KERNMODS := $(OBJDIR)/kmod/acpid \
-            $(OBJDIR)/kmod/pcid
+            $(OBJDIR)/kmod/pcid \
+			$(OBJDIR)/kmod/usersd
 
 TESTS := $(OBJDIR)/test/test_initd \
       $(OBJDIR)/test/test_acpid \
