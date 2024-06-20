@@ -146,7 +146,7 @@ int ftruncate(int fd, off_t size);
 int remove(const char *path);
 int sync(void);
 int mkdir(const char *path);
-int getdents(const char* path, struct File* buffer, uint32_t count);
+int getdents(const char* path, struct FileInfo* buffer, uint32_t count);
 
 /* spawn.c */
 envid_t spawn(const char *program, const char **argv);

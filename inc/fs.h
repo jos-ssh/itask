@@ -32,7 +32,7 @@ typedef uint32_t blockno_t;
 #define CLRBIT(v, n) ((v)[(n / 32)] &= ~(1U << ((n) % 32)))
 #define TSTBIT(v, n) ((v)[(n / 32)] & (1U << ((n) % 32)))
 
-/* Max count in getdents request (couldn`t be more than (PAGE_SIZE / sizeof(struct File))) */
+/* Max count in getdents request (couldn`t be more than (PAGE_SIZE / sizeof(struct FileInfo))) */
 #define MAX_GETDENTS_COUNT 10
 
 struct File {
@@ -83,6 +83,12 @@ enum {
     FSREQ_GETDENTS
 };
 
+struct FileInfo {
+    char f_name[MAXNAMELEN]; /* filename */
+    off_t f_size;            /* file size in bytes */
+    uint32_t f_type;         /* file type */
+};
+
 union Fsipc {
     struct Fsreq_open {
         char req_path[MAXPATHLEN];
@@ -125,7 +131,7 @@ union Fsipc {
         char req_path[MAXPATHLEN];
         int count;
         int from_which_count;
-        struct File buffer[MAX_GETDENTS_COUNT];
+        struct FileInfo buffer[MAX_GETDENTS_COUNT];
     } getdents;
 
     /* Ensure Fsipc is one page */

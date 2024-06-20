@@ -476,9 +476,16 @@ fs_sync(void) {
     }
 }
 
+void cpy_file_to_file_info(struct FileInfo* file_info, struct File* file)
+{
+    strlcpy(file_info->f_name, file->f_name, MAXNAMELEN);
+    file_info->f_size = file->f_size;
+    file_info->f_type = file->f_type;
+}
+
 /* Copy to buffer count files, counting start from from_which_count */
-int 
-file_getdents(const char* path, struct File* buffer, uint32_t count, uint32_t from_which_count)
+int
+file_getdents(const char* path, struct FileInfo* buffer, uint32_t count, uint32_t from_which_count)
 {
     if (debug)
     {
@@ -518,7 +525,7 @@ file_getdents(const char* path, struct File* buffer, uint32_t count, uint32_t fr
 
             if (debug)
                 printf("file_counter = %d\n", file_counter);
-            buffer[file_counter] = f[j];   
+            cpy_file_to_file_info(&buffer[file_counter], &f[j]);   
             file_counter++;
             if (count == file_counter)
                 return 0;

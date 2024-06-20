@@ -69,7 +69,7 @@ void test_getdents_small_number()
     close(fd2);
     close(fd3);
 
-    struct File files[3];
+    struct FileInfo files[3];
     res = getdents(directory, files, 2);
     cprintf("GETDENTS SMALL N TEST: getdents \"%s\", 2 <%i>(%d)\n", directory, res, res);
     cprintf("GETDENTS SMALL N TEST: file[0] = <%s>\n", files[0].f_name);
@@ -104,7 +104,7 @@ void test_getdents_big_number()
         close(res);
     }
 
-    struct File files[file_number];
+    struct FileInfo files[file_number];
     res = getdents(directory, files, file_number);
     for (int i = 0; i < file_number; i++)
         cprintf("GETDENTS BIG N TEST: [%d] <%s>\n", i, files[i].f_name);
