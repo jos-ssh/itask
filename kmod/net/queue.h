@@ -219,25 +219,11 @@ struct virtio_packet_t {
     struct ethernet_pkt_t data;
 };
 
-static inline int
-virtq_need_event(uint16_t event_idx, uint16_t new_idx, uint16_t old_idx) {
-    return (uint16_t)(new_idx - event_idx - 1) < (uint16_t)(new_idx - old_idx);
-}
-
 void
 setup_queue(struct virtq *queue, volatile struct virtio_pci_common_cfg_t *cfg_header);
 
 void
 notify_queue(struct virtq *queue);
-
-void
-queue_avail(struct virtq *queue, uint32_t count);
-
-struct virtq_desc *
-alloc_desc(struct virtq *queue, int writable);
-
-void
-process_queue(struct virtq *queue, bool incoming);
 
 bool
 process_receive_queue(struct virtq *queue);
