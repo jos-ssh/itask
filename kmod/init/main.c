@@ -56,7 +56,18 @@ struct RpcServer Server = {
 
 void
 umain(int argc, char** argv) {
-    cprintf("[%08x: initd] Starting up module...\n", thisenv->env_id);
+    /* Being run directly from kernel, so no file descriptors open yet */
+    // TODO: check that no file descriptors *indeed* opened
+    close(0);
+    int r;
+    if ((r = opencons()) < 0)
+        panic("opencons: %i", r);
+    if (r != 0)
+        panic("first opencons used fd %d", r);
+    if ((r = dup(0, 1)) < 0)
+        panic("dup: %i", r);
+
+    printf("[%08x: initd] Starting up module...\n", thisenv->env_id);
     initd_load_module("/acpid");
     initd_load_module("/pcid");
     initd_load_module("/usersd");
@@ -75,12 +86,12 @@ initd_load_module(const char* path) {
     // int mod = spawnl(path, path, envid_string(), NULL);
 
     if (mod < 0) {
-        cprintf("[%08x: initd] Failed to load module '%s': %i\n", thisenv->env_id, path, mod);
+        printf("[%08x: initd] Failed to load module '%s': %i\n", thisenv->env_id, path, mod);
         return mod;
     }
     int res = sys_env_set_status(mod, ENV_RUNNABLE);
     if (res < 0) {
-        cprintf("[%08x: initd] Failed to start module '%s': %i\n", thisenv->env_id, path, res);
+        printf("[%08x: initd] Failed to start module '%s': %i\n", thisenv->env_id, path, res);
         return res;
     }
 
@@ -88,7 +99,7 @@ initd_load_module(const char* path) {
     union KmodIdentifyResponse* response = (void*)RECEIVE_ADDR;
     res = rpc_execute(mod, KMOD_REQ_IDENTIFY, NULL, (void**)&response);
     if (res != 0 || !response) {
-        cprintf("[%08x: initd] Bad module '%s'\n", thisenv->env_id, path);
+        printf("[%08x: initd] Bad module '%s'\n", thisenv->env_id, path);
         sys_env_destroy(mod);
         if (response) {
             sys_unmap_region(CURENVID, response, PAGE_SIZE);
@@ -97,7 +108,7 @@ initd_load_module(const char* path) {
         return -E_INVAL;
     }
 
-    cprintf("[%08x: initd] Loaded module '%s' v%zu from '%s' as env [%08x]\n",
+    printf("[%08x: initd] Loaded module '%s' v%zu from '%s' as env [%08x]\n",
             thisenv->env_id, response->info.name, response->info.version,
             path, mod);
 
