@@ -15,11 +15,13 @@ FSIMGTXTFILES :=	fs/fs_image/newmotd \
 			fs/fs_image/testshell.key \
 			fs/fs_image/testshell.sh \
 			fs/fs_image/passwd \
-			fs/fs_image/shadow
+			fs/fs_image/shadow \
+			fs/fs_image/testdir
 
 BINAPPS :=		$(OBJDIR)/bin/init \
 			$(OBJDIR)/bin/cat \
 			$(OBJDIR)/bin/echo \
+			$(OBJDIR)/bin/lsold \
 			$(OBJDIR)/bin/ls \
 			$(OBJDIR)/bin/lsfd \
 			$(OBJDIR)/bin/date \
