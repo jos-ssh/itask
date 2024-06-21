@@ -2,23 +2,38 @@
 #include "inc/env.h"
 #include "inc/error.h"
 #include "inc/fs.h"
-#include "inc/kmod/init.h"
 #include "inc/mmu.h"
 #include "kmod/file/cwd.h"
 #include <inc/kmod/request.h>
 #include <inc/kmod/file.h>
+#include <inc/kmod/init.h>
+#include <inc/kmod/users.h>
 #include <inc/rpc.h>
 #include <inc/string.h>
 #include <inc/memlayout.h>
 #include <inc/lib.h>
 
+
+#ifndef debug_kfile
+#define debug_kfile 1
+#endif
+
+#define KFILE_LOG(...) \
+    if(debug_kfile) {                                                                     \
+        cprintf("\e[32mKFILE_LOG\e[0m[\e[94m%s\e[0m:%d]: ", __func__, __LINE__); \
+        cprintf(__VA_ARGS__);                                                \
+    }
+    
 static union FiledRequest Request;
 static union FiledResponse Response;
 
 static uint8_t FdBuffer[PAGE_SIZE] __attribute__((aligned(PAGE_SIZE)));
+static uint8_t StatBuffer[PAGE_SIZE] __attribute__((aligned(PAGE_SIZE)));
+static uint8_t sUsersdResponseBuffer[PAGE_SIZE] __attribute__((aligned(PAGE_SIZE)));
 
 static union Fsipc FsBuffer;
 static union InitdRequest InitdBuffer;
+static union UsersdRequest sUsersdBuffer;
 
 static envid_t
 get_fs() {
@@ -84,6 +99,10 @@ umain(int argc, char** argv) {
     assert(res == 0);
     res = sys_unmap_region(CURENVID, FdBuffer, sizeof(FdBuffer));
     assert(res == 0);
+    res = sys_unmap_region(CURENVID, StatBuffer, sizeof(StatBuffer));
+    assert(res == 0);
+    res = sys_unmap_region(CURENVID, sUsersdResponseBuffer, sizeof(sUsersdResponseBuffer));
+    assert(res == 0);
 
     assert(argc >= 2);
     unsigned long cvt = 0;
@@ -108,11 +127,90 @@ filed_serve_identify(envid_t from, const void* request,
     return 0;
 }
 
+static int get_env_info(envid_t target, struct EnvInfo* info) {
+    sUsersdBuffer.get_env_info.target = target;
+    
+    void* response = &sUsersdResponseBuffer;
+    int res = rpc_execute(kmod_find_any_version(USERSD_MODNAME), USERSD_REQ_GET_ENV_INFO, &sUsersdBuffer, &response);
+    if (res){
+        KFILE_LOG("%i\n", res);
+        return res;
+    }
+
+    if (!response) {
+        KFILE_LOG("unspecified, %i", res);
+        return -E_UNSPECIFIED;
+    }
+
+    assert(response == &sUsersdResponseBuffer);
+
+    memcpy(info, response, sizeof(*info));
+
+    KFILE_LOG("%s: [%x] uid: %d\n", __func__, target, info->euid);
+    return 0;
+}
+
+static int check_perm (const struct EnvInfo* info, int fileid, int flags) {
+    FsBuffer.stat.req_fileid = fileid; 
+    KFILE_LOG("Stat of %d\n", FsBuffer.stat.req_fileid);
+
+    int perm;
+    int res = fs_rpc_execute(FSREQ_STAT, &FsBuffer, StatBuffer, &perm);
+    if (res)
+        goto exit;
+    assert(perm | PROT_R);
+
+    flags &= O_ACCMODE;
+
+    struct Fsret_stat* stat = (struct Fsret_stat*) StatBuffer;
+
+    if (stat->ret_uid == info->euid) {
+        
+        if (!(IRUSR | stat->ret_mode) && (!(flags | O_RDONLY) || (flags | O_RDWR)))
+            res = -E_PERM_DENIED;
+
+        if (!(IWUSR | stat->ret_mode) && ((flags | O_WRONLY) || (flags | O_RDWR)))
+            res = -E_PERM_DENIED;
+
+        goto exit;
+    } 
+    
+    if (stat->ret_gid == info->egid) {
+
+        if (!(IRGRP | stat->ret_mode) && (!(flags | O_RDONLY) || (flags | O_RDWR)))
+            res = -E_PERM_DENIED;
+
+        if (!(IWGRP | stat->ret_mode) && ((flags | O_WRONLY) || (flags | O_RDWR)))
+            res = -E_PERM_DENIED;
+
+        goto exit;
+    }
+
+    // others
+    if (!(IROTH | stat->ret_mode) && (!(flags | O_RDONLY) || (flags | O_RDWR)))
+        res = -E_PERM_DENIED;
+
+    if (!(IWOTH | stat->ret_mode) && ((flags | O_WRONLY) || (flags | O_RDWR)))
+        res = -E_PERM_DENIED;
+
+exit:
+    int temp = sys_unmap_region(CURENVID, FdBuffer, PAGE_SIZE);
+    assert(temp == 0);
+
+    KFILE_LOG("res: %i\n", res);
+    return res;
+}
 
 static int
 filed_serve_open(envid_t from, const void* request,
                  void* response, int* response_perm) {
     int res = 0;
+
+    struct EnvInfo env_info;
+    res = get_env_info(from, &env_info);
+    if (res)
+        return res;
+
     const union FiledRequest* freq = request;
     if (freq->open.req_fd_vaddr & (PAGE_SIZE - 1)) return -E_INVAL;
     if (freq->open.req_fd_vaddr >= MAX_USER_ADDRESS) return -E_INVAL;
@@ -121,26 +219,36 @@ filed_serve_open(envid_t from, const void* request,
     res = filed_get_absolute_path(from, freq->open.req_path, &abs_path);
     if (res < 0) return res;
 
+    // set FsBuffer request
     memcpy(FsBuffer.open.req_path, abs_path, MAXPATHLEN);
-    FsBuffer.open.req_omode = freq->open.req_omode;
+
+    FsBuffer.open.req_oflags = freq->open.req_flags;
+    if (freq->open.req_flags & O_CREAT) {
+        FsBuffer.open.req_omode = freq->open.req_omode;
+        
+        FsBuffer.open.req_uid = env_info.euid;
+        FsBuffer.open.req_gid = env_info.egid;
+    }
 
     int perm = 0;
     res = fs_rpc_execute(FSREQ_OPEN, &FsBuffer, FdBuffer, &perm);
+    if (res)
+        goto exit;
 
-    if (res == 0) {
-        // TODO: check permissions with stat
+    res = check_perm(&env_info, ((struct Fd*)FdBuffer)->fd_file.id, freq->open.req_flags);
+    if (res)
+        goto exit;
 
-        assert(perm & PROT_R);
-        res = sys_map_region(CURENVID, FdBuffer, from, (void*)freq->open.req_fd_vaddr,
-                             PAGE_SIZE, perm);
-        assert(res == 0);
-    }
-
-    int status = res;
-    res = sys_unmap_region(CURENVID, FdBuffer, PAGE_SIZE);
+    assert(perm & PROT_R);
+    res = sys_map_region(CURENVID, FdBuffer, from, (void*)freq->open.req_fd_vaddr,
+                            PAGE_SIZE, perm);
     assert(res == 0);
 
-    return status;
+exit:
+    int temp = sys_unmap_region(CURENVID, FdBuffer, PAGE_SIZE);
+    assert(temp == 0);
+
+    return res;
 }
 
 static int
@@ -152,8 +260,35 @@ filed_serve_spawn(envid_t from, const void* request,
     res = filed_get_absolute_path(from, freq->spawn.req_path, &abs_path);
     if (res < 0) return res;
 
+    // Check Permissions 
+    struct EnvInfo env_info;
+    res = get_env_info(from, &env_info);
+    if (res)
+        return res;
 
-    // TODO: check permissions
+    // set FsBuffer request
+    memcpy(FsBuffer.open.req_path, abs_path, MAXPATHLEN);
+    FsBuffer.open.req_oflags = O_RDONLY;
+
+    int perm = 0;
+    res = fs_rpc_execute(FSREQ_OPEN, &FsBuffer, FdBuffer, &perm);
+    if (res) {
+        int temp = sys_unmap_region(CURENVID, FdBuffer, PAGE_SIZE);
+        assert(temp == 0);
+        return res;
+    }
+
+    res = check_perm(&env_info, ((struct Fd*)FdBuffer)->fd_file.id, freq->open.req_flags);
+    if (res) {
+        int temp = sys_unmap_region(CURENVID, FdBuffer, PAGE_SIZE);
+        assert(temp == 0);
+        return res;
+    }
+
+    int temp = sys_unmap_region(CURENVID, FdBuffer, PAGE_SIZE);
+    assert(temp == 0);
+    // end
+
     InitdBuffer.spawn.parent = from;
     memcpy(InitdBuffer.spawn.file, abs_path, MAXPATHLEN);
     InitdBuffer.spawn.argc = freq->spawn.req_argc;
