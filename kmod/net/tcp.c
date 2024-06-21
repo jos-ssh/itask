@@ -73,7 +73,7 @@ static void tcp_checksum(struct tcp_hdr_t *pkt) {
 void fill_reply_to(struct tcp_hdr_t* reply, const struct tcp_hdr_t* in) {
     // ethernet
     reply->ipv4_hdr.eth_hdr.len_ethertype = htons(ETHERTYPE_IPv4);
-    memcpy(reply->ipv4_hdr.eth_hdr.s_mac, net.conf->mac, 6);
+    memcpy(reply->ipv4_hdr.eth_hdr.s_mac, net->conf->mac, 6);
     memcpy(reply->ipv4_hdr.eth_hdr.d_mac, in->ipv4_hdr.eth_hdr.s_mac, 6);
 
     // ipv4

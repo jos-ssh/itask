@@ -9,7 +9,7 @@ extern envid_t g_InitdEnvid;
 extern envid_t g_PcidEnvid;
 extern bool g_IsNetdInitialized;
 
-extern struct virtio_net_device_t net;
+extern struct virtio_net_device_t* net;
 
 #define RECEIVE_ADDR 0x0FFFF000
 
