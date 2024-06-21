@@ -93,7 +93,7 @@ void fill_reply_to(struct tcp_hdr_t* reply, const struct tcp_hdr_t* in) {
     reply->th_dport = in->th_sport;
     reply->th_sport = in->th_dport;
 
-    reply->th_ack = in->th_seq;
+    reply->th_ack = htonl(in_num);
     reply->th_seq = htonl(out_num);
     reply->th_off = (sizeof(struct tcp_hdr_t) - sizeof(struct ipv4_hdr_t)) / 4;
     reply->th_win = htons(65535); // ?
@@ -105,15 +105,41 @@ static void reply_syn(struct tcp_hdr_t* syn) {
 
     fill_reply_to(reply, syn);
     reply->th_ack = htonl(ntohl(reply->th_ack) + 1);
+    // out_num++;
 
     reply->th_flags |= TH_ACK | TH_SYN;
     tcp_checksum(reply);
     send_virtio_packet(reply_packet);
 }
 
+static void reply_fin(struct tcp_hdr_t* fin) {
+    struct virtio_packet_t* reply_packet = allocate_virtio_packet();
+    struct tcp_hdr_t* reply = (struct tcp_hdr_t *)(&reply_packet->data);
+
+    out_num++;
+    fill_reply_to(reply, fin);
+
+    reply->th_flags = TH_FIN;
+    tcp_checksum(reply);
+    send_virtio_packet(reply_packet);
+
+    char * data_ptr = (char*)(reply+1);
+    strcpy(data_ptr, "ZALUPA SLONIKA");
+
+    if (reply->th_flags != TH_FIN) {
+        cprintf("MONKEY!!!\n");
+    }
+}
+
 void process_tcp_packet(struct tcp_hdr_t* packet) {
+    static bool fin = false;
+
+    if (fin) {
+        return;
+    }
+
     if (ntohl(packet->th_seq) < in_num) {
-        cprintf("Runaway detected, %u with remembered %u", ntohl(packet->th_seq), in_num);
+        cprintf("Runaway detected, %u with remembered %u [possible retransmission]", ntohl(packet->th_seq), in_num);
     }
 
     cprintf("Received tcp packet to port %d\n", ntohs(packet->th_dport));
@@ -125,16 +151,30 @@ void process_tcp_packet(struct tcp_hdr_t* packet) {
         return reply_syn(packet);
     }
 
+    // le FIN
+    if (packet->th_flags & TH_FIN) {
+        cprintf(" -- FIN --\n");
+        fin = true;
+        return reply_fin(packet);
+    }
 
-    // Some data must be flowing... Currently just ACK and let it slay
+    // Some data must be flowing... Currently just print, ACK and let it slay
     struct virtio_packet_t* reply_packet = allocate_virtio_packet();
     struct tcp_hdr_t* reply = (struct tcp_hdr_t *)(&reply_packet->data);
 
-    in_num += ntohs(packet->ipv4_hdr.len) - (packet->ipv4_hdr.header_len<<2) - (packet->th_off<<2);
+    size_t packet_size = ntohs(packet->ipv4_hdr.len) - (packet->ipv4_hdr.header_len<<2u) - (packet->th_off<<2u);
+    in_num += packet_size;
 
     fill_reply_to(reply, packet);
 
     reply->th_flags |= TH_ACK;
     tcp_checksum(reply);
     send_virtio_packet(reply_packet);
+
+    char* data = ((char*)&packet->ipv4_hdr) + (packet->ipv4_hdr.header_len<<2u) + (packet->th_off<<2u);
+    cprintf("NETCAT PACKET: ");
+    for (size_t i = 0; i < packet_size; ++i) {
+        cputchar(data[i]);
+    }
+    cputchar('\n');
 }
