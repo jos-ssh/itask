@@ -89,7 +89,7 @@ login(void) {
     int res = rpc_execute(sUsersService, USERSD_REQ_LOGIN, &request, &dummy);
 
     if (res == 0) {
-        printf("Hello '%s', welcome back!\n", request.login.username);
+        // printf("Hello '%s', welcome back!\n", request.login.username);
         return true;
     }
 

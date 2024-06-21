@@ -88,14 +88,17 @@ usersd_serve_login(envid_t from, const void* request,
         sleep(rand() & kMaxDelay);
 
         if (sys_crypto(shadow.hashed, shadow.salt, req->password)) {
-            // spawnl(passw.shell, passw.shell, NULL);
             static union InitdRequest req;
-            req.spawn.parent = ROOT_UID;
-            strcpy(req.spawn.file, "/sh");
+            req.spawn.parent = thisenv->env_id;
+            strcpy(req.spawn.file, passw.shell);
             req.spawn.argc = 0;
             
             void* dummy = NULL;
-            rpc_execute(kmod_find_any_version(INITD_MODNAME), INITD_REQ_SPAWN, &req, &dummy);
+            envid_t shell = rpc_execute(kmod_find_any_version(INITD_MODNAME), INITD_REQ_SPAWN, &req, &dummy);
+            sys_env_set_status(shell, ENV_RUNNABLE);
+
+            char* endptr;
+            sCurrentUser = strtol(passw.uid, &endptr, 10);
             return 0;
         }
     }
