@@ -1,4 +1,6 @@
 #include <inc/kmod/users.h>
+#include <inc/kmod/init.h>
+
 #include <inc/rpc.h>
 #include <inc/crypto.h>
 #include <inc/random.h>
@@ -86,8 +88,14 @@ usersd_serve_login(envid_t from, const void* request,
         sleep(rand() & kMaxDelay);
 
         if (sys_crypto(shadow.hashed, shadow.salt, req->password)) {
-            spawnl(passw.shell, passw.shell, NULL);
-
+            // spawnl(passw.shell, passw.shell, NULL);
+            static union InitdRequest req;
+            req.spawn.parent = ROOT_UID;
+            strcpy(req.spawn.file, "/sh");
+            req.spawn.argc = 0;
+            
+            void* dummy = NULL;
+            rpc_execute(kmod_find_any_version(INITD_MODNAME), INITD_REQ_SPAWN, &req, &dummy);
             return 0;
         }
     }
