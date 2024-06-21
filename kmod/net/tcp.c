@@ -146,7 +146,9 @@ void process_tcp_packet(struct tcp_hdr_t* packet) {
 
     // le FIN
     if (packet->th_flags & TH_FIN) {
-        return reply_fin(packet);
+        reply_fin(packet);
+        g_SessionComplete = true;
+        return;
     }
 
     // Some data must be flowing... Currently just print, ACK and let it slay
