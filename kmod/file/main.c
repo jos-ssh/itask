@@ -15,7 +15,7 @@
 
 
 #ifndef debug_kfile
-#define debug_kfile 1
+#define debug_kfile 0
 #endif
 
 #define KFILE_LOG(...) \

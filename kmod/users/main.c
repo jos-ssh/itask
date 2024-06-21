@@ -8,16 +8,14 @@
 #include <inc/lib.h>
 
 const size_t kMaxDelay = 1000;
-const size_t kMaxLineBufLength = 512;
-
 
 #ifndef debug_kusers
-#define debug_kusers 1
+#define debug_kusers 0
 #endif
 
 #define KUSERS_LOG(...) \
     if(debug_kusers) {                                                                     \
-        cprintf("\e[32mKUSERS_LOG\e[0m[\e[94m%s\e[0m:%d]: ", __func__, __LINE__); \
+        cprintf("\e[36mKUSERS_LOG\e[0m[\e[94m%s\e[0m:%d]: ", __func__, __LINE__); \
         cprintf(__VA_ARGS__);                                                \
     }
 
@@ -33,6 +31,9 @@ static int usersd_serve_register_env(envid_t from, const void* request,
 static int usersd_serve_get_env_info(envid_t from, const void* request,
                                      void* response, int* response_perm);
 
+static int usersd_serve_set_env_info(envid_t from, const void* request,
+                                     void* response, int* response_perm);
+
 #define RECEIVE_ADDR 0x0FFFF000
 static union UsersdResponse ResponseBuffer;
 
@@ -46,6 +47,7 @@ struct RpcServer Server = {
                 [USERSD_REQ_LOGIN] = usersd_serve_login,
                 [USERSD_REQ_REG_ENV] = usersd_serve_register_env,
                 [USERSD_REQ_GET_ENV_INFO] = usersd_serve_get_env_info,
+                [USERSD_REQ_SET_ENV_INFO] = usersd_serve_set_env_info,
         }};
 
 static void
@@ -92,7 +94,7 @@ static void start_login(void) {
 
     res = sys_env_set_status(login, ENV_RUNNABLE);
     assert(res == 0);
-    KUSERS_LOG("started login %d\n", login);
+    KUSERS_LOG("started login %x\n", login);
 }
 
 static enum ModuleStatus gModuleStatus = kJustStarted;
@@ -220,6 +222,25 @@ usersd_serve_get_env_info(envid_t from, const void* request,
 
     memcpy(&res->info, &info->info, sizeof(*res));
     *response_perm = PROT_R;
+
+    return 0;
+}
+
+static int
+usersd_serve_set_env_info(envid_t from, const void* request,
+                          void* response, int* response_perm) {
+    const struct UsersdSetEnvInfo* req = request;
+    KUSERS_LOG("from %x\n", from);
+
+    struct FullEnvInfo* info = gEnvsInfo + ENVX(from);
+    KUSERS_LOG("target %x pid %x: egid %d\n", from, info->pid, info->info.egid);
+    if (from != info->pid)
+        return -E_BAD_ENV;
+
+    if (info->info.euid != ROOT_UID)
+        return -E_NOT_ENOUGH_PRIVILEGES;
+
+    set_env_info(&info->info, &info->info, &req->info);
 
     return 0;
 }

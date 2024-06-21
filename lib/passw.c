@@ -27,6 +27,7 @@ find_line(const char* username, const char* path_to_file,
     int fd = open_raw_fs(path_to_file, O_RDONLY);
     struct Fd* file;
     int res = fd_lookup(fd, &file);
+    assert(res == 0);
     if (res)
         return res;
     

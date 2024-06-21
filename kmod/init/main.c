@@ -149,6 +149,7 @@ initd_serve_find_kmod(envid_t from, const void* request,
         if (req->max_version >= 0 && Modules[i].info.version > req->max_version) {
             continue;
         }
+        // cprintf("%s: found %x\n", __func__, Modules[i].env);
         return Modules[i].env;
     }
     return 0;

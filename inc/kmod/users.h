@@ -12,6 +12,7 @@ enum UsersdRequestType {
     USERSD_REQ_LOGIN = KMOD_REQ_FIRST_USABLE,
     USERSD_REQ_REG_ENV,
     USERSD_REQ_GET_ENV_INFO,
+    USERSD_REQ_SET_ENV_INFO,
 
     USERSD_NREQUESTS
 };
@@ -52,6 +53,10 @@ union UsersdRequest {
         envid_t target;
     } get_env_info;
 
+    struct UsersdSetEnvInfo {
+        struct EnvInfo info;
+    } set_env_info;
+    
     uint8_t pad_[PAGE_SIZE];
 } __attribute__((aligned(PAGE_SIZE)));
 

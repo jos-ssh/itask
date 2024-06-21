@@ -5,6 +5,7 @@
 #define PASSWD_PATH "/passwd"
 #define SHADOW_PATH "/shadow"
 
+#define kMaxLineBufLength 512
 
 /* Parsed line of etc/passwd
    username:UID:GID:homedir:shell
