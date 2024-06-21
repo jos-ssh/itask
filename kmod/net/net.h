@@ -20,6 +20,10 @@ extern struct virtio_net_device_t* net;
 
 #define UNWRAP(res, line) do { if (res != 0) { panic(line ": %i", res); } } while (0)
 
+struct recv_buffer {
+    _Alignas(PAGE_SIZE) char _[PAGE_SIZE];
+};
+
 struct send_buffer_t {
     struct List _;
     struct virtio_packet_t packet;
@@ -27,7 +31,7 @@ struct send_buffer_t {
 
 void initialize();
 
-void process_packet(struct virtq* queue, uint64_t indx);
+void process_packet(struct virtio_net_hdr* net_hdr);
 void *reverse_recv_buffer_addr(int64_t index);
 
 void serve_teapot();

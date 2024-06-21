@@ -20,16 +20,8 @@ find_module(envid_t initd, const char* name);
 static void
 setup_device(struct PciHeaderGeneral*);
 
-struct recv_buffer {
-    _Alignas(PAGE_SIZE) char _[PAGE_SIZE];
-};
-
 struct recv_buffer recv_buffers[VIRTQ_SIZE];
 struct send_buffer_t send_buffers[SEND_BUF_NUM];
-
-void *reverse_recv_buffer_addr(int64_t index) {
-    return &recv_buffers[index]; // для sendq там indx -> indx;
-}
 
 /* #### Initialization ####
 */
@@ -142,13 +134,8 @@ parse_common_cfg(volatile struct virtio_pci_common_cfg_t *cfg_header) {
 
     for (int i = 0; i < VIRTQ_SIZE; ++i) {
         recv_buffers[i]._[0] = 0; // force alloc
-        net->recvq.desc[i].addr = get_phys_addr(recv_buffers + i);
-        net->recvq.desc[i].len  = sizeof(struct recv_buffer);
-        net->recvq.desc[i].flags |= VIRTQ_DESC_F_WRITE;
+        virtio_snd_buffers(&net->recvq, recv_buffers + i, true);
     }
-
-    queue_avail(&net->recvq, VIRTQ_SIZE);
-    notify_queue(&net->recvq);
 
     // Set DRIVER_OK flag
     cfg_header->device_status |= VIRTIO_STATUS_DRIVER_OK;
