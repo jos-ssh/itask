@@ -177,7 +177,6 @@ initd_serve_fork(envid_t from, const void* request, void* response,
         return child;
     }
 
-    sys_env_set_status(child, ENV_RUNNABLE);
     int res = sys_env_downgrade(child);
     if (res < 0) {
         sys_env_destroy(child);
