@@ -163,6 +163,8 @@ diradd(struct Dir *d, uint32_t mode, const char *name) {
         panic("too many directory entries");
     strcpy(out->f_name, name);
     out->f_mode = mode;
+    out->f_gid = 0;
+    out->f_uid = 0;
     return out;
 }
 
@@ -199,7 +201,8 @@ writefile(struct Dir *dir, const char *name) {
     else
         last = name;
 
-    f = diradd(dir, IFREG | IRWXU | IRWXG | IRWXO, last);
+    f = diradd(dir, st.st_mode, last);
+    printf("[%s] mode: %o\n", last, st.st_mode);
     start = alloc(st.st_size);
     readn(fd, start, st.st_size);
     finishfile(f, blockof(start), st.st_size);
@@ -216,7 +219,10 @@ writedir(struct Dir *root, const char *dir_name) {
     else
         last = dir_name;
 
-    struct File *fdir = diradd(root, IFDIR | IRWXG | IRWXO | IRWXU, last);
+    struct stat st;
+    stat(dir_name, &st);
+
+    struct File *fdir = diradd(root, st.st_mode, last);
 
     // JOS
     struct Dir dir;
