@@ -34,6 +34,7 @@ BINAPPS :=	$(OBJDIR)/bin/init \
 			$(OBJDIR)/bin/chmod \
 			$(OBJDIR)/bin/sudo \
 			$(OBJDIR)/bin/test_chmod \
+			$(OBJDIR)/bin/nc \
 			$(OBJDIR)/bin/test
 
 
