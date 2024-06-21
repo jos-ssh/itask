@@ -24,11 +24,13 @@ int
 find_line(const char* username, const char* path_to_file,
           char* buff, const size_t size, const char** result, const size_t n_of_fields) {
 
-    struct Fd* file = fopen(path_to_file, O_RDONLY);
-    if (!file)
-        return -E_BAD_PATH;
-
-    int res = -E_NO_ENT;
+    int fd = open_raw_fs(path_to_file, O_RDONLY);
+    struct Fd* file;
+    int res = fd_lookup(fd, &file);
+    if (res)
+        return res;
+    
+    res = -E_NO_ENT;
 
     while (fgets(buff, size, file)) {
         parse_line(result, n_of_fields, buff);
@@ -40,6 +42,6 @@ find_line(const char* username, const char* path_to_file,
         }
     }
 
-    fclose(file);
+    close(fd);
     return res;
 }

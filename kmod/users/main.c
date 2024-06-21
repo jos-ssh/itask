@@ -177,18 +177,21 @@ usersd_serve_register_env(envid_t from, const void* request,
         return -E_INVAL;
 
     const struct UsersdRegisterEnv* req = request;
+    KUSERS_LOG("child_pid %x, parent_pid %x, desired euid %d\n", req->child_pid, req->parent_pid, req->desired_child_info.euid);
 
     if (req->parent_pid < 0 || req->child_pid < 0)
         return -E_INVAL;
 
     struct FullEnvInfo* parent_info = gEnvsInfo + ENVX(req->parent_pid);
-    struct FullEnvInfo* child_info = gEnvsInfo + ENVX(req->parent_pid);
+    struct FullEnvInfo* child_info = gEnvsInfo + ENVX(req->child_pid);
 
     if (parent_info->pid != req->parent_pid) // parent isn't valid
         return -E_BAD_ENV;
 
     if (child_info->pid == req->child_pid)
         return -E_ENV_ALREADY_REGISTERED;
+
+    child_info->pid = req->child_pid;
 
     if (is_env_info_empty(&req->desired_child_info)) {
         set_env_info(&child_info->info, &parent_info->info, NULL);
@@ -207,8 +210,9 @@ static int
 usersd_serve_get_env_info(envid_t from, const void* request,
                           void* response, int* response_perm) {
     const struct UsersdGetEnvInfo* req = request;
+    KUSERS_LOG("from %x req about %x\n", from, req->target);
     struct FullEnvInfo* info = gEnvsInfo + ENVX(req->target);
-
+    KUSERS_LOG("target %x pid %x: egid %d\n", req->target, info->pid, info->info.egid);
     if (req->target != info->pid)
         return -E_BAD_ENV;
 

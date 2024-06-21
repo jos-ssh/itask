@@ -125,6 +125,7 @@ filed_serve_identify(envid_t from, const void* request,
 }
 
 static int get_env_info(envid_t target, struct EnvInfo* info) {
+    KFILE_LOG("target %x\n", target);
     sUsersdBuffer.get_env_info.target = target;
     
     void* response = &sUsersdResponseBuffer;
@@ -147,25 +148,17 @@ static int get_env_info(envid_t target, struct EnvInfo* info) {
     return 0;
 }
 
-
 static int get_file_info(int fileid, struct Fsret_stat* buffer) {
-    static uint8_t sStatBuffer[PAGE_SIZE] __attribute__((aligned(PAGE_SIZE)));
-    
-    int temp = sys_unmap_region(CURENVID, sStatBuffer, PAGE_SIZE);
-    assert(temp == 0);
+    KFILE_LOG("Stat of desc: %d\n", FsBuffer.stat.req_fileid);
 
     FsBuffer.stat.req_fileid = fileid; 
-    KFILE_LOG("Stat of %d\n", FsBuffer.stat.req_fileid);
-
-    int perm;
-    int res = fs_rpc_execute(FSREQ_STAT, &FsBuffer, sStatBuffer, &perm);
+    int res = fs_rpc_execute(FSREQ_STAT, &FsBuffer, NULL, NULL);
     if (res) {
         KFILE_LOG("%i\n", res);
         return res;
     }
-    assert(perm | PROT_R);
 
-    memcpy(buffer, sStatBuffer, sizeof(*buffer));
+    memcpy(buffer, &FsBuffer.statRet, sizeof(*buffer));
     return 0;
 }
 
@@ -410,7 +403,7 @@ filed_serve_setcwd(envid_t from, const void* request,
                    void* response, int* response_perm) {
     int res = 0;
     const union FiledRequest* freq = request;
-
+    KFILE_LOG("path %s\n", freq->setcwd.req_path);
     const char* abs_path = NULL;
     res = filed_get_absolute_path(from, freq->remove.req_path, &abs_path);
     if (res < 0) return res;
