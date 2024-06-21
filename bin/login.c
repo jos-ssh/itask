@@ -51,14 +51,15 @@ umain(int argc, char** argv) {
         return no_users_login();
 
 
-    while (true) {
-        // workaround for prety console print
-        sleep(1);
+    // workaround for prety console print
+    sleep(1);
 
+    while (true) {
         size_t attempt = 0;
         while (attempt++ < kMaxLoginAttempts && !login()) {}
         if (attempt == kMaxLoginAttempts) {
             // TODO:
+            attempt = 0;
         }
     }
 }

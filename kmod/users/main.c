@@ -136,9 +136,9 @@ usersd_serve_login(envid_t from, const void* request,
     static uid_t sCurrentUser;
 
     const struct UsersdLogin* req = request;
-
-    if (sCurrentUser)
-        return -E_ALREADY_LOGGED_IN;
+    KUSERS_LOG("%s %s\n", req->username, req->password);
+    // if (sCurrentUser)
+        // return -E_ALREADY_LOGGED_IN;
 
     char passwd_line_buf[kMaxLineBufLength];
     char shadow_line_buf[kMaxLineBufLength];
