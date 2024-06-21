@@ -28,7 +28,6 @@ static union FiledRequest Request;
 static union FiledResponse Response;
 
 static uint8_t FdBuffer[PAGE_SIZE] __attribute__((aligned(PAGE_SIZE)));
-static uint8_t StatBuffer[PAGE_SIZE] __attribute__((aligned(PAGE_SIZE)));
 static uint8_t sUsersdResponseBuffer[PAGE_SIZE] __attribute__((aligned(PAGE_SIZE)));
 
 static union Fsipc FsBuffer;
@@ -99,8 +98,6 @@ umain(int argc, char** argv) {
     assert(res == 0);
     res = sys_unmap_region(CURENVID, FdBuffer, sizeof(FdBuffer));
     assert(res == 0);
-    res = sys_unmap_region(CURENVID, StatBuffer, sizeof(StatBuffer));
-    assert(res == 0);
     res = sys_unmap_region(CURENVID, sUsersdResponseBuffer, sizeof(sUsersdResponseBuffer));
     assert(res == 0);
 
@@ -150,54 +147,76 @@ static int get_env_info(envid_t target, struct EnvInfo* info) {
     return 0;
 }
 
-static int check_perm (const struct EnvInfo* info, int fileid, int flags) {
+
+static int get_file_info(int fileid, struct Fsret_stat* buffer) {
+    static uint8_t sStatBuffer[PAGE_SIZE] __attribute__((aligned(PAGE_SIZE)));
+    
+    int temp = sys_unmap_region(CURENVID, sStatBuffer, PAGE_SIZE);
+    assert(temp == 0);
+
     FsBuffer.stat.req_fileid = fileid; 
     KFILE_LOG("Stat of %d\n", FsBuffer.stat.req_fileid);
 
     int perm;
-    int res = fs_rpc_execute(FSREQ_STAT, &FsBuffer, StatBuffer, &perm);
-    if (res)
-        goto exit;
+    int res = fs_rpc_execute(FSREQ_STAT, &FsBuffer, sStatBuffer, &perm);
+    if (res) {
+        KFILE_LOG("%i\n", res);
+        return res;
+    }
     assert(perm | PROT_R);
 
-    flags &= O_ACCMODE;
+    memcpy(buffer, sStatBuffer, sizeof(*buffer));
+    return 0;
+}
 
-    struct Fsret_stat* stat = (struct Fsret_stat*) StatBuffer;
 
-    if (stat->ret_uid == info->euid) {
-        
-        if (!(IRUSR | stat->ret_mode) && (!(flags | O_RDONLY) || (flags | O_RDWR)))
-            res = -E_PERM_DENIED;
-
-        if (!(IWUSR | stat->ret_mode) && ((flags | O_WRONLY) || (flags | O_RDWR)))
-            res = -E_PERM_DENIED;
-
-        goto exit;
-    } 
+static int check_perm (const struct EnvInfo* info, int fileid, int flags) {
+    int res;
     
-    if (stat->ret_gid == info->egid) {
+    struct Fsret_stat stat;
+    res = get_file_info(fileid, &stat);
+    if (res)
+        return res;
 
-        if (!(IRGRP | stat->ret_mode) && (!(flags | O_RDONLY) || (flags | O_RDWR)))
+    if (stat.ret_uid == info->euid) {
+        // owner
+        if (!(IRUSR | stat.ret_mode) && (!(flags | O_RDONLY) || (flags | O_RDWR)))
             res = -E_PERM_DENIED;
 
-        if (!(IWGRP | stat->ret_mode) && ((flags | O_WRONLY) || (flags | O_RDWR)))
+        if (!(IWUSR | stat.ret_mode) && ((flags | O_WRONLY) || (flags | O_RDWR)))
             res = -E_PERM_DENIED;
 
-        goto exit;
+    } else if (stat.ret_gid == info->egid) {
+        // group
+        if (!(IRGRP | stat.ret_mode) && (!(flags | O_RDONLY) || (flags | O_RDWR)))
+            return -E_PERM_DENIED;
+
+        if (!(IWGRP | stat.ret_mode) && ((flags | O_WRONLY) || (flags | O_RDWR)))
+            return -E_PERM_DENIED;
+
+    } else {
+        // others
+        if (!(IROTH | stat.ret_mode) && (!(flags | O_RDONLY) || (flags | O_RDWR)))
+            return -E_PERM_DENIED;
+
+        if (!(IWOTH | stat.ret_mode) && ((flags | O_WRONLY) || (flags | O_RDWR)))
+            return -E_PERM_DENIED;
     }
 
-    // others
-    if (!(IROTH | stat->ret_mode) && (!(flags | O_RDONLY) || (flags | O_RDWR)))
-        res = -E_PERM_DENIED;
+    return 0;
+}
 
-    if (!(IWOTH | stat->ret_mode) && ((flags | O_WRONLY) || (flags | O_RDWR)))
-        res = -E_PERM_DENIED;
+static int set_env_info(envid_t child, envid_t parent, const struct EnvInfo* info) {
+    sUsersdBuffer.register_env.child_pid = child;
+    sUsersdBuffer.register_env.parent_pid = parent;
 
-exit:
-    int temp = sys_unmap_region(CURENVID, FdBuffer, PAGE_SIZE);
-    assert(temp == 0);
+    memcpy(&sUsersdBuffer.register_env.desired_child_info, info, sizeof(*info));
 
-    KFILE_LOG("res: %i\n", res);
+    int res = rpc_execute(kmod_find_any_version(USERSD_MODNAME), USERSD_REQ_REG_ENV, &sUsersdBuffer, NULL);
+    if (res){
+        KFILE_LOG("%i\n", res);
+    }
+
     return res;
 }
 
@@ -285,9 +304,17 @@ filed_serve_spawn(envid_t from, const void* request,
         return res;
     }
 
+    struct Fsret_stat stat;
+    res = get_file_info(((struct Fd*)FdBuffer)->fd_file.id, &stat);
+    if (res) {
+        int temp = sys_unmap_region(CURENVID, FdBuffer, PAGE_SIZE);
+        assert(temp == 0);
+        return res;
+    }
+
     int temp = sys_unmap_region(CURENVID, FdBuffer, PAGE_SIZE);
     assert(temp == 0);
-    // end
+    // end of checking permissions
 
     InitdBuffer.spawn.parent = from;
     memcpy(InitdBuffer.spawn.file, abs_path, MAXPATHLEN);
@@ -303,7 +330,24 @@ filed_serve_spawn(envid_t from, const void* request,
     if (parent_cwd) {
         filed_set_env_cwd(child, parent_cwd);
     }
-    // TODO: set GID and UID for child
+
+    // set GID and UID for child
+    struct EnvInfo parent_info;
+    res = get_env_info(from, &parent_info);
+    assert(res == 0);
+
+    struct EnvInfo child_info = {parent_info.euid, parent_info.euid, parent_info.egid, parent_info.egid};  
+    if (!(stat.ret_mode | ISUID)) {
+        child_info.euid = stat.ret_uid;
+    }
+
+    if (!(stat.ret_mode | ISGID)) {
+        child_info.egid = stat.ret_gid;
+    }
+    
+    res = set_env_info(child, from, &child_info);
+    assert(res == 0);
+
     res = sys_env_set_status(child, ENV_RUNNABLE);
     assert(res == 0);
 
@@ -324,7 +368,16 @@ filed_serve_fork(envid_t from, const void* request,
         filed_set_env_cwd(child, parent_cwd);
     }
 
-    // TODO: set GID and UID for child
+    // set GID and UID for child
+    struct EnvInfo parent_info;
+    res = get_env_info(from, &parent_info);
+    assert(res == 0);
+
+    struct EnvInfo child_info = {parent_info.euid, parent_info.euid, parent_info.egid, parent_info.egid};  
+    
+    res = set_env_info(child, from, &child_info);
+    assert(res == 0);
+
     res = sys_env_set_status(child, ENV_RUNNABLE);
     assert(res == 0);
 
