@@ -20,6 +20,10 @@ extern struct virtio_net_device_t* net;
 
 #define UNWRAP(res, line) do { if (res != 0) { panic(line ": %i", res); } } while (0)
 
+#ifndef trace_net
+#define trace_net 0
+#endif
+
 struct recv_buffer {
     _Alignas(PAGE_SIZE) char _[PAGE_SIZE];
 };

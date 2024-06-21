@@ -8,7 +8,7 @@
 
 void process_arp_packet(struct arp_packet_t* arp) {
     if (memcmp(IP_ADRESS, arp->target_ip, sizeof(IP_ADRESS)) != 0) {
-        cprintf("ARP to unknown address\n");
+        cprintf("[netd]: ARP to unknown address\n");
         return;
     }
 

@@ -7,22 +7,24 @@
 static void process_ipv4_packet(struct ipv4_hdr_t *packet);
 
 void process_packet(struct virtio_net_hdr* net_hdr) {
-    cprintf(" PACKET \n");
     struct ethernet_pkt_t* base_pkt = (struct ethernet_pkt_t*) (net_hdr + 1);
 
     switch (ntohs(base_pkt->hdr.len_ethertype)) {
         case ETHERTYPE_ARP:
-            cprintf("ARP received\n");
+            if (trace_net)
+                cprintf("ARP received\n");
             process_arp_packet((struct arp_packet_t *)base_pkt);
             break;
         
         case ETHERTYPE_IPv4:
-            cprintf("ipv4 received\n");
+            if (trace_net)
+                cprintf("ipv4 received\n");
             process_ipv4_packet((struct ipv4_hdr_t *)(base_pkt));
             break;
 
         case 0:
-            cprintf("GC broken again\n");
+            if (trace_net)
+                cprintf("Broken ethernet frame (invalid type)\n");
             break;
 
         default:
@@ -40,14 +42,17 @@ static void process_ipv4_packet(struct ipv4_hdr_t *packet) {
             break;
 
         case IPV4_PROTO_UDP:
-            cprintf("unexpected udp packet\n");
+            if (trace_net)
+                cprintf("[netd]: unexpected udp packet\n");
             break;
 
         case IPV4_PROTO_ICMP:
-            cprintf("unexpected icmp packet\n");
+            if (trace_net)
+                cprintf("[netd]: unexpected icmp packet\n");
             break;
 
         default:
-            cprintf("UNKNOWN ipv4 proto %d\n", packet->protocol);
+            if (trace_net)
+                cprintf("[netd]: UNKNOWN ipv4 proto %d\n", packet->protocol);
     }
 }

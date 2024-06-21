@@ -101,6 +101,7 @@ void gc_sendq_queue() {
 
 struct virtio_packet_t* allocate_virtio_packet() {
     struct send_buffer_t *buff = pool_allocator_alloc_object(&net->alloc);
+    memset(&buff->packet, 0, sizeof(buff->packet));
     return &buff->packet;
 }
 
