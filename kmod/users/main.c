@@ -10,6 +10,17 @@
 const size_t kMaxDelay = 1000;
 const size_t kMaxLineBufLength = 512;
 
+
+#ifndef debug_kusers
+#define debug_kusers 1
+#endif
+
+#define KUSERS_LOG(...) \
+    if(debug_kusers) {                                                                     \
+        cprintf("\e[32mKUSERS_LOG\e[0m[\e[94m%s\e[0m:%d]: ", __func__, __LINE__); \
+        cprintf(__VA_ARGS__);                                                \
+    }
+
 static int usersd_serve_identify(envid_t from, const void* request,
                                  void* response, int* response_perm);
 
@@ -37,14 +48,65 @@ struct RpcServer Server = {
                 [USERSD_REQ_GET_ENV_INFO] = usersd_serve_get_env_info,
         }};
 
+static void
+set_env_info(struct EnvInfo* child, const struct EnvInfo* parent, const struct EnvInfo* desired) {
+    child->ruid = (desired && desired->ruid != NOT_AN_ID) ? desired->ruid : parent->ruid;
+    child->euid = (desired && desired->euid != NOT_AN_ID) ? desired->euid : parent->euid;
+
+    child->rgid = (desired && desired->rgid != NOT_AN_ID) ? desired->rgid : parent->rgid;
+    child->egid = (desired && desired->egid != NOT_AN_ID) ? desired->egid : parent->egid;
+}
+
+struct FullEnvInfo {
+    envid_t pid;
+    struct EnvInfo info;
+};
+
+struct FullEnvInfo gEnvsInfo[NENV];
+
+enum ModuleStatus {
+    kJustStarted,
+    kAuthorized, // when replied to usersd_serve_identify
+    kSpawnedLogin,
+};
+
+static void start_login(void) {
+    cprintf("[%08x: usersd] Starting up module...\n", thisenv->env_id);
+    
+    static union InitdRequest req;
+    req.spawn.parent = thisenv->env_id;
+    strcpy(req.spawn.file, "/login");
+    req.spawn.argc = 0;
+    envid_t login = rpc_execute(kmod_find_any_version(INITD_MODNAME), INITD_REQ_SPAWN, &req, NULL);
+    KUSERS_LOG("spawned login %x\n", login);
+
+    gEnvsInfo[ENVX(thisenv->env_id)].pid = thisenv->env_id;
+    gEnvsInfo[ENVX(thisenv->env_id)].info.ruid = ROOT_UID;
+    gEnvsInfo[ENVX(thisenv->env_id)].info.euid = ROOT_UID;
+    gEnvsInfo[ENVX(thisenv->env_id)].info.rgid = ROOT_GID;
+    gEnvsInfo[ENVX(thisenv->env_id)].info.egid = ROOT_GID;
+
+    struct UsersdRegisterEnv reg_login = {thisenv->env_id, login, {}}; 
+    int res = usersd_serve_register_env(thisenv->env_id, &reg_login, NULL, NULL); 
+    assert(res == 0);
+
+    res = sys_env_set_status(login, ENV_RUNNABLE);
+    assert(res == 0);
+    KUSERS_LOG("started login %d\n", login);
+}
+
+static enum ModuleStatus gModuleStatus = kJustStarted;
 void
 umain(int argc, char** argv) {
-    cprintf("[%08x: usersd] Starting up module...\n", thisenv->env_id);
     while (1) {
+        if (gModuleStatus == kAuthorized) {
+            start_login();
+            gModuleStatus = kSpawnedLogin;
+        }
+
         rpc_listen(&Server, NULL);
     }
 }
-
 static int
 usersd_serve_identify(envid_t from, const void* request,
                       void* response, int* response_perm) {
@@ -53,6 +115,8 @@ usersd_serve_identify(envid_t from, const void* request,
     ident->info.version = USERSD_VERSION;
     strncpy(ident->info.name, USERSD_MODNAME, MAXNAMELEN);
     *response_perm = PROT_R;
+
+    gModuleStatus = kAuthorized;
     return 0;
 }
 
@@ -88,17 +152,7 @@ usersd_serve_login(envid_t from, const void* request,
         sleep(rand() & kMaxDelay);
 
         if (sys_crypto(shadow.hashed, shadow.salt, req->password)) {
-            static union InitdRequest req;
-            req.spawn.parent = thisenv->env_id;
-            strcpy(req.spawn.file, passw.shell);
-            req.spawn.argc = 0;
-            
-            void* dummy = NULL;
-            envid_t shell = rpc_execute(kmod_find_any_version(INITD_MODNAME), INITD_REQ_SPAWN, &req, &dummy);
-            sys_env_set_status(shell, ENV_RUNNABLE);
-
-            char* endptr;
-            sCurrentUser = strtol(passw.uid, &endptr, 10);
+            sCurrentUser = strtol(passw.uid, NULL, 10);
             return 0;
         }
     }
@@ -106,28 +160,14 @@ usersd_serve_login(envid_t from, const void* request,
     return -E_ACCESS_DENIED;
 }
 
-struct FullEnvInfo {
-    envid_t pid;
-    struct EnvInfo info;
-};
 
-struct FullEnvInfo gEnvsInfo[NENV];
-
-static void
-set_env_info(struct EnvInfo* child, const struct EnvInfo* parent, const struct EnvInfo* desired) {
-    child->ruid = (desired && desired->ruid) ? desired->ruid : parent->ruid;
-    child->euid = (desired && desired->euid) ? desired->euid : parent->euid;
-
-    child->rgid = (desired && desired->rgid) ? desired->rgid : parent->rgid;
-    child->egid = (desired && desired->egid) ? desired->egid : parent->egid;
-}
 
 static bool
 is_env_info_empty(const struct EnvInfo* info) {
-    return info->ruid == 0 &&
-           info->euid == 0 &&
-           info->rgid == 0 &&
-           info->egid == 0;
+    return info->ruid == NOT_AN_ID &&
+           info->euid == NOT_AN_ID &&
+           info->rgid == NOT_AN_ID &&
+           info->egid == NOT_AN_ID;
 }
 
 static int

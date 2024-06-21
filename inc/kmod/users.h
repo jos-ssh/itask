@@ -19,16 +19,17 @@ enum UsersdRequestType {
 #define MAX_USERNAME_LENGTH 256
 #define MAX_PASSWORD_LENGTH 256
 
-#define ROOT_UID 1
-#define ROOT_GID 1
+#define ROOT_UID 0
+#define ROOT_GID 0
 
-typedef unsigned uid_t;
-typedef unsigned guid_t;
+#define NOT_AN_ID -1
+
+typedef int uid_t;
+typedef int guid_t;
 
 struct EnvInfo {
     uid_t ruid;
     uid_t euid;
-    // uid_t suid; // don't know how to use it for now
 
     guid_t rgid;
     guid_t egid;

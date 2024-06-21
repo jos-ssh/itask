@@ -332,11 +332,7 @@ filed_serve_spawn(envid_t from, const void* request,
     }
 
     // set GID and UID for child
-    struct EnvInfo parent_info;
-    res = get_env_info(from, &parent_info);
-    assert(res == 0);
-
-    struct EnvInfo child_info = {parent_info.euid, parent_info.euid, parent_info.egid, parent_info.egid};  
+    struct EnvInfo child_info = {NOT_AN_ID, NOT_AN_ID, NOT_AN_ID, NOT_AN_ID};  
     if (!(stat.ret_mode | ISUID)) {
         child_info.euid = stat.ret_uid;
     }
@@ -369,11 +365,7 @@ filed_serve_fork(envid_t from, const void* request,
     }
 
     // set GID and UID for child
-    struct EnvInfo parent_info;
-    res = get_env_info(from, &parent_info);
-    assert(res == 0);
-
-    struct EnvInfo child_info = {parent_info.euid, parent_info.euid, parent_info.egid, parent_info.egid};  
+    struct EnvInfo child_info = {NOT_AN_ID, NOT_AN_ID, NOT_AN_ID, NOT_AN_ID};  
     
     res = set_env_info(child, from, &child_info);
     assert(res == 0);
