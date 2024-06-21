@@ -6,10 +6,7 @@
 
 static void process_ipv4_packet(struct ipv4_hdr_t *packet);
 
-void process_packet(struct virtq *queue, uint64_t indx) {
-    struct virtio_net_hdr* net_hdr = (struct virtio_net_hdr *) reverse_recv_buffer_addr(indx);
-    // struct virtq_desc* desc = &queue->desc[indx];
-
+void process_packet(struct virtio_net_hdr* net_hdr) {
     cprintf(" PACKET \n");
     struct ethernet_pkt_t* base_pkt = (struct ethernet_pkt_t*) (net_hdr + 1);
 

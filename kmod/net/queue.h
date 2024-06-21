@@ -108,6 +108,9 @@ struct virtq {
     uint32_t desc_first_free;
     uint32_t desc_free_count;
     uint64_t queue_idx;
+    uint64_t last_avail; // ?
+
+    void* reverse_addr[VIRTQ_SIZE];
 
     _Alignas(4096) struct virtq_desc desc[VIRTQ_SIZE];
     _Alignas(4096) struct virtq_avail avail;
@@ -236,5 +239,13 @@ alloc_desc(struct virtq *queue, int writable);
 void
 process_queue(struct virtq *queue, bool incoming);
 
-struct virtio_packet_t* allocate_virtio_packet();
-void send_virtio_packet(struct virtio_packet_t* packet);
+bool
+process_receive_queue(struct virtq *queue);
+
+struct virtio_packet_t*
+allocate_virtio_packet();
+
+void
+send_virtio_packet(struct virtio_packet_t* packet);
+
+int virtio_snd_buffers(struct virtq *virtqueue, void* buffer, bool writable);

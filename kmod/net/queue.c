@@ -1,7 +1,6 @@
 #include "queue.h"
 #include "inc/assert.h"
 #include "inc/pool_alloc.h"
-#include "inc/stdio.h"
 #include "net.h"
 #include <inc/lib.h>
 #include <stdbool.h>
@@ -63,6 +62,74 @@ queue_avail(struct virtq *queue, uint32_t count) {
     queue->avail.idx = avail_head;
 }
 
+static uint16_t virtio_descr_add_buffer(struct virtq* virtqueue, void* buffer, bool writable) {
+    uint16_t descr_free = virtqueue->desc_first_free;
+    uint16_t ret_value  = descr_free; 
+
+    uint16_t next_descr_free = 0;
+
+    next_descr_free = (descr_free + 1) % VIRTQ_SIZE;
+    virtqueue->desc[descr_free].len = sizeof(struct virtio_packet_t);
+    virtqueue->desc[descr_free].addr = get_phys_addr(buffer);
+
+    virtqueue->reverse_addr[descr_free] = buffer;
+
+    if (writable) {
+        virtqueue->desc[descr_free].flags |= VIRTQ_DESC_F_WRITE;
+    }
+
+    virtqueue->desc[descr_free].next = 0;
+    descr_free = next_descr_free;
+
+    virtqueue->desc_first_free = descr_free;
+    --virtqueue->desc_free_count;
+
+    return ret_value;
+}
+
+int virtio_snd_buffers(struct virtq *virtqueue, void* buffer, bool writable) {
+    if (virtqueue->desc_free_count == 0){
+        cprintf("Not enough space in descr table. virtio_snd_buffers() failed. \n");
+        return -1;
+    }
+
+    uint16_t chain_head = virtio_descr_add_buffer(virtqueue, buffer, writable);
+    
+    uint16_t avail_ind = virtqueue->avail.idx % VIRTQ_SIZE;
+    virtqueue->avail.ring[avail_ind] = chain_head;
+    virtqueue->last_avail = avail_ind;
+
+    virtqueue->avail.idx += 1;
+
+    notify_queue(virtqueue);
+
+    return 0;
+}
+
+void gc_sendq_queue() {
+    struct virtq *sendq = &net->sendq;
+
+    while (sendq->used_tail != sendq->used.idx) {
+        uint16_t index = sendq->used_tail % VIRTQ_SIZE;
+
+        struct virtq_used_elem* used_elem = &(sendq->used.ring[index]);
+        uint16_t desc_idx = used_elem->id;
+
+        // Free mem
+        char* packet_ptr = (char *)sendq->reverse_addr[desc_idx];
+        pool_allocator_free_object(&net->alloc, packet_ptr - offsetof(struct send_buffer_t, packet));
+
+        uint16_t chain_len = 1;
+        while (sendq->desc[desc_idx].flags & VIRTQ_DESC_F_NEXT) {
+            chain_len += 1;
+            desc_idx = sendq->desc[desc_idx].next;
+        }
+
+        sendq->desc_free_count  += chain_len;
+        sendq->used_tail += 1;
+    }
+}
+
 struct virtq_desc *
 alloc_desc(struct virtq *queue, int writable) {
     if (queue->desc_free_count == 0)
@@ -88,21 +155,41 @@ struct virtio_packet_t* allocate_virtio_packet() {
 }
 
 void send_virtio_packet(struct virtio_packet_t* packet) {
-    struct virtq_desc* desc = alloc_desc(&net->sendq, 0);
-    desc->len = sizeof(*packet);
-    desc->addr = get_phys_addr(packet);
+    gc_sendq_queue();
+
     packet->vheader.gso_type = VIRTIO_NET_HDR_GSO_NONE;
+    virtio_snd_buffers(&net->sendq, packet, false);
+}
 
-    size_t desc_indx = desc - net->sendq.desc;
-    sendq_index_to_ptr[desc_indx] = packet;
+bool process_receive_queue(struct virtq *queue) {
+    if (queue->used_tail == queue->used.idx) {
+        return false; // No new data arrived
+    }
 
-    queue_avail(&net->sendq, 1);
-    notify_queue(&net->sendq);
+    uint16_t index = queue->used_tail % (queue->log2_size<<2u);
+    struct virtq_used_elem* used_elem = &(queue->used.ring[index]);
+    uint16_t desc_idx = used_elem->id;
+
+    void *buff_addr = queue->reverse_addr[desc_idx];
+
+    process_packet(buff_addr);
+
+    queue->desc_free_count += 1;
+
+    // Return buffers
+    memset(buff_addr, 0, sizeof(struct recv_buffer));
+    virtio_snd_buffers(queue, buff_addr, true);
+
+    queue->used_tail += 1;
+
+    return true;
 }
 
 // TODO: INVESTIGATE
 void
 process_queue(struct virtq *queue, bool incoming) {
+    panic("FUCK THIS SHIT\n");
+
     bool processed[VIRTQ_SIZE];
     memset(processed, 0, sizeof(processed));
 
@@ -118,7 +205,6 @@ process_queue(struct virtq *queue, bool incoming) {
             processed[id] = true;
 
             if (incoming) {
-                process_packet(queue, id);
             } else if (sendq_index_to_ptr[id] != NULL) {
                 char* packet_ptr = (char*) sendq_index_to_ptr[id];
                 pool_allocator_free_object(&net->alloc, packet_ptr - offsetof(struct send_buffer_t, packet));
