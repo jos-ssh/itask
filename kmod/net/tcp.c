@@ -105,7 +105,7 @@ static void reply_syn(struct tcp_hdr_t* syn) {
 
     fill_reply_to(reply, syn);
     reply->th_ack = htonl(ntohl(reply->th_ack) + 1);
-    // out_num++;
+    out_num++;
 
     reply->th_flags |= TH_ACK | TH_SYN;
     tcp_checksum(reply);
@@ -116,45 +116,36 @@ static void reply_fin(struct tcp_hdr_t* fin) {
     struct virtio_packet_t* reply_packet = allocate_virtio_packet();
     struct tcp_hdr_t* reply = (struct tcp_hdr_t *)(&reply_packet->data);
 
-    out_num++;
     fill_reply_to(reply, fin);
 
-    reply->th_flags = TH_FIN;
+    reply->th_flags = TH_RST; // Simpliest way :3
     tcp_checksum(reply);
     send_virtio_packet(reply_packet);
-
-    char * data_ptr = (char*)(reply+1);
-    strcpy(data_ptr, "ZALUPA SLONIKA");
-
-    if (reply->th_flags != TH_FIN) {
-        cprintf("MONKEY!!!\n");
-    }
 }
 
 void process_tcp_packet(struct tcp_hdr_t* packet) {
-    static bool fin = false;
-
-    if (fin) {
-        return;
-    }
-
-    if (ntohl(packet->th_seq) < in_num) {
+    if (trace_net && ntohl(packet->th_seq) < in_num) {
         cprintf("Runaway detected, %u with remembered %u [possible retransmission]", ntohl(packet->th_seq), in_num);
     }
 
-    cprintf("Received tcp packet to port %d\n", ntohs(packet->th_dport));
+    if (trace_net)
+        cprintf("Received tcp packet to port %d from port %d\n", ntohs(packet->th_dport), ntohs(packet->th_sport));
 
     in_num = ntohl(packet->th_seq);
+    size_t packet_size = ntohs(packet->ipv4_hdr.len) - (packet->ipv4_hdr.header_len<<2u) - (packet->th_off<<2u);
 
     // Is this SYN only?
     if ((packet->th_flags & TH_SYN) && !(packet->th_flags & TH_ACK)) {
         return reply_syn(packet);
     }
 
+    // Just ACK from client... let it pass
+    if (packet->th_flags == TH_ACK && packet_size == 0) {
+        return;
+    }
+
     // le FIN
     if (packet->th_flags & TH_FIN) {
-        cprintf(" -- FIN --\n");
-        fin = true;
         return reply_fin(packet);
     }
 
@@ -162,19 +153,21 @@ void process_tcp_packet(struct tcp_hdr_t* packet) {
     struct virtio_packet_t* reply_packet = allocate_virtio_packet();
     struct tcp_hdr_t* reply = (struct tcp_hdr_t *)(&reply_packet->data);
 
-    size_t packet_size = ntohs(packet->ipv4_hdr.len) - (packet->ipv4_hdr.header_len<<2u) - (packet->th_off<<2u);
     in_num += packet_size;
 
     fill_reply_to(reply, packet);
 
-    reply->th_flags |= TH_ACK;
+    reply->th_flags = TH_ACK;
     tcp_checksum(reply);
     send_virtio_packet(reply_packet);
 
-    char* data = ((char*)&packet->ipv4_hdr) + (packet->ipv4_hdr.header_len<<2u) + (packet->th_off<<2u);
-    cprintf("NETCAT PACKET: ");
+    char* data = ((char*)&packet->ipv4_hdr) + sizeof(struct ethernet_hdr_t) + (packet->ipv4_hdr.header_len<<2u) + (packet->th_off<<2u);
+    cprintf("netcat: \n");
     for (size_t i = 0; i < packet_size; ++i) {
         cputchar(data[i]);
     }
-    cputchar('\n');
+
+    if (data[packet_size - 1] != '\n') {
+        cputchar('\n');
+    }
 }
