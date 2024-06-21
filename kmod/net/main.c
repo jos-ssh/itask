@@ -47,7 +47,9 @@ void umain(int argc, char** argv) {
   while (1) {
     uint8_t status = *net->isr_status;
     if (status & VIRTIO_PCI_ISR_NOTIFY) {
-        process_receive_queue(&net->recvq);
+        while (process_receive_queue(&net->recvq)) {
+          ;
+        }
     }
 
     sys_yield();
