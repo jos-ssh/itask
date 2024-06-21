@@ -7,7 +7,7 @@
 
 extern envid_t g_InitdEnvid;
 extern envid_t g_PcidEnvid;
-extern bool g_IsNetdInitialized;
+extern bool g_SessionComplete;
 
 extern struct virtio_net_device_t* net;
 

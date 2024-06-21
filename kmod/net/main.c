@@ -13,11 +13,12 @@
 static int netd_serve_identify(envid_t from, const void* request,
                                 void* response, int* response_perm);
 
-static int netd_serve_teapot(envid_t from, const void* request,
+static int netd_serve_netcat(envid_t from, const void* request,
                                     void* response, int* response_perm);
 
 envid_t g_InitdEnvid;
 envid_t g_PcidEnvid;
+bool g_SessionComplete = false;
 struct virtio_net_device_t* net = (void*) UTEMP;
 
 static union NetdResponce ResponseBuffer;
@@ -28,6 +29,7 @@ struct RpcServer Server = {
         .HandlerCount = NETD_NREQUESTS,
         .Handlers = {
                 [NETD_IDENTITY] = netd_serve_identify,
+                [NETD_NETCAT] = netd_serve_netcat
         }};
 
 void umain(int argc, char** argv) {
@@ -45,14 +47,7 @@ void umain(int argc, char** argv) {
   initialize();
 
   while (1) {
-    uint8_t status = *net->isr_status;
-    if (status & VIRTIO_PCI_ISR_NOTIFY) {
-        while (process_receive_queue(&net->recvq)) {
-          ;
-        }
-    }
-
-    sys_yield();
+    rpc_listen(&Server, NULL);
   }
 }
 
@@ -68,4 +63,24 @@ netd_serve_identify(envid_t from, const void* request,
     strncpy(ident->info.name, NETD_MODNAME, MAXNAMELEN);
     *response_perm = PROT_R;
     return 0;
+}
+
+static int netd_serve_netcat(envid_t from, const void* request,
+                                    void* response, int* response_perm) {
+  g_SessionComplete = false;
+
+
+  while (!g_SessionComplete) {
+    uint8_t status = *net->isr_status;
+    if (status & VIRTIO_PCI_ISR_NOTIFY) {
+        while (process_receive_queue(&net->recvq)) {
+          ;
+        }
+    }
+
+    sys_yield();
+  }
+
+  *response_perm = PROT_RW;
+  return 0;
 }

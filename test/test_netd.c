@@ -1,4 +1,3 @@
-/* hello, world */
 #include "inc/env.h"
 #include "inc/kmod/init.h"
 #include <inc/assert.h>
@@ -49,20 +48,20 @@ find_netd(envid_t initd) {
     return rpc_execute(initd, INITD_REQ_FIND_KMOD, &request, &res_data);
 }
 
-void check_teapot(envid_t netd) {
-    // union NetdResponce* response = (void*) RECEIVE_ADDR;
+void netcat(envid_t netd) {
+    union NetdResponce* response = (void*) RECEIVE_ADDR;
 
-    // static union NetdRequest req;
-    // req.req = 42;
+    static union NetdRequest req;
+    req.req = 42;
 
-    // int res = rpc_execute(netd, NETD_IS_TEAPOT, &req,
-    //     (void**)&response);
+    int res = rpc_execute(netd, NETD_NETCAT, &req,
+        (void**)&response);
 
-    // if (res < 0) {
-    //   panic("teapot check failed: %i\n", res);
-    // }
+    if (res < 0) {
+      panic("netcat failed: %i\n", res);
+    }
 
-    // sys_unmap_region(CURENVID, response, PAGE_SIZE);
+    sys_unmap_region(CURENVID, response, PAGE_SIZE);
 }
 
 void
@@ -72,5 +71,5 @@ umain(int argc, char** argv) {
     envid_t netd = find_netd(initd);
     cprintf("Found 'netd' in env [%08x]\n", netd);
 
-    cprintf("Currently, test is disabled. Nobody cared\n");
+    netcat(netd);
 }
