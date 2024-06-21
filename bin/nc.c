@@ -20,12 +20,6 @@ find_initd() {
             int res = rpc_execute(envs[i].env_id, KMOD_REQ_IDENTIFY, NULL, (void**)&response);
             assert(res == 0);
 
-            int namelen = strnlen(response->info.name, KMOD_MAXNAMELEN);
-
-            cprintf("Kernel type env [%08x] is module '%*s' v%zu\n",
-                    envs[i].env_id, namelen, response->info.name,
-                    response->info.version);
-
             if (strcmp(INITD_MODNAME, response->info.name) == 0) {
                 sys_unmap_region(CURENVID, response, PAGE_SIZE);
                 return envs[i].env_id;
@@ -34,7 +28,6 @@ find_initd() {
         }
     return 0;
 }
-
 
 envid_t
 find_netd(envid_t initd) {
@@ -69,7 +62,6 @@ umain(int argc, char** argv) {
     envid_t initd = find_initd();
 
     envid_t netd = find_netd(initd);
-    cprintf("Found 'netd' in env [%08x]\n", netd);
 
     netcat(netd);
 }
