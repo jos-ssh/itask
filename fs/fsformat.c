@@ -17,6 +17,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <dirent.h>
 #undef off_t
 #undef bool
 
@@ -31,9 +32,8 @@ typedef int bool;
 #include <inc/mmu.h>
 #include <inc/fs.h>
 
-#define ROUNDUP(n, v) ((n)-1 + (v) - ((n)-1) % (v))
-#define MAX_DIR_ENTS  128
-#define DISKSIZE      0xC0000000
+#define MAX_DIR_ENTS 128
+#define DISKSIZE     0xC0000000
 
 struct Dir {
     struct File *f;
@@ -45,6 +45,14 @@ uint32_t nblocks;
 char *diskmap, *diskpos;
 struct Super *super;
 uint32_t *bitmap;
+
+static uint64_t
+roundup(uint64_t n, uint64_t v) {
+    if (n == 0) {
+        return v;
+    }
+    return n - 1 + v - (n - 1) % v;
+}
 
 void
 panic(const char *fmt, ...) {
@@ -78,7 +86,7 @@ blockof(void *pos) {
 void *
 alloc(uint32_t bytes) {
     void *start = diskpos;
-    diskpos += ROUNDUP(bytes, BLKSIZE);
+    diskpos += roundup(bytes, BLKSIZE);
     if (blockof(diskpos) >= nblocks)
         panic("out of disk blocks");
     return start;
@@ -128,7 +136,7 @@ void
 finishfile(struct File *f, uint32_t start, uint32_t len) {
     int i;
     f->f_size = len;
-    len = ROUNDUP(len, BLKSIZE);
+    len = roundup(len, BLKSIZE);
     for (i = 0; i < len / BLKSIZE && i < NDIRECT; ++i)
         f->f_direct[i] = start + i;
     if (i == NDIRECT) {
@@ -139,6 +147,7 @@ finishfile(struct File *f, uint32_t start, uint32_t len) {
     }
 }
 
+// Create struct Dir from File
 void
 startdir(struct File *f, struct Dir *dout) {
     dout->f = f;
@@ -146,6 +155,7 @@ startdir(struct File *f, struct Dir *dout) {
     dout->n = 0;
 }
 
+// Add file to directory and return it
 struct File *
 diradd(struct Dir *d, uint32_t mode, const char *name) {
     struct File *out = &d->ents[d->n++];
@@ -161,7 +171,7 @@ finishdir(struct Dir *d) {
     int size = d->n * sizeof(struct File);
     struct File *start = alloc(size);
     memmove(start, d->ents, size);
-    finishfile(d->f, blockof(start), ROUNDUP(size, BLKSIZE));
+    finishfile(d->f, blockof(start), roundup(size, BLKSIZE));
     free(d->ents);
     d->ents = NULL;
 }
@@ -196,9 +206,57 @@ writefile(struct Dir *dir, const char *name) {
     close(fd);
 }
 
+
+void
+writedir(struct Dir *root, const char *dir_name) {
+    const char *last;
+    last = strrchr(dir_name, '/');
+    if (last)
+        last++;
+    else
+        last = dir_name;
+
+    struct File *fdir = diradd(root, IFDIR | IRWXG | IRWXO | IRWXU, last);
+
+    // JOS
+    struct Dir dir;
+    startdir(fdir, &dir);
+
+    // linux
+    struct dirent *pDirent;
+    DIR *pDir;
+
+    pDir = opendir(dir_name);
+    if (pDir == NULL) {
+        panic("Cannot open directory '%s'\n", dir_name);
+    }
+
+    char file_name_buffer[MAXPATHLEN];
+    while ((pDirent = readdir(pDir)) != NULL) {
+        if (strcmp(pDirent->d_name, "..") == 0 || strcmp(pDirent->d_name, ".") == 0) {
+            continue;
+        }
+
+        strcpy(file_name_buffer, dir_name);
+        strcat(file_name_buffer, "/");
+        strcat(file_name_buffer, pDirent->d_name);
+
+        if (pDirent->d_type == DT_DIR) {
+            writedir(&dir, file_name_buffer);
+        } else if (pDirent->d_type == DT_REG) {
+            writefile(&dir, file_name_buffer);
+        } else {
+            panic("Unsupported file %s with type %x\n", file_name_buffer, pDirent->d_type);
+        }
+    }
+
+    closedir(pDir);
+    finishdir(&dir);
+}
+
 void
 usage(void) {
-    fprintf(stderr, "Usage: fsformat fs.img NBLOCKS files...\n");
+    fprintf(stderr, "Usage: fsformat fs.img NBLOCKS files/directories...\n");
     exit(2);
 }
 
@@ -207,6 +265,7 @@ main(int argc, char **argv) {
     int i;
     char *s;
     struct Dir root;
+    struct stat st;
 
     assert(BLKSIZE % sizeof(struct File) == 0);
 
@@ -220,8 +279,18 @@ main(int argc, char **argv) {
     opendisk(argv[1]);
 
     startdir(&super->s_root, &root);
-    for (i = 3; i < argc; i++)
-        writefile(&root, argv[i]);
+    for (i = 3; i < argc; i++) {
+
+        stat(argv[i], &st);
+
+        if (S_ISREG(st.st_mode)) {
+            writefile(&root, argv[i]);
+        } else if (S_ISDIR(st.st_mode)) {
+            writedir(&root, argv[i]);
+        } else {
+            panic("Don't support");
+        }
+    }
     finishdir(&root);
 
     finishdisk();

@@ -24,7 +24,7 @@
 
 #define IRUSR 00400 // owner has read permission
 #define IWUSR 00200 // owner has write permission
-#define S_IXUSR 00100 // owner has execute permission
+#define IXUSR 00100 // owner has execute permission
 
 #define IRWXG 00070 // group has read, write, and execute permission
 
