@@ -103,7 +103,6 @@ void send_virtio_packet(struct virtio_packet_t* packet) {
 // TODO: INVESTIGATE
 void
 process_queue(struct virtq *queue, bool incoming) {
-    // Костыль, ибо чета код этого GC иногда много раз прозодит по одному элементу
     bool processed[VIRTQ_SIZE];
     memset(processed, 0, sizeof(processed));
 
@@ -120,7 +119,7 @@ process_queue(struct virtq *queue, bool incoming) {
 
             if (incoming) {
                 process_packet(queue, id);
-            } else if (sendq_index_to_ptr[id] != NULL) { // максимальная хуета, по идее должно отсеиваться processed, но нет
+            } else if (sendq_index_to_ptr[id] != NULL) {
                 char* packet_ptr = (char*) sendq_index_to_ptr[id];
                 pool_allocator_free_object(&net.alloc, packet_ptr - offsetof(struct send_buffer_t, packet));
                 sendq_index_to_ptr[id] = NULL;
