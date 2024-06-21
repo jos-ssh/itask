@@ -35,11 +35,14 @@ void *reverse_recv_buffer_addr(int64_t index) {
 */
 
 void initialize() {
+    int res = sys_alloc_region(CURENVID, net, sizeof(*net), PROT_RW | PROT_CD);
+    UNWRAP(res, "Failed to map net struct");
+
     g_PcidEnvid = find_module(g_InitdEnvid, PCID_MODNAME);
     uint32_t device_id = pcid_device_id(PCI_CLASS_NETWORK, PCI_SUBCLASS_NETWORK_ETHERNET, 0); 
 
     union PcidResponse* response = (void*) RECEIVE_ADDR;
-    int res = rpc_execute(g_PcidEnvid, PCID_REQ_FIND_DEVICE | device_id, NULL, (void **)&response);
+    res = rpc_execute(g_PcidEnvid, PCID_REQ_FIND_DEVICE | device_id, NULL, (void **)&response);
     UNWRAP(res, "Failed to find virtio-net");
 
     struct PciHeaderGeneral* pci_header = (struct PciHeaderGeneral*)response->dev_confspace;
@@ -55,8 +58,8 @@ void initialize() {
     setup_device(pci_header);
 
     // Setup allocator for send buffers
-    net.alloc = MAKE_ALLOCATOR(send_buffers);
-    pool_allocator_init(&net.alloc);
+    net->alloc = MAKE_ALLOCATOR(send_buffers);
+    pool_allocator_init(&net->alloc);
 } 
 
 static bool
@@ -129,23 +132,23 @@ parse_common_cfg(volatile struct virtio_pci_common_cfg_t *cfg_header) {
     }
 
     // Config two queues
-    net.sendq.queue_idx = VIRTIO_SENDQ;
-    setup_queue(&net.sendq, cfg_header);
+    net->sendq.queue_idx = VIRTIO_SENDQ;
+    setup_queue(&net->sendq, cfg_header);
 
-    net.recvq.queue_idx = VIRTIO_RECVQ;
-    setup_queue(&net.recvq, cfg_header);
+    net->recvq.queue_idx = VIRTIO_RECVQ;
+    setup_queue(&net->recvq, cfg_header);
 
     cfg_header->queue_select = VIRTIO_SENDQ;
 
     for (int i = 0; i < VIRTQ_SIZE; ++i) {
         recv_buffers[i]._[0] = 0; // force alloc
-        net.recvq.desc[i].addr = get_phys_addr(recv_buffers + i);
-        net.recvq.desc[i].len  = sizeof(struct recv_buffer);
-        net.recvq.desc[i].flags |= VIRTQ_DESC_F_WRITE;
+        net->recvq.desc[i].addr = get_phys_addr(recv_buffers + i);
+        net->recvq.desc[i].len  = sizeof(struct recv_buffer);
+        net->recvq.desc[i].flags |= VIRTQ_DESC_F_WRITE;
     }
 
-    queue_avail(&net.recvq, VIRTQ_SIZE);
-    notify_queue(&net.recvq);
+    queue_avail(&net->recvq, VIRTQ_SIZE);
+    notify_queue(&net->recvq);
 
     // Set DRIVER_OK flag
     cfg_header->device_status |= VIRTIO_STATUS_DRIVER_OK;
@@ -185,11 +188,11 @@ setup_device(struct PciHeaderGeneral* header) {
             
             // RECVQ notify
             common_cfg_ptr->queue_select = VIRTIO_RECVQ;
-            net.recvq.notify_reg += notify_cap_offset + common_cfg_ptr->queue_notify_off * notify_off_multiplier;
+            net->recvq.notify_reg += notify_cap_offset + common_cfg_ptr->queue_notify_off * notify_off_multiplier;
             
             // SENDQ notify
             common_cfg_ptr->queue_select = VIRTIO_SENDQ;
-            net.sendq.notify_reg += notify_cap_offset + common_cfg_ptr->queue_notify_off * notify_off_multiplier;
+            net->sendq.notify_reg += notify_cap_offset + common_cfg_ptr->queue_notify_off * notify_off_multiplier;
 
             if (notify_cap_size < common_cfg_ptr->queue_notify_off * notify_off_multiplier + 2) {
                 panic("Wrong size\n");
@@ -204,17 +207,17 @@ setup_device(struct PciHeaderGeneral* header) {
             notify_cap_size = cap_header.length;
 
             notify_cap_offset = cap_header.offset;
-            net.sendq.notify_reg += get_bar(header->bar, cap_header.bar);
-            net.recvq.notify_reg += get_bar(header->bar, cap_header.bar);
+            net->sendq.notify_reg += get_bar(header->bar, cap_header.bar);
+            net->recvq.notify_reg += get_bar(header->bar, cap_header.bar);
 
             notify_off_multiplier = *(uint32_t *)(((char*) header) + cap_offset_old + sizeof(cap_header));
             break;
         case VIRTIO_PCI_CAP_ISR_CFG:
             addr = cap_header.offset + get_bar(header->bar, cap_header.bar);
-            net.isr_status = (uint8_t *)addr;
+            net->isr_status = (uint8_t *)addr;
             break;
         case VIRTIO_PCI_CAP_DEVICE_CFG:
-            net.conf = (struct virtio_net_config_t *)(cap_header.offset + get_bar(header->bar, cap_header.bar));
+            net->conf = (struct virtio_net_config_t *)(cap_header.offset + get_bar(header->bar, cap_header.bar));
             break;
         case VIRTIO_PCI_CAP_PCI_CFG: break;
         default: break;

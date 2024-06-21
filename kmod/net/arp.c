@@ -33,7 +33,7 @@ void process_arp_packet(struct arp_packet_t* arp) {
 
     reply->eth_hdr.len_ethertype = htons(ETHERTYPE_ARP);
 
-    memcpy(reply->eth_hdr.s_mac, net.conf->mac, 6);
+    memcpy(reply->eth_hdr.s_mac, net->conf->mac, 6);
     memcpy(reply->source_mac, reply->eth_hdr.s_mac, 6); 
 
     // Broadcast destination

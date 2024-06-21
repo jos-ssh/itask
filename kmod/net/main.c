@@ -18,7 +18,7 @@ static int netd_serve_teapot(envid_t from, const void* request,
 
 envid_t g_InitdEnvid;
 envid_t g_PcidEnvid;
-struct virtio_net_device_t net;
+struct virtio_net_device_t* net = (void*) UTEMP;
 
 static union NetdResponce ResponseBuffer;
 
@@ -45,10 +45,10 @@ void umain(int argc, char** argv) {
   initialize();
 
   while (1) {
-    uint8_t status = *net.isr_status;
+    uint8_t status = *net->isr_status;
     if (status & VIRTIO_PCI_ISR_NOTIFY) {
-        process_queue(&net.recvq, true);
-        process_queue(&net.sendq, false);
+        process_queue(&net->recvq, true);
+        process_queue(&net->sendq, false);
     }
 
     sys_yield();

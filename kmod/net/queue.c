@@ -83,21 +83,21 @@ alloc_desc(struct virtq *queue, int writable) {
 }
 
 struct virtio_packet_t* allocate_virtio_packet() {
-    struct send_buffer_t *buff = pool_allocator_alloc_object(&net.alloc);
+    struct send_buffer_t *buff = pool_allocator_alloc_object(&net->alloc);
     return &buff->packet;
 }
 
 void send_virtio_packet(struct virtio_packet_t* packet) {
-    struct virtq_desc* desc = alloc_desc(&net.sendq, 0);
+    struct virtq_desc* desc = alloc_desc(&net->sendq, 0);
     desc->len = sizeof(*packet);
     desc->addr = get_phys_addr(packet);
     packet->vheader.gso_type = VIRTIO_NET_HDR_GSO_NONE;
 
-    size_t desc_indx = desc - net.sendq.desc;
+    size_t desc_indx = desc - net->sendq.desc;
     sendq_index_to_ptr[desc_indx] = packet;
 
-    queue_avail(&net.sendq, 1);
-    notify_queue(&net.sendq);
+    queue_avail(&net->sendq, 1);
+    notify_queue(&net->sendq);
 }
 
 // TODO: INVESTIGATE
@@ -121,7 +121,7 @@ process_queue(struct virtq *queue, bool incoming) {
                 process_packet(queue, id);
             } else if (sendq_index_to_ptr[id] != NULL) {
                 char* packet_ptr = (char*) sendq_index_to_ptr[id];
-                pool_allocator_free_object(&net.alloc, packet_ptr - offsetof(struct send_buffer_t, packet));
+                pool_allocator_free_object(&net->alloc, packet_ptr - offsetof(struct send_buffer_t, packet));
                 sendq_index_to_ptr[id] = NULL;
             }
         }
