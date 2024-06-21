@@ -50,14 +50,16 @@ umain(int argc, char** argv) {
     if (passwd_stat.st_size == 0)
         return no_users_login();
 
-    // workaround for prety console print
-    sleep(1);
 
+    while (true) {
+        // workaround for prety console print
+        sleep(1);
 
-    size_t attempt = 0;
-    while (attempt++ < kMaxLoginAttempts && !login()) {}
-    if (attempt == kMaxLoginAttempts) {
-        // TODO:
+        size_t attempt = 0;
+        while (attempt++ < kMaxLoginAttempts && !login()) {}
+        if (attempt == kMaxLoginAttempts) {
+            // TODO:
+        }
     }
 }
 
@@ -74,12 +76,12 @@ no_users_login(void) {
 
 int
 find_line_u(const char* username, const char* path_to_file,
-          char* buff, const size_t size, const char** result, const size_t n_of_fields) {
+            char* buff, const size_t size, const char** result, const size_t n_of_fields) {
 
     struct Fd* file = fopen(path_to_file, O_RDONLY);
     if (!file)
         return -E_INVAL;
-    
+
     int res = -E_NO_ENT;
 
     while (fgets(buff, size, file)) {
@@ -98,10 +100,9 @@ find_line_u(const char* username, const char* path_to_file,
 
 inline int
 find_passw_line_u(const char* username, char* buff, size_t size,
-                 struct PasswParsed* result) {
-    return find_line_u(username, PASSWD_PATH, buff, size, (const char**) result, sizeof(*result) / sizeof(char*));
+                  struct PasswParsed* result) {
+    return find_line_u(username, PASSWD_PATH, buff, size, (const char**)result, sizeof(*result) / sizeof(char*));
 }
-
 
 
 static bool
@@ -129,19 +130,20 @@ login(void) {
         assert(res == 0);
 
         static union FiledRequest file_request;
-        strncpy(file_request.setcwd.req_path, passw.homedir, passw.shell - passw.homedir - 1); 
+        strncpy(file_request.setcwd.req_path, passw.homedir, passw.shell - passw.homedir - 1);
         res = rpc_execute(kmod_find_any_version(FILED_MODNAME), FILED_REQ_SETCWD, &file_request, NULL);
         assert(res == 0);
 
         request.set_env_info.info.euid = uid;
         request.set_env_info.info.ruid = uid;
         request.set_env_info.info.egid = uid;
-        request.set_env_info.info.rgid = uid; 
+        request.set_env_info.info.rgid = uid;
 
         res = rpc_execute(sUsersService, USERSD_REQ_SET_ENV_INFO, &request, NULL);
         assert(res == 0);
 
-        spawnl(passw.shell, passw.shell, NULL);
+        envid_t env = spawnl(passw.shell, passw.shell, NULL);
+        wait(env);
         return true;
     }
 
