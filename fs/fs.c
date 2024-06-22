@@ -600,7 +600,8 @@ file_chmod(const char* path, uint32_t new_mode) {
     if (res < 0) return res;
     if (file == NULL || lastelem[0] != 0) return -E_FILE_EXISTS;
     
-    file->f_mode = (file->f_mode & ~00111) | (new_mode & 00111);
+    int mask = IRWXU | IRWXG | IRWXO;
+    file->f_mode = (file->f_mode & ~mask) | (new_mode & mask);
 
     return 0;
 }
