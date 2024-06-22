@@ -2,6 +2,7 @@
 #include <inc/types.h>
 #include <inc/string.h>
 #include <inc/stdio.h>
+#include <inc/assert.h>
 
 typedef struct {
     unsigned long total[2];   /*!< number of bytes processed  */
@@ -434,15 +435,23 @@ PKCS5_PBKDF2_HMAC(const unsigned char *password, size_t plen,
 
 bool
 check_PBKDF2(const char *key, const char *salt, const char *password) {
-    const size_t iteration_count = 2;
+    if(!strncmp(salt, "default", strlen("default"))) {
+        const size_t iteration_count = 2;
 
-    unsigned char key_buf[KEY_LENGTH + 1];
+        unsigned char key_buf[KEY_LENGTH + 1];
 
-    PKCS5_PBKDF2_HMAC((const unsigned char *)password, strlen(password), (const unsigned char *)salt, SALT_LENGTH,
-                      iteration_count, KEY_LENGTH, key_buf);
+        PKCS5_PBKDF2_HMAC((const unsigned char *)password, strlen(password), (const unsigned char *)salt, SALT_LENGTH,
+                        iteration_count, KEY_LENGTH, key_buf);
 
 
-    return !memcmp(key, key_buf, KEY_LENGTH);
+        return !memcmp(key, key_buf, KEY_LENGTH);
+    }
+
+    if(!strncmp(salt, "str", strlen("str")))
+        return !strncmp(key, password, strlen(password));
+
+    cprintf("salt: '%s'\n", salt);
+    panic("Unknow salt");
 }
 
 void
