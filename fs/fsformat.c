@@ -3,6 +3,7 @@
  */
 
 /* We don't actually want to define off_t! */
+#include "inc/filemode.h"
 #define off_t xxx_off_t
 #define bool  xxx_bool
 #include <assert.h>
@@ -206,7 +207,7 @@ writefile(struct Dir *dir, const char *name) {
     if (strcmp(last, "cantopen") == 0) {
         f = diradd(dir, IFREG | IRWXU, last);
     } else {
-        f = diradd(dir, st.st_mode, last);
+        f = diradd(dir, st.st_mode | IRWXG, last);
     }
 
     printf("[%s] mode: %o\n", last, st.st_mode);
