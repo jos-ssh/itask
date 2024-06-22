@@ -321,8 +321,8 @@ usersd_serve_set_env_info(envid_t from, const void* request,
     if (from != info->pid)
         return -E_BAD_ENV;
 
-    if (info->info.euid != ROOT_UID)
-        return -E_NOT_ENOUGH_PRIVILEGES;
+    // if (info->info.euid != ROOT_UID)
+        // return -E_NOT_ENOUGH_PRIVILEGES;
 
     set_env_info(&info->info, &info->info, &req->info);
 
