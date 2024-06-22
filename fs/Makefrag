@@ -16,6 +16,7 @@ FSIMGTXTFILES :=	fs/fs_image/newmotd \
 			fs/fs_image/testshell.sh \
 			fs/fs_image/passwd \
 			fs/fs_image/shadow \
+			fs/fs_image/cantopen \
 			fs/fs_image/testdir
 
 BINAPPS :=		$(OBJDIR)/bin/init \
@@ -27,8 +28,8 @@ BINAPPS :=		$(OBJDIR)/bin/init \
 			$(OBJDIR)/bin/date \
 			$(OBJDIR)/bin/vdate \
 			$(OBJDIR)/bin/sh \
-			$(OBJDIR)/bin/login
-
+			$(OBJDIR)/bin/login \
+			$(OBJDIR)/bin/useradd
 
 USERAPPS :=		$(OBJDIR)/user/num \
 			$(OBJDIR)/user/forktree \

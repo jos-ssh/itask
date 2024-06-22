@@ -14,8 +14,10 @@ ls(const char *path, const char *prefix) {
     int r;
     struct Stat st;
 
-    if ((r = stat(path, &st)) < 0)
-        panic("stat %s: %i", path, r);
+    if ((r = stat(path, &st)) < 0) {
+        printf("stat: Permission denied %s: %i", path, r);
+        exit();
+    }
     if (st.st_isdir && !flag['d'])
         lsdir(path, prefix);
     else
@@ -73,6 +75,10 @@ ls1(const char *prefix, uint32_t mode, off_t size, const char *name) {
 
     if (flag['l']) {
         print_mode(mode);
+
+        struct Stat st;
+        stat(name, &st);
+        printf("  %d %d", st.st_uid, st.st_gid);
         printf(" %8d ", size);
     }
     if (prefix) {

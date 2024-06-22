@@ -8,6 +8,7 @@
 #include <inc/passw.h>
 
 const size_t kMaxLoginAttempts = 3;
+#define RECEIVE_ADDR 0x0FFFF000
 
 static void help(void);
 static void no_users_login(void);
@@ -120,7 +121,13 @@ login(void) {
         assert(sUsersService > 0);
     }
 
-    int uid = rpc_execute(sUsersService, USERSD_REQ_LOGIN, &request, NULL);
+    union UsersdResponse* response = (void*)RECEIVE_ADDR;
+    struct EnvInfo info;
+
+    int uid = rpc_execute(sUsersService, USERSD_REQ_LOGIN, &request, (void**)&response);
+    memcpy(&info, &response->env_info.info, sizeof(info));
+    sys_unmap_region(CURENVID, (void*)RECEIVE_ADDR, PAGE_SIZE);
+
 
     if (uid == 0) {
         printf("Hello '%s', welcome back!\n", request.login.username);
@@ -135,15 +142,25 @@ login(void) {
         res = rpc_execute(kmod_find_any_version(FILED_MODNAME), FILED_REQ_SETCWD, &file_request, NULL);
         assert(res == 0);
 
-        request.set_env_info.info.euid = uid;
-        request.set_env_info.info.ruid = uid;
-        request.set_env_info.info.egid = uid;
-        request.set_env_info.info.rgid = uid;
+        request.set_env_info.info.euid = info.euid;
+        request.set_env_info.info.ruid = info.ruid;
+        request.set_env_info.info.egid = info.egid;
+        request.set_env_info.info.rgid = info.rgid;
 
         res = rpc_execute(sUsersService, USERSD_REQ_SET_ENV_INFO, &request, NULL);
         assert(res == 0);
 
-        envid_t env = spawnl(passw.shell, passw.shell, NULL);
+        envid_t env;
+
+        char* shell_string_end = strchr(passw.shell, '\n');
+        if (shell_string_end == NULL) {
+            env = spawnl(passw.shell, passw.shell, NULL);
+        } else {
+            char shell_buf[kMaxLineBufLength];
+            strncpy(shell_buf, passw.shell, shell_string_end - passw.shell);
+            env = spawnl(shell_buf, shell_buf, NULL);
+        }
+
         wait(env);
         return true;
     }

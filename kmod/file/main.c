@@ -18,12 +18,12 @@
 #define debug_kfile 0
 #endif
 
-#define KFILE_LOG(...) \
-    if(debug_kfile) {                                                                     \
+#define KFILE_LOG(...)                                                           \
+    if (debug_kfile) {                                                           \
         cprintf("\e[32mKFILE_LOG\e[0m[\e[94m%s\e[0m:%d]: ", __func__, __LINE__); \
-        cprintf(__VA_ARGS__);                                                \
+        cprintf(__VA_ARGS__);                                                    \
     }
-    
+
 static union FiledRequest Request;
 static union FiledResponse Response;
 
@@ -124,13 +124,14 @@ filed_serve_identify(envid_t from, const void* request,
     return 0;
 }
 
-static int get_env_info(envid_t target, struct EnvInfo* info) {
+static int
+get_env_info(envid_t target, struct EnvInfo* info) {
     KFILE_LOG("target %x\n", target);
     sUsersdBuffer.get_env_info.target = target;
-    
+
     void* response = &sUsersdResponseBuffer;
     int res = rpc_execute(kmod_find_any_version(USERSD_MODNAME), USERSD_REQ_GET_ENV_INFO, &sUsersdBuffer, &response);
-    if (res){
+    if (res) {
         KFILE_LOG("%i\n", res);
         return res;
     }
@@ -148,10 +149,11 @@ static int get_env_info(envid_t target, struct EnvInfo* info) {
     return 0;
 }
 
-static int get_file_info(int fileid, struct Fsret_stat* buffer) {
+static int
+get_file_info(int fileid, struct Fsret_stat* buffer) {
     KFILE_LOG("Stat of desc: %d\n", FsBuffer.stat.req_fileid);
 
-    FsBuffer.stat.req_fileid = fileid; 
+    FsBuffer.stat.req_fileid = fileid;
     int res = fs_rpc_execute(FSREQ_STAT, &FsBuffer, NULL, NULL);
     if (res) {
         KFILE_LOG("%i\n", res);
@@ -163,9 +165,10 @@ static int get_file_info(int fileid, struct Fsret_stat* buffer) {
 }
 
 
-static int check_perm (const struct EnvInfo* info, int fileid, int flags) {
+static int
+check_perm(const struct EnvInfo* info, int fileid, int flags) {
     int res;
-    
+
     struct Fsret_stat stat;
     res = get_file_info(fileid, &stat);
     if (res)
@@ -173,40 +176,41 @@ static int check_perm (const struct EnvInfo* info, int fileid, int flags) {
 
     if (stat.ret_uid == info->euid) {
         // owner
-        if (!(IRUSR | stat.ret_mode) && (!(flags | O_RDONLY) || (flags | O_RDWR)))
+        if (!(IRUSR & stat.ret_mode) && (!(flags | O_RDONLY) || (flags | O_RDWR)))
             res = -E_PERM_DENIED;
 
-        if (!(IWUSR | stat.ret_mode) && ((flags | O_WRONLY) || (flags | O_RDWR)))
+        if (!(IWUSR & stat.ret_mode) && ((flags | O_WRONLY) || (flags | O_RDWR)))
             res = -E_PERM_DENIED;
 
     } else if (stat.ret_gid == info->egid) {
         // group
-        if (!(IRGRP | stat.ret_mode) && (!(flags | O_RDONLY) || (flags | O_RDWR)))
+        if (!(IRGRP & stat.ret_mode) && (!(flags | O_RDONLY) || (flags | O_RDWR)))
             return -E_PERM_DENIED;
 
-        if (!(IWGRP | stat.ret_mode) && ((flags | O_WRONLY) || (flags | O_RDWR)))
+        if (!(IWGRP & stat.ret_mode) && (!(flags | O_WRONLY) || (flags | O_RDWR)))
             return -E_PERM_DENIED;
 
     } else {
         // others
-        if (!(IROTH | stat.ret_mode) && (!(flags | O_RDONLY) || (flags | O_RDWR)))
+        if (!(IROTH & stat.ret_mode) && (!(flags | O_RDONLY) || (flags | O_RDWR)))
             return -E_PERM_DENIED;
 
-        if (!(IWOTH | stat.ret_mode) && ((flags | O_WRONLY) || (flags | O_RDWR)))
+        if (!(IWOTH & stat.ret_mode) && (!(flags | O_WRONLY) || (flags | O_RDWR)))
             return -E_PERM_DENIED;
     }
 
     return 0;
 }
 
-static int set_env_info(envid_t child, envid_t parent, const struct EnvInfo* info) {
+static int
+set_env_info(envid_t child, envid_t parent, const struct EnvInfo* info) {
     sUsersdBuffer.register_env.child_pid = child;
     sUsersdBuffer.register_env.parent_pid = parent;
 
     memcpy(&sUsersdBuffer.register_env.desired_child_info, info, sizeof(*info));
 
     int res = rpc_execute(kmod_find_any_version(USERSD_MODNAME), USERSD_REQ_REG_ENV, &sUsersdBuffer, NULL);
-    if (res){
+    if (res) {
         KFILE_LOG("%i\n", res);
     }
 
@@ -237,7 +241,7 @@ filed_serve_open(envid_t from, const void* request,
     FsBuffer.open.req_oflags = freq->open.req_flags;
     if (freq->open.req_flags & O_CREAT) {
         FsBuffer.open.req_omode = freq->open.req_omode;
-        
+
         FsBuffer.open.req_uid = env_info.euid;
         FsBuffer.open.req_gid = env_info.egid;
     }
@@ -253,7 +257,7 @@ filed_serve_open(envid_t from, const void* request,
 
     assert(perm & PROT_R);
     res = sys_map_region(CURENVID, FdBuffer, from, (void*)freq->open.req_fd_vaddr,
-                            PAGE_SIZE, perm);
+                         PAGE_SIZE, perm);
     assert(res == 0);
 
 exit:
@@ -272,7 +276,7 @@ filed_serve_spawn(envid_t from, const void* request,
     res = filed_get_absolute_path(from, freq->spawn.req_path, &abs_path);
     if (res < 0) return res;
 
-    // Check Permissions 
+    // Check Permissions
     struct EnvInfo env_info;
     res = get_env_info(from, &env_info);
     if (res)
@@ -325,7 +329,7 @@ filed_serve_spawn(envid_t from, const void* request,
     }
 
     // set GID and UID for child
-    struct EnvInfo child_info = {NOT_AN_ID, NOT_AN_ID, NOT_AN_ID, NOT_AN_ID};  
+    struct EnvInfo child_info = {NOT_AN_ID, NOT_AN_ID, NOT_AN_ID, NOT_AN_ID};
     if (!(stat.ret_mode | ISUID)) {
         child_info.euid = stat.ret_uid;
     }
@@ -333,7 +337,7 @@ filed_serve_spawn(envid_t from, const void* request,
     if (!(stat.ret_mode | ISGID)) {
         child_info.egid = stat.ret_gid;
     }
-    
+
     res = set_env_info(child, from, &child_info);
     assert(res == 0);
 
@@ -358,8 +362,8 @@ filed_serve_fork(envid_t from, const void* request,
     }
 
     // set GID and UID for child
-    struct EnvInfo child_info = {NOT_AN_ID, NOT_AN_ID, NOT_AN_ID, NOT_AN_ID};  
-    
+    struct EnvInfo child_info = {NOT_AN_ID, NOT_AN_ID, NOT_AN_ID, NOT_AN_ID};
+
     res = set_env_info(child, from, &child_info);
     assert(res == 0);
 

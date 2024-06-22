@@ -1,3 +1,4 @@
+#include "inc/convert.h"
 #include <inc/kmod/users.h>
 #include <inc/kmod/init.h>
 
@@ -13,10 +14,10 @@ const size_t kMaxDelay = 1000;
 #define debug_kusers 0
 #endif
 
-#define KUSERS_LOG(...) \
-    if(debug_kusers) {                                                                     \
+#define KUSERS_LOG(...)                                                           \
+    if (debug_kusers) {                                                           \
         cprintf("\e[36mKUSERS_LOG\e[0m[\e[94m%s\e[0m:%d]: ", __func__, __LINE__); \
-        cprintf(__VA_ARGS__);                                                \
+        cprintf(__VA_ARGS__);                                                     \
     }
 
 static int usersd_serve_identify(envid_t from, const void* request,
@@ -34,6 +35,9 @@ static int usersd_serve_get_env_info(envid_t from, const void* request,
 static int usersd_serve_set_env_info(envid_t from, const void* request,
                                      void* response, int* response_perm);
 
+static int usersd_serve_useradd(envid_t from, const void* request,
+                                void* response, int* response_perm);
+
 #define RECEIVE_ADDR 0x0FFFF000
 static union UsersdResponse ResponseBuffer;
 
@@ -48,6 +52,7 @@ struct RpcServer Server = {
                 [USERSD_REQ_REG_ENV] = usersd_serve_register_env,
                 [USERSD_REQ_GET_ENV_INFO] = usersd_serve_get_env_info,
                 [USERSD_REQ_SET_ENV_INFO] = usersd_serve_set_env_info,
+                [USERSD_REQ_USERADD] = usersd_serve_useradd,
         }};
 
 static void
@@ -72,9 +77,10 @@ enum ModuleStatus {
     kSpawnedLogin,
 };
 
-static void start_login(void) {
+static void
+start_login(void) {
     cprintf("[%08x: usersd] Starting up module...\n", thisenv->env_id);
-    
+
     static union InitdRequest req;
     req.spawn.parent = thisenv->env_id;
     strcpy(req.spawn.file, "/login");
@@ -88,8 +94,8 @@ static void start_login(void) {
     gEnvsInfo[ENVX(thisenv->env_id)].info.rgid = ROOT_GID;
     gEnvsInfo[ENVX(thisenv->env_id)].info.egid = ROOT_GID;
 
-    struct UsersdRegisterEnv reg_login = {thisenv->env_id, login, {}}; 
-    int res = usersd_serve_register_env(thisenv->env_id, &reg_login, NULL, NULL); 
+    struct UsersdRegisterEnv reg_login = {thisenv->env_id, login, {}};
+    int res = usersd_serve_register_env(thisenv->env_id, &reg_login, NULL, NULL);
     assert(res == 0);
 
     res = sys_env_set_status(login, ENV_RUNNABLE);
@@ -138,7 +144,7 @@ usersd_serve_login(envid_t from, const void* request,
     const struct UsersdLogin* req = request;
     KUSERS_LOG("%s %s\n", req->username, req->password);
     // if (sCurrentUser)
-        // return -E_ALREADY_LOGGED_IN;
+    // return -E_ALREADY_LOGGED_IN;
 
     char passwd_line_buf[kMaxLineBufLength];
     char shadow_line_buf[kMaxLineBufLength];
@@ -155,6 +161,16 @@ usersd_serve_login(envid_t from, const void* request,
 
         if (sys_crypto(shadow.hashed, shadow.salt, req->password)) {
             sCurrentUser = strtol(passw.uid, NULL, 10);
+            guid_t current_group = strtol(passw.gid, NULL, 10);
+
+            union UsersdResponse* resp = response;
+            resp->env_info.info.euid = sCurrentUser;
+            resp->env_info.info.ruid = sCurrentUser;
+
+            resp->env_info.info.egid = current_group;
+            resp->env_info.info.rgid = current_group;
+
+            *response_perm = PROT_R;
             return 0;
         }
     }
@@ -162,6 +178,74 @@ usersd_serve_login(envid_t from, const void* request,
     return -E_ACCESS_DENIED;
 }
 
+static void
+write_passw_line(struct UsersdUseradd* req, uid_t uid, guid_t guid) {
+    char str_buf[100];
+
+    int fd = open_raw_fs(PASSWD_PATH, O_WRONLY);
+    struct Stat st;
+    fstat(fd, &st);
+
+    seek(fd, st.st_size);
+    write(fd, "\n", 1);
+    write(fd, req->username, strlen(req->username));
+
+    write(fd, ":", 1);
+
+    int length = long_to_str(uid, 10, str_buf, sizeof(str_buf));
+    write(fd, str_buf, length);
+
+    write(fd, ":", 1);
+
+    length = long_to_str(guid, 10, str_buf, sizeof(str_buf));
+    write(fd, str_buf, length);
+
+    write(fd, ":", 1);
+    write(fd, req->homedir, strlen(req->homedir));
+
+    write(fd, ":", 1);
+    write(fd, "/sh", 3);
+
+    close(fd);
+}
+
+
+static void
+write_shadow_line(struct UsersdUseradd* req) {
+
+    int fd = open_raw_fs(SHADOW_PATH, O_WRONLY);
+    struct Stat st;
+    fstat(fd, &st);
+
+    seek(fd, st.st_size);
+    write(fd, "\n", 1);
+    write(fd, req->username, strlen(req->username));
+
+    write(fd, ":default:", 9);
+
+    unsigned char hashed_passwd[KEY_LENGTH + 1];
+    sys_crypto_get(req->passwd, "default", hashed_passwd);
+    write(fd, hashed_passwd, KEY_LENGTH);
+
+    // FIXME:
+    write(fd, ":1024", 5);
+
+    close(fd);
+}
+
+static int
+usersd_serve_useradd(envid_t from, const void* request,
+                     void* response, int* response_perm) {
+    static uid_t current_uid = 1;
+    static guid_t current_guid = 1;
+
+    struct UsersdUseradd* req = (struct UsersdUseradd*)request;
+    // TODO:
+    // check what user already added
+    write_passw_line(req, ++current_uid, current_guid);
+    write_shadow_line(req);
+    return 0;
+}
 
 
 static bool
@@ -214,7 +298,7 @@ usersd_serve_get_env_info(envid_t from, const void* request,
     const struct UsersdGetEnvInfo* req = request;
     KUSERS_LOG("from %x req about %x\n", from, req->target);
     struct FullEnvInfo* info = gEnvsInfo + ENVX(req->target);
-    KUSERS_LOG("target %x pid %x: egid %d\n", req->target, info->pid, info->info.egid);
+    KUSERS_LOG("target %x pid %x: egid %d euid %d\n", req->target, info->pid, info->info.egid, info->info.euid);
     if (req->target != info->pid)
         return -E_BAD_ENV;
 

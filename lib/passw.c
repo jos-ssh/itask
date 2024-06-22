@@ -30,7 +30,7 @@ find_line(const char* username, const char* path_to_file,
     assert(res == 0);
     if (res)
         return res;
-    
+
     res = -E_NO_ENT;
 
     while (fgets(buff, size, file)) {

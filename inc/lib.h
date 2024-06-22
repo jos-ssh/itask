@@ -101,6 +101,7 @@ int sys_ipc_recv_from(envid_t from, void *rcv_pg, size_t size);
 int sys_gettime(void);
 int sys_get_rsdp_paddr(physaddr_t* paddr);
 int sys_crypto(const char *hashed, const char *salt, const char *password);
+int sys_crypto_get(const char *password, const char *salt, unsigned char *hashed);
 
 int vsys_gettime(void);
 

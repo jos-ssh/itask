@@ -13,12 +13,14 @@ enum UsersdRequestType {
     USERSD_REQ_REG_ENV,
     USERSD_REQ_GET_ENV_INFO,
     USERSD_REQ_SET_ENV_INFO,
+    USERSD_REQ_USERADD,
 
     USERSD_NREQUESTS
 };
 
 #define MAX_USERNAME_LENGTH 256
 #define MAX_PASSWORD_LENGTH 256
+#define MAX_PATH_LEN        256
 
 #define ROOT_UID 0
 #define ROOT_GID 0
@@ -42,6 +44,12 @@ union UsersdRequest {
         char password[MAX_PASSWORD_LENGTH];
     } login;
 
+    struct UsersdUseradd {
+        char username[MAX_USERNAME_LENGTH];
+        char passwd[MAX_PASSWORD_LENGTH];
+        char homedir[MAX_PATH_LEN];
+    } useradd;
+
     struct UsersdRegisterEnv {
         envid_t parent_pid;
         envid_t child_pid;
@@ -56,7 +64,7 @@ union UsersdRequest {
     struct UsersdSetEnvInfo {
         struct EnvInfo info;
     } set_env_info;
-    
+
     uint8_t pad_[PAGE_SIZE];
 } __attribute__((aligned(PAGE_SIZE)));
 

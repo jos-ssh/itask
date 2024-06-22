@@ -34,31 +34,31 @@
 #define PRINT_ARGS_1_END
 #define PRINT_ARGS_2_END
 
-#define TRACE_SYSCALL_ENTER(...)                                      \
-    do {                                                              \
+#define TRACE_SYSCALL_ENTER(...)                                       \
+    do {                                                               \
         if (trace_syscalls || trace_syscalls_from == curenv->env_id) { \
-            cprintf("[%08x] ", curenv->env_id);                       \
-            cprintf("called %s( ", __func__);                         \
-            PRINT_ARGS(__VA_ARGS__);                                  \
-            cprintf(")\n");                                           \
-        }                                                             \
+            cprintf("[%08x] ", curenv->env_id);                        \
+            cprintf("called %s( ", __func__);                          \
+            PRINT_ARGS(__VA_ARGS__);                                   \
+            cprintf(")\n");                                            \
+        }                                                              \
     } while (0)
 
-#define TRACE_SYSCALL_LEAVE(fmt, ret)                                 \
-    do {                                                              \
+#define TRACE_SYSCALL_LEAVE(fmt, ret)                                  \
+    do {                                                               \
         if (trace_syscalls || trace_syscalls_from == curenv->env_id) { \
-            cprintf("[%08x] ", curenv->env_id);                       \
-            cprintf("returning " fmt " from %s(", (ret), __func__);   \
-            cprintf(") at line %d\n", __LINE__);                      \
-        }                                                             \
+            cprintf("[%08x] ", curenv->env_id);                        \
+            cprintf("returning " fmt " from %s(", (ret), __func__);    \
+            cprintf(") at line %d\n", __LINE__);                       \
+        }                                                              \
     } while (0)
 
-#define TRACE_SYSCALL_NORETURN()                                      \
-    do {                                                              \
+#define TRACE_SYSCALL_NORETURN()                                       \
+    do {                                                               \
         if (trace_syscalls || trace_syscalls_from == curenv->env_id) { \
-            cprintf("[%08x] ", curenv->env_id);                       \
-            cprintf("yielding from %s()\n", __func__);                \
-        }                                                             \
+            cprintf("[%08x] ", curenv->env_id);                        \
+            cprintf("yielding from %s()\n", __func__);                 \
+        }                                                              \
     } while (0)
 
 static inline int
@@ -257,7 +257,7 @@ sys_env_set_parent(envid_t target, envid_t parent) {
     struct Env* parent_env = NULL;
     res = envid2env(parent, &parent_env, false);
     SYSCALL_ASSERT(res == 0, res);
-    
+
     struct Env* target_env = NULL;
     res = envid2env(target, &target_env, false);
     SYSCALL_ASSERT(res == 0, res);
@@ -276,7 +276,7 @@ sys_env_downgrade(envid_t target) {
     struct Env* target_env = NULL;
     int res = envid2env(target, &target_env, false);
     SYSCALL_ASSERT(res == 0, res);
-    
+
     target_env->env_type = ENV_TYPE_USER;
     TRACE_SYSCALL_LEAVE("%d", 0);
     return 0;
@@ -468,13 +468,11 @@ sys_map_physical_region(uintptr_t pa, envid_t envid, uintptr_t va, size_t size, 
     // TIP: Use map_physical_region() with (perm | PROT_USER_ | MAP_USER_MMIO)
     //      And don't forget to validate arguments as always.
     TRACE_SYSCALL_ENTER(("0x%lx", pa)("%x", envid)("0x%lx", va)("0x%zx", size)("%x", perm));
-    SYSCALL_ASSERT(curenv->env_type == ENV_TYPE_FS
-                || curenv->env_type == ENV_TYPE_KERNEL, E_BAD_ENV);
+    SYSCALL_ASSERT(curenv->env_type == ENV_TYPE_FS || curenv->env_type == ENV_TYPE_KERNEL, E_BAD_ENV);
     struct Env* target = NULL;
     int lookup_res = envid2env(envid, &target, true);
     SYSCALL_ASSERT(lookup_res == 0, E_BAD_ENV);
-    SYSCALL_ASSERT(target->env_type == ENV_TYPE_FS
-                || target->env_type == ENV_TYPE_KERNEL, E_BAD_ENV);
+    SYSCALL_ASSERT(target->env_type == ENV_TYPE_FS || target->env_type == ENV_TYPE_KERNEL, E_BAD_ENV);
     SYSCALL_ASSERT(va < MAX_USER_ADDRESS, E_INVAL);
     SYSCALL_ASSERT(va % PAGE_SIZE == 0, E_INVAL);
     SYSCALL_ASSERT(pa % PAGE_SIZE == 0, E_INVAL);
@@ -704,23 +702,29 @@ sys_region_refs(uintptr_t addr, size_t size, uintptr_t addr2, size_t size2) {
 
 static int
 sys_get_rsdp_paddr(physaddr_t* phys_addr) {
-  TRACE_SYSCALL_ENTER(("%p", phys_addr));
-  SYSCALL_ASSERT(curenv->env_type == ENV_TYPE_KERNEL, E_BAD_ENV);
-  user_mem_assert(curenv, phys_addr, sizeof(*phys_addr), PROT_USER_ | PROT_R | PROT_W);
+    TRACE_SYSCALL_ENTER(("%p", phys_addr));
+    SYSCALL_ASSERT(curenv->env_type == ENV_TYPE_KERNEL, E_BAD_ENV);
+    user_mem_assert(curenv, phys_addr, sizeof(*phys_addr), PROT_USER_ | PROT_R | PROT_W);
 
-  physaddr_t root = 0;
-  struct AddressSpace* old = switch_address_space(&kspace);
-  root = uefi_lp->ACPIRoot;
-  switch_address_space(old);
+    physaddr_t root = 0;
+    struct AddressSpace* old = switch_address_space(&kspace);
+    root = uefi_lp->ACPIRoot;
+    switch_address_space(old);
 
-  *phys_addr = root;
-  TRACE_SYSCALL_LEAVE("%d", 0);
-  return 0;
+    *phys_addr = root;
+    TRACE_SYSCALL_LEAVE("%d", 0);
+    return 0;
 }
 
 static int
 sys_crypto(const char* hashed, const char* salt, const char* password) {
     return check_PBKDF2(hashed, salt, password);
+}
+
+static int
+sys_crypto_get(const char* password, const char* salt, unsigned char* hashed) {
+    get_PBKDF2(password, salt, hashed);
+    return 0;
 }
 
 /* Dispatches to the correct kernel function, passing the arguments. */
@@ -774,7 +778,9 @@ syscall(uintptr_t syscallno, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t
     case SYS_get_rsdp_paddr:
         return sys_get_rsdp_paddr((physaddr_t*)a1);
     case SYS_crypto:
-        return sys_crypto((char*) a1, (char*) a2, (char*) a3);
+        return sys_crypto((char*)a1, (char*)a2, (char*)a3);
+    case SYS_crypto_get:
+        return sys_crypto_get((char*)a1, (char*)a2, (unsigned char*)a3);
     case NSYSCALLS:
     default:
         return -E_NO_SYS;

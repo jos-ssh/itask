@@ -444,3 +444,11 @@ check_PBKDF2(const char *key, const char *salt, const char *password) {
 
     return !memcmp(key, key_buf, KEY_LENGTH);
 }
+
+void
+get_PBKDF2(const char *password, const char *salt, unsigned char *key_buf) {
+    const size_t iteration_count = 2;
+
+    PKCS5_PBKDF2_HMAC((const unsigned char *)password, strlen(password), (const unsigned char *)salt, SALT_LENGTH,
+                      iteration_count, KEY_LENGTH, key_buf);
+}

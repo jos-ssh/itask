@@ -32,7 +32,7 @@ typedef int bool;
 #include <inc/mmu.h>
 #include <inc/fs.h>
 
-#define ROUNDUP(n, v) ((n) - 1 + (v) - ((n) - 1) % (v))
+#define ROUNDUP(n, v) ((n)-1 + (v) - ((n)-1) % (v))
 #define MAX_DIR_ENTS  128
 #define DISKSIZE      0xC0000000
 
@@ -114,7 +114,7 @@ opendisk(const char *name) {
     super = alloc(BLKSIZE);
     super->s_magic = FS_MAGIC;
     super->s_nblocks = nblocks;
-    super->s_root.f_mode = IFDIR;
+    super->s_root.f_mode = IFDIR | IRWXG | IRWXO | IRWXU;
     strcpy(super->s_root.f_name, "/");
 
     nbitblocks = (nblocks + BLKBITSIZE - 1) / BLKBITSIZE;
@@ -164,7 +164,7 @@ diradd(struct Dir *d, uint32_t mode, const char *name) {
         panic("too many directory entries");
     strcpy(out->f_name, name);
     out->f_mode = mode;
-    out->f_gid = 0;
+    out->f_gid = 1;
     out->f_uid = 0;
     return out;
 }
@@ -202,7 +202,13 @@ writefile(struct Dir *dir, const char *name) {
     else
         last = name;
 
-    f = diradd(dir, st.st_mode, last);
+    // TODO: remove, only for test
+    if (strcmp(last, "cantopen") == 0) {
+        f = diradd(dir, IFREG | IRWXU, last);
+    } else {
+        f = diradd(dir, st.st_mode, last);
+    }
+
     printf("[%s] mode: %o\n", last, st.st_mode);
     start = alloc(st.st_size);
     readn(fd, start, st.st_size);
