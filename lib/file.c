@@ -106,6 +106,25 @@ open(const char *path, int flags, ...) {
     return fd2num(fd);
 }
 
+int 
+get_cwd(char* buffer) {
+    int res;
+    res = filed_rpc_execute(FILED_REQ_GETCWD, &filed_req, &filed_resp); /* filed_req isn`t really necessary here */
+    
+    if (res < 0) return res;
+    strlcpy(buffer, filed_resp.cwd, MAXPATHLEN);
+    
+    return 0;
+}
+
+int 
+chmod(const char* path, uint32_t mode) {
+    filed_req.chmod.req_mode = mode;
+    strlcpy(filed_req.chmod.req_path, path, MAXPATHLEN);
+    
+    return filed_rpc_execute(FILED_REQ_CHMOD, &filed_req, NULL);
+}
+
 int
 open_raw_fs(const char *path, int flags, ...) {
     /* Find an unused file descriptor page using fd_alloc.

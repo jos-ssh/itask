@@ -85,7 +85,7 @@ struct RpcServer Server = {
                 [FILED_REQ_SPAWN] = filed_serve_spawn,
                 [FILED_REQ_FORK] = filed_serve_fork,
                 [FILED_REQ_REMOVE] = filed_serve_remove,
-                [FILED_REQ_CHMOD] = NULL, // TODO: implement
+                [FILED_REQ_CHMOD] = filed_serve_chmod, // TODO: implement
                 [FILED_REQ_CHOWN] = NULL, // TODO: implement
                 [FILED_REQ_GETCWD] = filed_serve_getcwd,
                 [FILED_REQ_SETCWD] = filed_serve_setcwd,
@@ -415,4 +415,21 @@ filed_serve_setcwd(envid_t from, const void* request,
     // TODO: check permissions
     filed_set_env_cwd(from, abs_path);
     return 0;
+}
+
+static int 
+filed_serve_chmod(envid_t from, const void* request,
+                  void* response, int* response_perm)
+{
+    int res = 0;
+    const union FiledRequest* freq = request;
+    const char* abs_path = NULL; 
+    res = filed_get_absolute_path(from, freq->chmod.req_path, &abs_path);
+    if (res < 0) return res;
+
+    FsBuffer.chmod.req_mode = freq->chmod.req_mode;
+    strlcpy(FsBuffer.chmod.req_path, abs_path, MAXPATHLEN);
+    
+    // TODO: check permissions
+    return fs_rpc_execute(FSREQ_CHMOD, &FsBuffer, NULL, NULL);
 }
