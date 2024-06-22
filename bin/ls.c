@@ -15,7 +15,7 @@ ls(const char *path, const char *prefix) {
     struct Stat st;
 
     if ((r = stat(path, &st)) < 0) {
-        printf("stat: Permission denied %s: %i", path, r);
+        printf("ls: stat error with %s: %i\n", path, r);
         exit();
     }
     if (st.st_isdir && !flag['d'])

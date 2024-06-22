@@ -1,6 +1,10 @@
 #include <inc/lib.h>
 
 #define BUFSIZ 1024 /* Find the buffer overrun bug! */
+static char PATH[BUFSIZ] = {"/bin"};
+#define clear "\x1b[0m"
+#define green "\x1b[1;32m"
+#define blue  "\x1b[1;34m"
 
 /* gettoken(s, 0) prepares gettoken for subsequent calls and returns 0.
  * gettoken(0, token) parses a shell token from the previously set string,
@@ -139,8 +143,17 @@ runit:
     }
 
     /* Spawn the command! */
-    if ((r = spawn(argv[0], (const char **)argv)) < 0)
-        cprintf("spawn %s: %i\n", argv[0], r);
+    if ((r = spawn(argv[0], (const char **)argv)) < 0) {
+
+        /* Try add PATH*/
+        char cmd[BUFSIZ];
+        strcpy(cmd, PATH);
+        strcat(cmd, argv[0]);
+
+        if ((r = spawn(cmd, (const char **)argv)) < 0) {
+            cprintf("spawn %s: %i\n", cmd, r);
+        }
+    }
 
     /* In the parent, close all file descriptors and wait for the
      * spawned command to exit. */
@@ -281,11 +294,26 @@ umain(int argc, char **argv) {
     while (1) {
         char *buf;
 
-        buf = readline(interactive ? "$ " : NULL);
+        char cwd[100];
+        strcpy(cwd, blue);
+        get_cwd(cwd + sizeof(blue) - 1);
+        strcat(cwd, "$ " clear);
+
+        buf = readline(interactive ? cwd : NULL);
         if (buf == NULL) {
             if (debug) cprintf("EXITING\n");
             exit(); /* end of file */
         }
+
+        // TODO: add error check
+        if (strncmp(buf, "cd", 2) == 0) {
+            int res = set_cwd(strchr(buf, ' ') + 1);
+            if (res) {
+                printf("cd: %s: %i\n", strchr(buf, ' ') + 1, res);
+            }
+            continue;
+        }
+
         if (strncmp(buf, "exit", 4) == 0) exit();
         if (debug) cprintf("LINE: %s\n", buf);
         if (buf[0] == '#') continue;
