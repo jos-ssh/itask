@@ -124,47 +124,46 @@ login(void) {
     union UsersdResponse* response = (void*)RECEIVE_ADDR;
     struct EnvInfo info;
 
-    int uid = rpc_execute(sUsersService, USERSD_REQ_LOGIN, &request, (void**)&response);
+    int res = rpc_execute(sUsersService, USERSD_REQ_LOGIN, &request, (void**)&response);
+    if (res < 0) {
+        printf("Wrong login '%s' or password\n", request.login.username);
+        return false;
+    }
+
     memcpy(&info, &response->env_info.info, sizeof(info));
     sys_unmap_region(CURENVID, (void*)RECEIVE_ADDR, PAGE_SIZE);
 
+    printf("Hello '%s', welcome back!\n", request.login.username);
 
-    if (uid == 0) {
-        printf("Hello '%s', welcome back!\n", request.login.username);
+    struct PasswParsed passw;
+    char passwd_line_buf[kMaxLineBufLength];
+    res = find_passw_line_u(request.login.username, passwd_line_buf, kMaxLineBufLength, &passw);
+    assert(res == 0);
 
-        struct PasswParsed passw;
-        char passwd_line_buf[kMaxLineBufLength];
-        int res = find_passw_line_u(request.login.username, passwd_line_buf, kMaxLineBufLength, &passw);
-        assert(res == 0);
+    static union FiledRequest file_request;
+    strncpy(file_request.setcwd.req_path, passw.homedir, passw.shell - passw.homedir - 1);
+    res = rpc_execute(kmod_find_any_version(FILED_MODNAME), FILED_REQ_SETCWD, &file_request, NULL);
+    assert(res == 0);
 
-        static union FiledRequest file_request;
-        strncpy(file_request.setcwd.req_path, passw.homedir, passw.shell - passw.homedir - 1);
-        res = rpc_execute(kmod_find_any_version(FILED_MODNAME), FILED_REQ_SETCWD, &file_request, NULL);
-        assert(res == 0);
+    request.set_env_info.info.euid = info.euid;
+    request.set_env_info.info.ruid = info.ruid;
+    request.set_env_info.info.egid = info.egid;
+    request.set_env_info.info.rgid = info.rgid;
 
-        request.set_env_info.info.euid = info.euid;
-        request.set_env_info.info.ruid = info.ruid;
-        request.set_env_info.info.egid = info.egid;
-        request.set_env_info.info.rgid = info.rgid;
+    res = rpc_execute(sUsersService, USERSD_REQ_SET_ENV_INFO, &request, NULL);
+    assert(res == 0);
 
-        res = rpc_execute(sUsersService, USERSD_REQ_SET_ENV_INFO, &request, NULL);
-        assert(res == 0);
+    envid_t env;
 
-        envid_t env;
-
-        char* shell_string_end = strchr(passw.shell, '\n');
-        if (shell_string_end == NULL) {
-            env = spawnl(passw.shell, passw.shell, NULL);
-        } else {
-            char shell_buf[kMaxLineBufLength];
-            strncpy(shell_buf, passw.shell, shell_string_end - passw.shell);
-            env = spawnl(shell_buf, shell_buf, NULL);
-        }
-
-        wait(env);
-        return true;
+    char* shell_string_end = strchr(passw.shell, '\n');
+    if (shell_string_end == NULL) {
+        env = spawnl(passw.shell, passw.shell, NULL);
+    } else {
+        char shell_buf[kMaxLineBufLength];
+        strncpy(shell_buf, passw.shell, shell_string_end - passw.shell);
+        env = spawnl(shell_buf, shell_buf, NULL);
     }
 
-    printf("Wrong login '%s' or password\n", request.login.username);
-    return false;
+    wait(env);
+    return true;
 }
