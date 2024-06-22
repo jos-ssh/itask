@@ -30,7 +30,6 @@ filed_set_env_cwd(envid_t env, const char* cwd) {
     struct CwdDesc* desc = WorkingDirs + ENVX(env);
     desc->env = env;
     strncpy(desc->path, cwd, MAXPATHLEN);
-    printf("setted path = %s\n", desc->path);
 }
 
 int
