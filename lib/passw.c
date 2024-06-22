@@ -11,11 +11,15 @@ void
 parse_line(const char** res, size_t n_of_fields, const char* line) {
     assert(res);
     assert(line);
-
+    
+    // cprintf("%s:%d %lu\n\n", __func__, __LINE__, n_of_fields);
     for (int i = 0; i < n_of_fields; ++i) {
         res[i] = *line == ':' ? NULL : line;
 
-        line = strchr(line, ':');
+        // cprintf("%s: line '%s'\n", __func__, line);
+        if (*line != '\n' && *line != '\0')
+            line = strchr(line, ':');
+        // cprintf("%s:%d\n", __func__, __LINE__);
         if (line) ++line;
     }
 }
@@ -34,7 +38,8 @@ find_line(const char* username, const char* path_to_file,
     res = -E_NO_ENT;
 
     while (fgets(buff, size, file)) {
-        parse_line(result, n_of_fields, buff);
+        if (*buff != '\n')
+            parse_line(result, n_of_fields, buff);
 
         // result[0] must be username
         if (!strncmp(result[0], username, result[1] - result[0] - 1)) {
