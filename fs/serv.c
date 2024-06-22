@@ -294,6 +294,10 @@ serve_mkdir(envid_t envid, union Fsipc *req) {
     return file_create(req->mkdir.req_path, &f, IFDIR | req->mkdir.req_omode, req->mkdir.req_gid, req->mkdir.req_uid);
 }
 
+int serve_chmod(envid_t envid, union Fsipc *req) {
+    return file_chmod(req->chmod.req_path, req->chmod.req_mode);
+}
+
 int
 serve_getdents(envid_t envid, union Fsipc *req, void** page) {
     *page = (void*)req;
@@ -312,7 +316,8 @@ fshandler handlers[] = {
         [FSREQ_SET_SIZE] = serve_set_size,
         [FSREQ_SYNC] = serve_sync,
         [FSREQ_REMOVE] = serve_remove,
-        [FSREQ_MKDIR] = serve_mkdir};
+        [FSREQ_MKDIR] = serve_mkdir,
+        [FSREQ_CHMOD] = serve_chmod};
 #define NHANDLERS (sizeof(handlers) / sizeof(handlers[0]))
 
 void

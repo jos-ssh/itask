@@ -65,7 +65,8 @@ union FiledRequest {
     struct FiledSetcwd {
         char req_path[MAXPATHLEN];
     } setcwd;
-
+    struct FiledGetcwd {
+    } getcwd;
 
     uint8_t pad_[PAGE_SIZE];
 } __attribute((aligned(PAGE_SIZE)));

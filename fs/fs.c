@@ -589,3 +589,18 @@ file_remove(const char *path) {
     flush_bitmap();
     return 0;
 }
+
+int
+file_chmod(const char* path, uint32_t new_mode) {
+    struct File* dir = NULL;
+    struct File* file = NULL;
+    char lastelem[MAXPATHLEN] = {};
+
+    int res = walk_path(path, &dir, &file, lastelem);
+    if (res < 0) return res;
+    if (file == NULL || lastelem[0] != 0) return -E_FILE_EXISTS;
+    
+    file->f_mode = (file->f_mode & ~00111) | (new_mode & 00111);
+
+    return 0;
+}
