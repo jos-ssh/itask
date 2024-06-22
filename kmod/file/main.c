@@ -176,26 +176,26 @@ check_perm(const struct EnvInfo* info, int fileid, int flags) {
 
     if (stat.ret_uid == info->euid) {
         // owner
-        if (!(IRUSR & stat.ret_mode) && (!(flags | O_RDONLY) || (flags | O_RDWR)))
+        if (!(IRUSR & stat.ret_mode) && (!(flags & O_RDONLY) || (flags & O_RDWR)))
             res = -E_PERM_DENIED;
 
-        if (!(IWUSR & stat.ret_mode) && ((flags | O_WRONLY) || (flags | O_RDWR)))
+        if (!(IWUSR & stat.ret_mode) && ((flags & O_WRONLY) || (flags & O_RDWR)))
             res = -E_PERM_DENIED;
 
     } else if (stat.ret_gid == info->egid) {
         // group
-        if (!(IRGRP & stat.ret_mode) && (!(flags | O_RDONLY) || (flags | O_RDWR)))
+        if (!(IRGRP & stat.ret_mode) && (!(flags & O_RDONLY) || (flags & O_RDWR)))
             return -E_PERM_DENIED;
 
-        if (!(IWGRP & stat.ret_mode) && (!(flags | O_WRONLY) || (flags | O_RDWR)))
+        if (!(IWGRP & stat.ret_mode) && (!(flags & O_WRONLY) || (flags & O_RDWR)))
             return -E_PERM_DENIED;
 
     } else {
         // others
-        if (!(IROTH & stat.ret_mode) && (!(flags | O_RDONLY) || (flags | O_RDWR)))
+        if (!(IROTH & stat.ret_mode) && (!(flags & O_RDONLY) || (flags & O_RDWR)))
             return -E_PERM_DENIED;
 
-        if (!(IWOTH & stat.ret_mode) && (!(flags | O_WRONLY) || (flags | O_RDWR)))
+        if (!(IWOTH & stat.ret_mode) && (!(flags & O_WRONLY) || (flags & O_RDWR)))
             return -E_PERM_DENIED;
     }
 
