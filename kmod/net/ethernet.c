@@ -24,7 +24,7 @@ void process_packet(struct virtio_net_hdr* net_hdr) {
 
         case 0:
             if (trace_net)
-                cprintf("Broken ethernet frame (invalid type)\n");
+                cprintf("Broken ethernet frame (invalid type [invalid desc maybe?])\n");
             break;
 
         default:

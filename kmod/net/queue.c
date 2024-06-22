@@ -1,5 +1,6 @@
 #include "queue.h"
 #include "inc/pool_alloc.h"
+#include "inc/stdio.h"
 #include "net.h"
 #include <inc/lib.h>
 #include <stdbool.h>
@@ -17,9 +18,8 @@ setup_queue(struct virtq *queue, volatile struct virtio_pci_common_cfg_t *cfg_he
     cfg_header->queue_used   = get_phys_addr(&queue->used);
     cfg_header->queue_enable = 1;
     cfg_header->queue_size   = VIRTQ_SIZE;
-    queue->log2_size = 6;
 
-    queue->desc_free_count = 1 << queue->log2_size;
+    queue->desc_free_count = VIRTQ_SIZE;
     for (int i = queue->desc_free_count; i > 0; --i) {
         queue->desc[i - 1].next = queue->desc_first_free;
         queue->desc_first_free = i - 1;
@@ -71,7 +71,6 @@ int virtio_snd_buffers(struct virtq *virtqueue, void* buffer, bool writable) {
     virtqueue->avail.idx += 1;
 
     notify_queue(virtqueue);
-
     return 0;
 }
 
@@ -117,12 +116,11 @@ bool process_receive_queue(struct virtq *queue) {
         return false; // No new data arrived
     }
 
-    uint16_t index = queue->used_tail % (queue->log2_size<<2u);
+    uint16_t index = queue->used_tail % VIRTQ_SIZE;
     struct virtq_used_elem* used_elem = &(queue->used.ring[index]);
     uint16_t desc_idx = used_elem->id;
 
     void *buff_addr = queue->reverse_addr[desc_idx];
-
     process_packet(buff_addr);
 
     queue->desc_free_count += 1;
@@ -132,6 +130,5 @@ bool process_receive_queue(struct virtq *queue) {
     virtio_snd_buffers(queue, buff_addr, true);
 
     queue->used_tail += 1;
-
     return true;
 }

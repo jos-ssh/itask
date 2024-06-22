@@ -29,6 +29,7 @@ struct send_buffer_t send_buffers[SEND_BUF_NUM];
 void initialize() {
     int res = sys_alloc_region(CURENVID, net, sizeof(*net), PROT_RW | PROT_CD);
     UNWRAP(res, "Failed to map net struct");
+    memset(net, 0, sizeof(*net));
 
     g_PcidEnvid = find_module(g_InitdEnvid, PCID_MODNAME);
     uint32_t device_id = pcid_device_id(PCI_CLASS_NETWORK, PCI_SUBCLASS_NETWORK_ETHERNET, 0); 

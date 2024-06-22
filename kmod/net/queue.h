@@ -5,7 +5,8 @@
 #include <stdint.h>
 #include "ethernet.h"
 
-#define VIRTQ_SIZE 64
+#define VIRTQ_LOG_SIZE 8
+#define VIRTQ_SIZE (1ul << VIRTQ_LOG_SIZE)
 /* This marks a buffer as continuing via the next field. */
 #define VIRTQ_DESC_F_NEXT 1
 /* This marks a buffer as write-only (otherwise read-only). */
@@ -103,7 +104,6 @@ struct virtq_used {
 
 struct virtq {
     uint64_t notify_reg;
-    uint32_t log2_size;
     uint32_t used_tail;
     uint32_t desc_first_free;
     uint32_t desc_free_count;
