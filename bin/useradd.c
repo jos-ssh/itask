@@ -44,6 +44,9 @@ umain(int argc, char **argv) {
             usage();
         }
     }
-
-    add_user(argv[1]);
+    if (argc == 2) {
+        add_user(argv[1]);
+    } else if (argc > 2) {
+        printf("too much arguments\n");
+    }
 }
