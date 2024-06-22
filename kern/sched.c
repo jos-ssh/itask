@@ -33,12 +33,12 @@ sched_yield(void) {
         if (envs + env_idx == curenv) /* Skip current task while searhing */
             continue;
 
-        if (envs[env_idx].env_status == ENV_RUNNABLE) {
+        if (env_check_sched_status(envs[env_idx].env_status, ENV_RUNNABLE)) {
             env_run(envs + env_idx);
         }
     }
 
-    if (curenv && curenv->env_status == ENV_RUNNING) {
+    if (curenv && env_check_sched_status(curenv->env_status, ENV_RUNNING)) {
         env_run(curenv);
     }
 
@@ -59,8 +59,8 @@ sched_halt(void) {
      * environments in the system, then drop into the kernel monitor */
     int i;
     for (i = 0; i < NENV; i++)
-        if (envs[i].env_status == ENV_RUNNABLE ||
-            envs[i].env_status == ENV_RUNNING) break;
+        if (env_check_sched_status(envs[i].env_status, ENV_RUNNABLE) ||
+            env_check_sched_status(envs[i].env_status, ENV_RUNNING)) break;
     if (i == NENV) {
         cprintf("No runnable environments in the system!\n");
         for (;;) monitor(NULL);
@@ -79,6 +79,5 @@ sched_halt(void) {
             "hlt\n" ::"a"(cpu_ts.ts_rsp0));
 
     /* Unreachable */
-    for (;;)
-        ;
+    for (;;);
 }

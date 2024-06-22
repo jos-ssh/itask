@@ -123,7 +123,7 @@ env_init(void) {
     switch_address_space(cur_space);
 
     map_region(&kspace, UVSYS, &kspace, (uintptr_t)vsys,
-                UVSYS_SIZE, PROT_R | PROT_USER_);
+               UVSYS_SIZE, PROT_R | PROT_USER_);
     /* Map envs to UENVS read-only,
      * but user-accessible (with PROT_USER_ set) */
     map_region(&kspace, UENVS, &kspace, (uintptr_t)envs,
@@ -140,7 +140,6 @@ env_init(void) {
         envs[env_idx].env_status = ENV_FREE;
     }
     env_free_list = envs;
-
 }
 
 /* Allocates and initializes a new environment.
@@ -168,7 +167,7 @@ env_alloc(struct Env **newenv_store, envid_t parent_id, enum EnvType type) {
      * to prevent the register values
      * of a prior environment inhabiting this Env structure
      * from "leaking" into our new environment */
-    struct Env* link = env->env_link;
+    struct Env *link = env->env_link;
     memset(env, 0, sizeof(*env));
     env->env_link = link;
 
@@ -227,11 +226,11 @@ env_alloc(struct Env **newenv_store, envid_t parent_id, enum EnvType type) {
     if (stack_status < 0) {
         return stack_status;
     }
-    
+
     // Unposon allocated user stack
 #ifdef SANITIZE_SHADOW_BASE
-    struct AddressSpace* old_space = switch_address_space(&env->address_space);
-    platform_asan_unpoison((void*)(USER_STACK_TOP - PAGE_SIZE), PAGE_SIZE);
+    struct AddressSpace *old_space = switch_address_space(&env->address_space);
+    platform_asan_unpoison((void *)(USER_STACK_TOP - PAGE_SIZE), PAGE_SIZE);
     switch_address_space(old_space);
 #endif // SANITIZE_SHADOW_BASE
 
@@ -483,21 +482,21 @@ load_icode(struct Env *env, uint8_t *binary, size_t size) {
 
         int class = 0;
         while (CLASS_SIZE(class) < mapped_size +
-                              (((uintptr_t)virt_addr) & CLASS_MASK(class))) {
-          ++class;
+                                           (((uintptr_t)virt_addr) & CLASS_MASK(class))) {
+            ++class;
         }
 
-        int alloc_res = force_alloc_page(&env->address_space, 
-                        (uintptr_t) virt_addr, class);
+        int alloc_res = force_alloc_page(&env->address_space,
+                                         (uintptr_t)virt_addr, class);
         if (alloc_res < 0) {
-          return alloc_res;
+            return alloc_res;
         }
 
         struct AddressSpace *current_space = switch_address_space(
                 &env->address_space);
         if (trace_envs_more) {
-          cprintf("[%08x] Loading segment to %p (memsz=0x%zx, realsz=0x%zx)\n",
-                  env->env_id, virt_addr, mapped_size, real_size);
+            cprintf("[%08x] Loading segment to %p (memsz=0x%zx, realsz=0x%zx)\n",
+                    env->env_id, virt_addr, mapped_size, real_size);
         }
 #ifdef SANITIZE_SHADOW_BASE
         // Unpoison mapped region
@@ -678,16 +677,16 @@ env_run(struct Env *env) {
 
     if (trace_envs_more) {
         const char *state[] = {"FREE", "DYING", "RUNNABLE", "RUNNING", "NOT_RUNNABLE"};
-        if (curenv) cprintf("[%08X] env stopped: %s\n", curenv->env_id, state[curenv->env_status]);
-        cprintf("[%08X] env started: %s\n", env->env_id, state[env->env_status]);
+        if (curenv) cprintf("[%08X] env stopped: %s\n", curenv->env_id, state[curenv->env_status & ENV_SCHED_STATUS_MASK]);
+        cprintf("[%08X] env started: %s\n", env->env_id, state[env->env_status & ENV_SCHED_STATUS_MASK]);
     }
 
-    if (curenv && curenv->env_status == ENV_RUNNING) { /* Context switch */
-        curenv->env_status = ENV_RUNNABLE;
+    if (curenv && env_check_sched_status(curenv->env_status, ENV_RUNNING)) { /* Context switch */
+        env_set_sched_status(&curenv->env_status, ENV_RUNNABLE);
     }
 
     curenv = env;
-    curenv->env_status = ENV_RUNNING;
+    env_set_sched_status(&curenv->env_status, ENV_RUNNING);
     ++curenv->env_runs;
 
     switch_address_space(&env->address_space);
