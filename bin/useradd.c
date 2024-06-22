@@ -17,15 +17,28 @@ usage(void) {
 
 static void
 add_user(const char *username) {
+    if (strchr(username, ':')) {
+        printf("Unsupported character ':'\n");
+        return;
+    }
     union UsersdRequest request;
 
     strcpy(request.useradd.username, username);
     strcpy(request.useradd.homedir, "/");
 
-    strcpy(request.useradd.passwd, readline_noecho("Enter password for new user: "));
+    do {
+        strcpy(request.useradd.passwd, readline_noecho("Enter password for new user: "));
+        printf("\n");
+        if (strchr(request.useradd.passwd, ':')) {
+            printf("Unsupported character ':'\n");
+            return;
+        }
+    } while (strlen(request.useradd.passwd) == 0);
 
-    rpc_execute(kmod_find_any_version(USERSD_MODNAME), USERSD_REQ_USERADD, &request, NULL);
-    printf("\n");
+    int res = rpc_execute(kmod_find_any_version(USERSD_MODNAME), USERSD_REQ_USERADD, &request, NULL);
+    if (res == -E_ALREADY_LOGGED_IN) {
+        printf("Account already added\n");
+    }
 }
 
 void
