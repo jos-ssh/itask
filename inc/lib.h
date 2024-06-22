@@ -85,6 +85,7 @@ int sys_region_refs(void *va, size_t size);
 int sys_region_refs2(void *va, size_t size, void *va2, size_t size2);
 static envid_t sys_exofork(void);
 int sys_env_set_status(envid_t env, int status);
+int sys_env_exchange_status(envid_t env, int status);
 int sys_env_set_trapframe(envid_t env, struct Trapframe *tf);
 int sys_env_set_pgfault_upcall(envid_t env, void *upcall);
 int sys_env_set_parent(envid_t target, envid_t parent);
@@ -99,7 +100,7 @@ int sys_ipc_try_send(envid_t to_env, uint64_t value, void *pg, size_t size, int 
 int sys_ipc_recv(void *rcv_pg, size_t size);
 int sys_ipc_recv_from(envid_t from, void *rcv_pg, size_t size);
 int sys_gettime(void);
-int sys_get_rsdp_paddr(physaddr_t* paddr);
+int sys_get_rsdp_paddr(physaddr_t *paddr);
 
 int vsys_gettime(void);
 
@@ -120,8 +121,8 @@ int32_t ipc_recv_from(envid_t from, void *pg, size_t *psize, int *perm_store);
 envid_t ipc_find_env(enum EnvType type);
 
 /* kmod.c */
-int kmod_find(const char* name_prefix, int min_version, int max_version);
-int kmod_find_any_version(const char* name_prefix);
+int kmod_find(const char *name_prefix, int min_version, int max_version);
+int kmod_find_any_version(const char *name_prefix);
 
 /* fork.c */
 envid_t fork(void);
@@ -134,7 +135,7 @@ uintptr_t get_phys_addr(void *va);
 int get_prot(void *va);
 bool is_page_dirty(void *va);
 bool is_page_present(void *va);
-void force_alloc(void* va, size_t size);
+void force_alloc(void *va, size_t size);
 
 /* fd.c */
 int close(int fd);
@@ -171,6 +172,29 @@ int pipeisclosed(int pipefd);
 
 /* wait.c */
 void wait(envid_t env);
+
+/* signal.c */
+unsigned int alarm(unsigned int seconds);
+int kill(envid_t env, int sig_no);
+
+typedef void (*sighandler_t)(int);
+sighandler_t signal(int signo, sighandler_t handler);
+
+/* Fake signal functions.  */
+
+#define SIG_ERR ((sighandler_t)-1) /* Error return */
+#define SIG_DFL ((sighandler_t)0)  /* Default action */
+#define SIG_IGN ((sighandler_t)1)  /* Ignore signal */
+
+enum Signal {
+    SIGALRM,
+    SIGKILL,
+    SIGTERM,
+    SIGCHLD,
+    SIGPIPE,
+
+    NSIGNAL,
+};
 
 /* File open modes */
 #define O_RDONLY  0x0000 /* open for reading only */

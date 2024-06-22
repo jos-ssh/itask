@@ -6,6 +6,7 @@
 #include <inc/types.h>
 #include <inc/trap.h>
 #include <inc/memlayout.h>
+#include <inc/assert.h>
 
 typedef int32_t envid_t;
 
@@ -32,12 +33,33 @@ typedef int32_t envid_t;
 
 /* Values of env_status in struct Env */
 enum {
-    ENV_FREE,
-    ENV_DYING,
-    ENV_RUNNABLE,
-    ENV_RUNNING,
-    ENV_NOT_RUNNABLE
+    ENV_FREE = 0,
+    ENV_DYING = 1,
+    ENV_RUNNABLE = 2,
+    ENV_RUNNING = 3,
+    ENV_NOT_RUNNABLE = 4
 };
+
+/* Bits used by scheduler */
+#define ENV_SCHED_STATUS_MASK 0x7
+
+__attribute__((always_inline)) static inline unsigned
+env_set_sched_status(unsigned *old_status, unsigned new_status) {
+    assert(new_status <= ENV_SCHED_STATUS_MASK);
+    unsigned saved_status = *old_status;
+    if (new_status == ENV_FREE) {
+        *old_status = ENV_FREE;
+    } else {
+        *old_status &= ~ENV_SCHED_STATUS_MASK;
+        *old_status |= new_status;
+    }
+    return saved_status;
+}
+
+__attribute__((always_inline)) static inline bool
+env_check_sched_status(unsigned status, unsigned expected) {
+    return (status & ENV_SCHED_STATUS_MASK) == expected;
+}
 
 /* Special environment types */
 enum EnvType {

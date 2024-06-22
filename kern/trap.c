@@ -274,10 +274,19 @@ trap_dispatch(struct Trapframe *tf) {
         return;
     case T_PGFLT:
         /* Handle processor exceptions. */
-        if (curenv->env_pgfault_upcall) 
+        if (curenv->env_pgfault_upcall)
             page_fault_handler(tf);
-        else
-            panic("Unhandled Page fault");
+        else {
+            uintptr_t va = rcr2();
+            panic("[%08x] <%p> Unhandled page fault ip=%08lX va=%08lX err=%c%c%c%c%c\n",
+                  curenv ? curenv->env_id : 0,
+                  current_space, tf->tf_rip, va,
+                  tf->tf_err & FEC_P ? 'P' : '-',
+                  tf->tf_err & FEC_U ? 'U' : '-',
+                  tf->tf_err & FEC_W ? 'W' : '-',
+                  tf->tf_err & FEC_R ? 'R' : '-',
+                  tf->tf_err & FEC_I ? 'I' : '-');
+        }
 
         return;
     case T_BRKPT:
@@ -413,7 +422,7 @@ trap(struct Trapframe *tf) {
     /* If we made it to this point, then no other environment was
      * scheduled, so we should return to the current environment
      * if doing so makes sense */
-    if (curenv && curenv->env_status == ENV_RUNNING)
+    if (curenv && env_check_sched_status(curenv->env_status, ENV_RUNNING))
         env_run(curenv);
     else
         sched_yield();

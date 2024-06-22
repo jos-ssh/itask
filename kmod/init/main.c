@@ -59,6 +59,7 @@ umain(int argc, char** argv) {
     cprintf("[%08x: initd] Starting up module...\n", thisenv->env_id);
     initd_load_module("/acpid");
     initd_load_module("/pcid");
+    initd_load_module("/sigd");
     while (1) {
         rpc_listen(&Server, NULL);
     }
@@ -157,7 +158,7 @@ initd_serve_fork(envid_t from, const void* request, void* response,
     while (!parent->env_ipc_recving) {
         sys_yield();
     }
-    assert(parent->env_status == ENV_NOT_RUNNABLE);
+    assert(env_check_sched_status(parent->env_status, ENV_NOT_RUNNABLE));
     int child = initd_fork(parent_id);
     if (child < 0) {
         return child;
