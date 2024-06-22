@@ -33,7 +33,8 @@ BINAPPS :=		$(OBJDIR)/bin/init \
 			$(OBJDIR)/bin/mkdir \
 			$(OBJDIR)/bin/pwd \
 			$(OBJDIR)/bin/chmod \
-			$(OBJDIR)/bin/sudo			
+			$(OBJDIR)/bin/sudo \
+			$(OBJDIR)/bin/chdir
 
 USERAPPS :=		$(OBJDIR)/user/num \
 			$(OBJDIR)/user/forktree \
