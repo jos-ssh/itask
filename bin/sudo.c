@@ -22,8 +22,8 @@ umain(int argc, char** argv) {
     if(!login())
         return;
 
-    printf("spawning '%s' with '%s'\n", argv[1], argv[2]);
-    envid_t env = spawnl(argv[1], argv[1], argv[2]);
+    printf("sudo: spawning '%s' with '%s'\n", argv[1], argv[2]);
+    envid_t env = spawnl(argv[1], argv[1], argv[2], NULL);
 
     wait(env);
     return;
