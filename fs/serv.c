@@ -290,17 +290,18 @@ serve_remove(envid_t envid, union Fsipc *req) {
 
 int
 serve_mkdir(envid_t envid, union Fsipc *req) {
-    struct File* f = NULL;
+    struct File *f = NULL;
     return file_create(req->mkdir.req_path, &f, IFDIR | req->mkdir.req_omode, req->mkdir.req_gid, req->mkdir.req_uid);
 }
 
-int serve_chmod(envid_t envid, union Fsipc *req) {
+int
+serve_chmod(envid_t envid, union Fsipc *req) {
     return file_chmod(req->chmod.req_path, req->chmod.req_mode);
 }
 
 int
-serve_getdents(envid_t envid, union Fsipc *req, void** page) {
-    *page = (void*)req;
+serve_getdents(envid_t envid, union Fsipc *req, void **page) {
+    *page = (void *)req;
     return file_getdents(req->getdents.req_path, req->getdents.buffer, req->getdents.count, req->getdents.from_which_count);
 }
 
@@ -345,8 +346,7 @@ serve(void) {
         pg = NULL;
         if (req == FSREQ_OPEN) {
             res = serve_open(whom, (struct Fsreq_open *)fsreq, &pg, &perm);
-        } 
-        else if (req == FSREQ_GETDENTS) {
+        } else if (req == FSREQ_GETDENTS) {
             res = serve_getdents(whom, fsreq, &pg);
         } else if (req < NHANDLERS && handlers[req]) {
             res = handlers[req](whom, fsreq);

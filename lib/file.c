@@ -94,8 +94,15 @@ open(const char *path, int flags, ...) {
 
     if ((res = fd_alloc(&fd)) < 0) return res;
 
+    if (flags & O_CREAT) {
+        va_list mode;
+        va_start(mode, flags);
+        filed_req.open.req_omode = va_arg(mode, uint32_t);
+        va_end(mode);
+    }
+
     strncpy(filed_req.open.req_path, path, MAXPATHLEN);
-    filed_req.open.req_omode = flags;
+    filed_req.open.req_flags = flags;
     filed_req.open.req_fd_vaddr = (uintptr_t)fd;
 
     if ((res = filed_rpc_execute(FILED_REQ_OPEN, &filed_req, NULL)) < 0) {
@@ -106,27 +113,28 @@ open(const char *path, int flags, ...) {
     return fd2num(fd);
 }
 
-int 
-get_cwd(char* buffer) {
+int
+get_cwd(char *buffer) {
     int res = 0;
     res = filed_rpc_execute(FILED_REQ_GETCWD, &filed_req, &filed_resp); /* filed_req isn`t really necessary here */
-    
+
     if (res < 0) return res;
     strlcpy(buffer, filed_resp.cwd, MAXPATHLEN);
-    
+
     return 0;
 }
 
-int set_cwd(const char* path) {
+int
+set_cwd(const char *path) {
     strlcpy(filed_req.setcwd.req_path, path, MAXPATHLEN);
     return filed_rpc_execute(FILED_REQ_SETCWD, &filed_req, NULL);
 }
 
-int 
-chmod(const char* path, uint32_t mode) {
+int
+chmod(const char *path, uint32_t mode) {
     filed_req.chmod.req_mode = mode;
     strlcpy(filed_req.chmod.req_path, path, MAXPATHLEN);
-    
+
     return filed_rpc_execute(FILED_REQ_CHMOD, &filed_req, NULL);
 }
 
@@ -298,7 +306,7 @@ sync(void) {
     return fsipc(FSREQ_SYNC, NULL);
 }
 
-int 
+int
 remove(const char *path) {
     if (strlen(path) >= MAXPATHLEN)
         return -E_BAD_PATH;
@@ -307,7 +315,7 @@ remove(const char *path) {
     return fsipc(FSREQ_REMOVE, &fsipcbuf);
 }
 
-int 
+int
 mkdir(const char *path, int mode) {
     if (strlen(path) >= MAXPATHLEN)
         return -E_BAD_PATH;
@@ -320,19 +328,18 @@ mkdir(const char *path, int mode) {
 }
 
 int
-getdents(const char* path, struct FileInfo* buffer, uint32_t count) {
+getdents(const char *path, struct FileInfo *buffer, uint32_t count) {
     strlcpy(fsipcbuf.getdents.req_path, path, MAXPATHLEN);
 
     int remaining = count;
-    while (remaining > 0)
-    {
-        const uint32_t getdents_count = MIN(remaining, MAX_GETDENTS_COUNT); 
+    while (remaining > 0) {
+        const uint32_t getdents_count = MIN(remaining, MAX_GETDENTS_COUNT);
         fsipcbuf.getdents.count = getdents_count;
         fsipcbuf.getdents.from_which_count = remaining - getdents_count;
         int res = fsipc(FSREQ_GETDENTS, &fsipcbuf);
         if (res < 0)
             return res;
-        
+
         memcpy(buffer + remaining - getdents_count, fsipcbuf.getdents.buffer, sizeof(struct FileInfo) * getdents_count);
         remaining -= getdents_count;
     }
