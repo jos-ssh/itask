@@ -30,6 +30,9 @@ BINAPPS :=		$(OBJDIR)/bin/init \
 			$(OBJDIR)/bin/sh \
 			$(OBJDIR)/bin/login \
 			$(OBJDIR)/bin/useradd \
+			$(OBJDIR)/bin/mkdir \
+			$(OBJDIR)/bin/pwd \
+			$(OBJDIR)/bin/chmod \
 			$(OBJDIR)/bin/sudo			
 
 USERAPPS :=		$(OBJDIR)/user/num \
