@@ -29,7 +29,8 @@ BINAPPS :=		$(OBJDIR)/bin/init \
 			$(OBJDIR)/bin/vdate \
 			$(OBJDIR)/bin/sh \
 			$(OBJDIR)/bin/login \
-			$(OBJDIR)/bin/useradd
+			$(OBJDIR)/bin/useradd \
+			$(OBJDIR)/bin/sudo			
 
 USERAPPS :=		$(OBJDIR)/user/num \
 			$(OBJDIR)/user/forktree \
