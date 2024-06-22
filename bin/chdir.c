@@ -1,5 +1,6 @@
 #include <inc/lib.h>
 
+// FIXME: Not work
 void
 umain(int argc, char **argv) {
     binaryname = "chdir";
