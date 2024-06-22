@@ -36,6 +36,8 @@ typedef int bool;
 #define ROUNDUP(n, v) ((n)-1 + (v) - ((n)-1) % (v))
 #define MAX_DIR_ENTS  128
 #define DISKSIZE      0xC0000000
+#define DEFAULT_UID   1
+#define DEFAULT_GID   0
 
 struct Dir {
     struct File *f;
@@ -159,14 +161,14 @@ startdir(struct File *f, struct Dir *dout) {
 
 // Add file to directory and return it
 struct File *
-diradd(struct Dir *d, uint32_t mode, const char *name) {
+diradd(struct Dir *d, uint32_t mode, const char *name, uint32_t uid, uint32_t gid) {
     struct File *out = &d->ents[d->n++];
     if (d->n > MAX_DIR_ENTS)
         panic("too many directory entries");
     strcpy(out->f_name, name);
     out->f_mode = mode;
-    out->f_gid = 1;
-    out->f_uid = 0;
+    out->f_gid = gid;
+    out->f_uid = uid;
     return out;
 }
 
@@ -181,7 +183,7 @@ finishdir(struct Dir *d) {
 }
 
 void
-writefile(struct Dir *dir, const char *name) {
+writefile(struct Dir *dir, const char *name, uint32_t mode, uint32_t uid, uint32_t gid) {
     int fd;
     struct File *f;
     struct stat st;
@@ -203,87 +205,28 @@ writefile(struct Dir *dir, const char *name) {
     else
         last = name;
 
-    // TODO: remove, only for test
-    if (strcmp(last, "cantopen") == 0) {
-        f = diradd(dir, IFREG | IRWXU, last);
-    } else {
-        f = diradd(dir, st.st_mode | IRWXG, last);
-    }
+    f = diradd(dir, mode, last, uid, gid);
 
-    printf("[%s] mode: %o\n", last, st.st_mode);
     start = alloc(st.st_size);
     readn(fd, start, st.st_size);
     finishfile(f, blockof(start), st.st_size);
     close(fd);
 }
 
-
-void
-writedir(struct Dir *root, const char *dir_name) {
-    const char *last;
-    last = strrchr(dir_name, '/');
-    if (last)
-        last++;
-    else
-        last = dir_name;
-
-    struct stat st;
-    stat(dir_name, &st);
-
-    struct File *fdir = diradd(root, st.st_mode, last);
-
-    // JOS
-    struct Dir dir;
-    startdir(fdir, &dir);
-
-    // linux
-    struct dirent *pDirent;
-    DIR *pDir;
-
-    pDir = opendir(dir_name);
-    if (pDir == NULL) {
-        panic("Cannot open directory '%s'\n", dir_name);
-    }
-
-    char file_name_buffer[MAXPATHLEN];
-    while ((pDirent = readdir(pDir)) != NULL) {
-        if (strcmp(pDirent->d_name, "..") == 0 || strcmp(pDirent->d_name, ".") == 0) {
-            continue;
-        }
-
-        strcpy(file_name_buffer, dir_name);
-        strcat(file_name_buffer, "/");
-        strcat(file_name_buffer, pDirent->d_name);
-
-        if (pDirent->d_type == DT_DIR) {
-            writedir(&dir, file_name_buffer);
-        } else if (pDirent->d_type == DT_REG) {
-            writefile(&dir, file_name_buffer);
-        } else {
-            panic("Unsupported file %s with type %x\n", file_name_buffer, pDirent->d_type);
-        }
-    }
-
-    closedir(pDir);
-    finishdir(&dir);
-}
-
 void
 usage(void) {
-    fprintf(stderr, "Usage: fsformat fs.img NBLOCKS files/directories...\n");
+    fprintf(stderr, "Usage: fsformat [fs image] NBLOCKS [objdir] [config]\n");
     exit(2);
 }
 
 int
 main(int argc, char **argv) {
-    int i;
     char *s;
     struct Dir root;
-    struct stat st;
 
     assert(BLKSIZE % sizeof(struct File) == 0);
 
-    if (argc < 3)
+    if (argc < 4)
         usage();
 
     nblocks = strtol(argv[2], &s, 0);
@@ -293,20 +236,88 @@ main(int argc, char **argv) {
     opendisk(argv[1]);
 
     startdir(&super->s_root, &root);
-    for (i = 3; i < argc; i++) {
 
-        stat(argv[i], &st);
+    // parse objdir and config
+    const char *objdir = argv[3];
+    const char *config = argv[4];
+    printf("config: %s, objdir %s\n", config, objdir);
 
-        if (S_ISREG(st.st_mode)) {
-            writefile(&root, argv[i]);
-        } else if (S_ISDIR(st.st_mode)) {
-            writedir(&root, argv[i]);
-        } else {
-            panic("Don't support");
+    const int kbufferLength = 255;
+    char buffer[kbufferLength];
+    char path[kbufferLength];
+    struct Dir cwd = {NULL, NULL, 0};
+    bool plain_mode = 1;
+
+    FILE *cfg_file = fopen(config, "r");
+
+    while (fgets(buffer, kbufferLength, cfg_file)) {
+        if (strncmp(buffer, "#plain files", 12) == 0) {
+            plain_mode = 1;
+            printf("plain mode\n");
+            break;
+        }
+
+        if (buffer[0] == '#') {
+            // finish old jos directory
+            if (cwd.f != NULL) {
+                finishdir(&cwd);
+            }
+            const char *folder_end = strchr(buffer, ' ');
+            uint32_t mode = strtol(folder_end, NULL, 8);
+            memset(path, 0, kbufferLength);
+            strncpy(path, buffer + 1, folder_end - buffer - 1);
+
+            struct File *fdir = diradd(&root, IFDIR | mode, path, DEFAULT_UID, DEFAULT_GID);
+            startdir(fdir, &cwd);
+        } else if (buffer[0] != '\n') {
+            printf("buffer: %s", buffer);
+            const char *path_end = strchr(buffer, ' ');
+            uint32_t mode = strtol(path_end, NULL, 8);
+            printf("mode: %o\n", mode);
+
+            strcpy(path, objdir);
+            strncat(path, buffer, path_end - buffer);
+
+            writefile(&cwd, path, mode, DEFAULT_UID, DEFAULT_GID);
         }
     }
-    finishdir(&root);
+    finishdir(&cwd);
 
+    if (plain_mode) {
+        while (fgets(buffer, kbufferLength, cfg_file)) {
+            if (buffer[0] == '\n' || buffer[0] == '#' || buffer[0] == '/') {
+                continue;
+            }
+            printf("buffer: %s", buffer);
+            const char *path_end = strchr(buffer, ' ');
+            char *num_end = NULL;
+
+            memset(path, 0, sizeof(path));
+            strncpy(path, buffer, path_end - buffer);
+
+            uint32_t mode = strtol(path_end, &num_end, 8);
+            path_end = num_end;
+
+            uint32_t uid = strtol(path_end, &num_end, 10);
+            uint32_t gid = DEFAULT_GID;
+            if (uid == 0 && path_end == num_end) {
+                uid = DEFAULT_UID;
+            } else {
+                path_end = num_end;
+                gid = strtol(path_end, &num_end, 10);
+                if (gid == 0 && path_end == num_end) {
+                    gid = DEFAULT_GID;
+                }
+            }
+
+            writefile(&root, path, mode, uid, gid);
+        }
+    }
+
+    fclose(cfg_file);
+
+    finishdir(&root);
     finishdisk();
+
     return 0;
 }

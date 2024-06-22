@@ -83,7 +83,7 @@ start_login(void) {
 
     static union InitdRequest req;
     req.spawn.parent = thisenv->env_id;
-    strcpy(req.spawn.file, "/login");
+    strcpy(req.spawn.file, "/bin/login");
     req.spawn.argc = 0;
     envid_t login = rpc_execute(kmod_find_any_version(INITD_MODNAME), INITD_REQ_SPAWN, &req, NULL);
     KUSERS_LOG("spawned login %x\n", login);
@@ -204,7 +204,7 @@ write_passw_line(struct UsersdUseradd* req, uid_t uid, guid_t guid) {
     write(fd, req->homedir, strlen(req->homedir));
 
     write(fd, ":", 1);
-    write(fd, "/sh", 3);
+    write(fd, "/bin/sh", 3);
 
     close(fd);
 }
@@ -240,8 +240,6 @@ usersd_serve_useradd(envid_t from, const void* request,
     static guid_t current_guid = 1;
 
     struct UsersdUseradd* req = (struct UsersdUseradd*)request;
-    // TODO:
-    // check what user already added
 
     struct PasswParsed passw;
     char passwd_line_buf[kMaxLineBufLength];
