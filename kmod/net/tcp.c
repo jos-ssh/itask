@@ -83,7 +83,7 @@ void fill_reply_to(struct tcp_hdr_t* reply, const struct tcp_hdr_t* in) {
     reply->ipv4_hdr.header_len = (sizeof(struct ipv4_hdr_t) - sizeof(struct ethernet_hdr_t)) / 4;
     reply->ipv4_hdr.len = htons(sizeof(struct tcp_hdr_t) - sizeof(struct ethernet_hdr_t)); // Can be increased later
     reply->ipv4_hdr.id = 0;
-    reply->ipv4_hdr.flags_fragofs = 0; //?
+    reply->ipv4_hdr.flags_fragofs = 0;
     reply->ipv4_hdr.ttl = 64;
     reply->ipv4_hdr.protocol = IPV4_PROTO_TCP;
     reply->ipv4_hdr.hdr_checksum = 0; //before calc
@@ -118,7 +118,7 @@ static void reply_fin(struct tcp_hdr_t* fin) {
 
     fill_reply_to(reply, fin);
 
-    reply->th_flags = TH_RST; // Simpliest way :3
+    reply->th_flags = TH_RST;
     tcp_checksum(reply);
     send_virtio_packet(reply_packet);
 }
@@ -151,7 +151,6 @@ void process_tcp_packet(struct tcp_hdr_t* packet) {
         return;
     }
 
-    // Some data must be flowing... Currently just print, ACK and let it slay
     struct virtio_packet_t* reply_packet = allocate_virtio_packet();
     struct tcp_hdr_t* reply = (struct tcp_hdr_t *)(&reply_packet->data);
 
