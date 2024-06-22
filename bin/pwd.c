@@ -5,7 +5,7 @@ umain(int argc, char **argv) {
     binaryname = "pwd";
 
     if (argc != 1) {
-        printf("pwd: wrong number of arguments");
+        printf("pwd: wrong number of arguments\n");
         return;
     }
 

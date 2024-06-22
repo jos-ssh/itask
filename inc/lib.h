@@ -159,6 +159,7 @@ int sync(void);
 int mkdir(const char *path, int mode);
 int getdents(const char* path, struct FileInfo* buffer, uint32_t count);
 int get_cwd(char* buffer);
+int set_cwd(const char* path);
 int chmod(const char* path, uint32_t mode);
 
 /* spawn.c */

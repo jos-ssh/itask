@@ -108,13 +108,18 @@ open(const char *path, int flags, ...) {
 
 int 
 get_cwd(char* buffer) {
-    int res;
+    int res = 0;
     res = filed_rpc_execute(FILED_REQ_GETCWD, &filed_req, &filed_resp); /* filed_req isn`t really necessary here */
     
     if (res < 0) return res;
     strlcpy(buffer, filed_resp.cwd, MAXPATHLEN);
     
     return 0;
+}
+
+int set_cwd(const char* path) {
+    strlcpy(filed_req.setcwd.req_path, path, MAXPATHLEN);
+    return filed_rpc_execute(FILED_REQ_SETCWD, &filed_req, NULL);
 }
 
 int 

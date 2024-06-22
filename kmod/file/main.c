@@ -411,6 +411,7 @@ filed_serve_setcwd(envid_t from, const void* request,
     const char* abs_path = NULL;
     res = filed_get_absolute_path(from, freq->remove.req_path, &abs_path);
     if (res < 0) return res;
+    printf("path = %s\n", abs_path);
 
     // TODO: check permissions
     filed_set_env_cwd(from, abs_path);
