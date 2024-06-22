@@ -447,8 +447,9 @@ check_PBKDF2(const char *key, const char *salt, const char *password) {
         return !memcmp(key, key_buf, KEY_LENGTH);
     }
 
-    if(!strncmp(salt, "str", strlen("str")))
-        return !strncmp(key, password, strlen(password));
+    if(!strncmp(salt, "str", strlen("str"))) {
+        return !strncmp(key, password, strchr(key, ':') - key);
+    }
 
     cprintf("salt: '%s'\n", salt);
     panic("Unknow salt");
