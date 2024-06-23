@@ -31,7 +31,38 @@ find_line(const char* username, const char* path_to_file,
     int fd = open_raw_fs(path_to_file, O_RDONLY);
     struct Fd* file;
     int res = fd_lookup(fd, &file);
-    assert(res == 0);
+    if (res)
+        return res;
+
+    res = -E_NO_ENT;
+
+    while (fgets(buff, size, file)) {
+        if (*buff != '\n')
+            parse_line(result, n_of_fields, buff);
+
+        // result[0] must be username
+        if (!strncmp(result[0], username, result[1] - result[0] - 1)) {
+            res = 0;
+            break;
+        }
+    }
+
+    close(fd);
+    return res;
+}
+
+
+
+int
+find_line_user(const char* username, const char* path_to_file,
+          char* buff, const size_t size, const char** result, const size_t n_of_fields) {
+
+    int fd = open(path_to_file, O_RDONLY);
+    if (fd < 0) {
+        cprintf("res: %i\n", fd);
+    }
+    struct Fd* file;
+    int res = fd_lookup(fd, &file);
     if (res)
         return res;
 

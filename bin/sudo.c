@@ -74,7 +74,7 @@ login(void) {
     static union UsersdRequest request = {};
 
     strncpy(request.login.username, "root", MAX_USERNAME_LENGTH);
-    strncpy(request.login.password, readline_noecho("Enter root password: "), MAX_PASSWORD_LENGTH);
+    strncpy(request.login.password, readline_noecho("[sudo] password for root //TODO: "), MAX_PASSWORD_LENGTH);
     printf("\n");
 
     static envid_t sUsersService;
@@ -88,14 +88,12 @@ login(void) {
 
     int res = rpc_execute(sUsersService, USERSD_REQ_LOGIN, &request, (void**)&response);
     if (res < 0) {
-        printf("Wrong password for '%s'\n", request.login.username);
+        printf("sudo: wrong password for '%s'\n", request.login.username);
         return false;
     }
 
     memcpy(&info, &response->env_info.info, sizeof(info));
     sys_unmap_region(CURENVID, (void*)RECEIVE_ADDR, PAGE_SIZE);
-
-    printf("Hello '%s', welcome back!\n", request.login.username);
 
     request.set_env_info.info.euid = ROOT_UID;
     request.set_env_info.info.ruid = info.ruid;
