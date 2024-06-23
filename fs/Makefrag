@@ -22,7 +22,6 @@ FSIMGTXTFILES :=	fs/fs_image/newmotd \
 BINAPPS :=	$(OBJDIR)/bin/init \
 			$(OBJDIR)/bin/cat \
 			$(OBJDIR)/bin/echo \
-			$(OBJDIR)/bin/lsold \
 			$(OBJDIR)/bin/ls \
 			$(OBJDIR)/bin/lsfd \
 			$(OBJDIR)/bin/date \

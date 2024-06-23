@@ -1,5 +1,6 @@
 #pragma once
 
+#include "kmod/users.h"
 #include <inc/types.h>
 
 #define PASSWD_PATH "/etc/passwd"
@@ -67,7 +68,7 @@ int find_line(const char* username, const char* path_to_file,
 
 */
 int find_line_user(const char* username, const char* path_to_file,
-              char* buff, size_t size, const char** result, const size_t n_of_fields);
+                   char* buff, size_t size, const char** result, const size_t n_of_fields);
 
 
 inline int
@@ -88,3 +89,7 @@ find_shadow_line(const char* username, char* buff, size_t size,
                  struct ShadowParsed* result) {
     return find_line(username, SHADOW_PATH, buff, size, (const char**)result, sizeof(*result) / sizeof(char*));
 }
+
+
+int
+get_username(uid_t uid, char* out_buffer);
