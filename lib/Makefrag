@@ -35,7 +35,8 @@ LIB_SRCFILES :=		$(LIB_SRCFILES) \
 			lib/wait.c \
 			lib/uvpt.c \
       		lib/kmod.c \
-			lib/random.c
+			lib/random.c \
+			lib/ssh-dummies.c \
 
 LIB_SRCFILES :=		$(LIB_SRCFILES) \
 			lib/vsyscall.c
@@ -90,4 +91,4 @@ $(OBJDIR)/lib/%.o: lib/%.S $(OBJDIR)/.vars.USER_CFLAGS
 
 $(OBJDIR)/lib/libjos.a: $(LIB_OBJFILES)
 	@echo + ar $@
-	$(V)$(AR) r $@ $(LIB_OBJFILES)
+	$(V)$(AR) r $@ $(LIB_OBJFILES) $(OBJDIR)/lib/entry.o

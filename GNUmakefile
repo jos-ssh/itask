@@ -8,6 +8,8 @@
 OBJDIR := obj
 SHELL := /bin/bash
 
+SSH_SRC_DIR := jos-tinyssh
+
 # UEFI firmware definitions
 JOS_LOADER_DEPS := LoaderPkg/Loader/*.c LoaderPkg/Loader/*.h LoaderPkg/Loader/*.inf LoaderPkg/*.dsc LoaderPkg/*.dec
 JOS_LOADER_BUILD := LoaderPkg/UDK/Build/LoaderPkg
@@ -23,6 +25,7 @@ JOS_LOADER_DEPS += LoaderPkg/Loader/X64/*.c
 JOS_BOOTER := BOOTX64.efi
 endif
 JOS_ESP := LoaderPkg/ESP
+
 
 # Run 'make V=1' to turn on verbose commands, or 'make V=0' to turn them off.
 ifeq ($(V),1)
@@ -397,6 +400,18 @@ qemu-nox-gdb: $(IMAGES) pre-qemu
 	@echo "*** Now run 'gdb'." 1>&2
 	@echo "***"
 	$(QEMU) -display none $(QEMUOPTS) -S
+
+ssh: $(IMAGES) pre-qemu
+	$(MAKE) -C $(SSH_SRC_DIR)
+	$(QEMU) $(QEMUOPTS)
+
+ssh-nox: $(IMAGES) pre-qemu
+	$(MAKE) -C $(SSH_SRC_DIR)
+	$(QEMU) -display none $(QEMUOPTS)
+
+ssh-nox-gdb: $(IMAGES) pre-qemu
+	$(MAKE) -C $(SSH_SRC_DIR)
+	$(QEMU) -display none -S $(QEMUOPTS)
 
 print-qemu:
 	@echo $(QEMU)
