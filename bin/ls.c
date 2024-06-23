@@ -7,7 +7,7 @@ int flag[256];
 #define blue  "\x1b[1;34m"
 
 void lsdir(const char *, const char *);
-void ls1(const char *, uint32_t, off_t, const char *);
+void ls1(const char *, struct Stat, off_t, const char *);
 
 void
 ls(const char *path, const char *prefix) {
@@ -21,25 +21,32 @@ ls(const char *path, const char *prefix) {
     if (st.st_isdir && !flag['d'])
         lsdir(path, prefix);
     else
-        ls1(0, st.st_mode, st.st_size, path);
+        ls1(0, st, st.st_size, path);
 }
 
 void
 lsdir(const char *path, const char *prefix) {
-    int fd, n;
-    struct File f;
+    struct FileInfo file[MAX_GETDENTS_COUNT];
 
-    if ((fd = open(path, O_RDONLY)) < 0)
-        panic("open %s: %i", path, fd);
-    while ((n = readn(fd, &f, sizeof f)) == sizeof f) {
-        if (f.f_name[0]) {
-            ls1(prefix, f.f_mode, f.f_size, f.f_name);
-        }
+    int res = getdents(path, file, MAX_GETDENTS_COUNT);
+    if (res) {
+        panic("open %s: %i", path, res);
     }
-    if (n > 0)
-        panic("short read in directory %s", path);
-    if (n < 0)
-        panic("error reading directory %s: %i", path, n);
+
+    for (size_t i = 0; file[i].f_name[0]; ++i) {
+        char full_path[MAXPATHLEN];
+        struct Stat st;
+        strcpy(full_path, path);
+        strcat(full_path, "/");
+        strcat(full_path, file[i].f_name);
+
+        int res = stat(full_path, &st);
+        if (res) {
+            printf("stat: %s: %i\n", full_path, res);
+            exit();
+        }
+        ls1(prefix, st, st.st_size, file[i].f_name);
+    }
 }
 
 
@@ -70,14 +77,12 @@ print_colored(const char *file_name, uint32_t mode) {
 
 
 void
-ls1(const char *prefix, uint32_t mode, off_t size, const char *name) {
+ls1(const char *prefix, struct Stat st, off_t size, const char *name) {
     const char *sep;
 
     if (flag['l']) {
-        print_mode(mode);
+        print_mode(st.st_mode);
 
-        struct Stat st;
-        stat(name, &st);
         printf("  %d %d", st.st_uid, st.st_gid);
         printf(" %8d ", size);
     }
@@ -88,7 +93,7 @@ ls1(const char *prefix, uint32_t mode, off_t size, const char *name) {
             sep = "";
         printf("%s%s", prefix, sep);
     }
-    print_colored(name, mode);
+    print_colored(name, st.st_mode);
     printf("\n");
 }
 
@@ -115,9 +120,14 @@ umain(int argc, char **argv) {
             usage();
         }
 
-    if (argc == 1)
-        ls("/", "");
-    else {
+    if (argc == 1) {
+        char cwd[MAXPATHLEN];
+        int res = get_cwd(cwd);
+        if (res) {
+            panic("get_cwd: %i", res);
+        }
+        ls(cwd, "");
+    } else {
         for (i = 1; i < argc; i++)
             ls(argv[i], argv[i]);
     }
