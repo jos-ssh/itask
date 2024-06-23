@@ -245,6 +245,8 @@ usersd_serve_useradd(envid_t from, const void* request,
     int res = find_passw_line(req->username, passwd_line_buf, kMaxLineBufLength, &passw);
     if (res == 0) {
         return -E_ALREADY_LOGGED_IN;
+    } else if (res != -E_NO_ENT) {
+        return res;
     }
 
     write_passw_line(req, ++current_uid, current_guid);

@@ -38,6 +38,8 @@ add_user(const char *username) {
     int res = rpc_execute(kmod_find_any_version(USERSD_MODNAME), USERSD_REQ_USERADD, &request, NULL);
     if (res == -E_ALREADY_LOGGED_IN) {
         printf("Account already added\n");
+    } else if (res != 0) {
+        printf("useradd: %i", res);
     }
 }
 
@@ -59,7 +61,7 @@ umain(int argc, char **argv) {
     }
     if (argc == 2) {
         add_user(argv[1]);
-    } else if (argc > 2) {
-        printf("too much arguments\n");
+    } else {
+        usage();
     }
 }
