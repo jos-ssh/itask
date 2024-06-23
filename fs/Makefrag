@@ -34,7 +34,6 @@ BINAPPS :=		$(OBJDIR)/bin/init \
 			$(OBJDIR)/bin/pwd \
 			$(OBJDIR)/bin/chmod \
 			$(OBJDIR)/bin/sudo \
-			$(OBJDIR)/bin/chdir \
 			$(OBJDIR)/bin/test_chmod
 
 USERAPPS :=		$(OBJDIR)/user/num \
