@@ -242,6 +242,14 @@ usersd_serve_useradd(envid_t from, const void* request,
     struct UsersdUseradd* req = (struct UsersdUseradd*)request;
     // TODO:
     // check what user already added
+
+    struct PasswParsed passw;
+    char passwd_line_buf[kMaxLineBufLength];
+    int res = find_passw_line(req->username, passwd_line_buf, kMaxLineBufLength, &passw);
+    if (res == 0) {
+        return -E_ALREADY_LOGGED_IN;
+    }
+
     write_passw_line(req, ++current_uid, current_guid);
     write_shadow_line(req);
     return 0;
@@ -322,7 +330,7 @@ usersd_serve_set_env_info(envid_t from, const void* request,
         return -E_BAD_ENV;
 
     // if (info->info.euid != ROOT_UID)
-        // return -E_NOT_ENOUGH_PRIVILEGES;
+    // return -E_NOT_ENOUGH_PRIVILEGES;
 
     set_env_info(&info->info, &info->info, &req->info);
 
