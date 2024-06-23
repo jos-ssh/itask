@@ -115,6 +115,11 @@ login(void) {
     strncpy(request.login.password, readline_noecho("Enter password: "), MAX_PASSWORD_LENGTH);
     printf("\n");
 
+    if (!strcmp(request.login.username, "root")) {
+        printf("Can't log as root\n");
+        return false;
+    }
+    
     static envid_t sUsersService;
     if (!sUsersService) {
         sUsersService = kmod_find_any_version(USERSD_MODNAME);

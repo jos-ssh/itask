@@ -81,7 +81,8 @@ enum {
     FSREQ_REMOVE,
     FSREQ_SYNC,
     FSREQ_MKDIR,
-    FSREQ_GETDENTS
+    FSREQ_GETDENTS,
+    FSREQ_CHMOD
 };
 
 struct FileInfo {
@@ -143,6 +144,10 @@ union Fsipc {
         int from_which_count;
         struct FileInfo buffer[MAX_GETDENTS_COUNT];
     } getdents;
+    struct Fsreq_chmod {
+        char req_path[MAXPATHLEN];
+        int req_mode;
+    } chmod;
 
     /* Ensure Fsipc is one page */
     char _pad[PAGE_SIZE];

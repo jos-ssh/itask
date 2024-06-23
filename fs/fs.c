@@ -481,8 +481,8 @@ fs_sync(void) {
     }
 }
 
-void cpy_file_to_file_info(struct FileInfo* file_info, struct File* file)
-{
+void
+cpy_file_to_file_info(struct FileInfo *file_info, struct File *file) {
     strlcpy(file_info->f_name, file->f_name, MAXNAMELEN);
     file_info->f_size = file->f_size;
     file_info->f_type = file->f_mode;
@@ -490,10 +490,8 @@ void cpy_file_to_file_info(struct FileInfo* file_info, struct File* file)
 
 /* Copy to buffer count files, counting start from from_which_count */
 int
-file_getdents(const char* path, struct FileInfo* buffer, uint32_t count, uint32_t from_which_count)
-{
-    if (debug)
-    {
+file_getdents(const char *path, struct FileInfo *buffer, uint32_t count, uint32_t from_which_count) {
+    if (debug) {
         printf("Start file_getdents(path = %ld)\n", (uint64_t)path);
         printf("path = <%s>\n", path);
     }
@@ -501,27 +499,26 @@ file_getdents(const char* path, struct FileInfo* buffer, uint32_t count, uint32_
     if (count == 0 || count > MAX_GETDENTS_COUNT)
         return -E_INVAL;
     int res = 0;
-    struct File* file = NULL;
-    struct File* dir  = NULL;
-    char lastelem[MAXNAMELEN] = {}; 
+    struct File *file = NULL;
+    struct File *dir = NULL;
+    char lastelem[MAXNAMELEN] = {};
 
     res = walk_path(path, &dir, &file, lastelem);
     if (res < 0)
         return res;
-    
+
     assert((file->f_size % BLKSIZE) == 0);
     blockno_t nblock = file->f_size / BLKSIZE;
     int file_counter = 0;
     for (blockno_t i = 0; i < nblock; i++) {
-        
+
         char *blk;
         res = file_get_block(file, i, &blk);
         if (res < 0) return res;
 
         struct File *f = (struct File *)blk;
         for (blockno_t j = 0; j < BLKFILES; j++) {
-            if (from_which_count > 0)
-            {
+            if (from_which_count > 0) {
                 if (debug)
                     printf("from_which_count = %d\n", from_which_count);
                 from_which_count--;
@@ -530,7 +527,7 @@ file_getdents(const char* path, struct FileInfo* buffer, uint32_t count, uint32_
 
             if (debug)
                 printf("file_counter = %d\n", file_counter);
-            cpy_file_to_file_info(&buffer[file_counter], &f[j]);   
+            cpy_file_to_file_info(&buffer[file_counter], &f[j]);
             file_counter++;
             if (count == file_counter)
                 return 0;
@@ -542,26 +539,26 @@ file_getdents(const char* path, struct FileInfo* buffer, uint32_t count, uint32_
     return 0;
 }
 
-int 
-free_file_blocks(struct File* file) {
+int
+free_file_blocks(struct File *file) {
     int res = 0;
-    
-    const blockno_t block_number = file->f_size / BLKSIZE; 
-    for (blockno_t block_i = 0; block_i <  block_number; block_i++) {
+
+    const blockno_t block_number = file->f_size / BLKSIZE;
+    for (blockno_t block_i = 0; block_i < block_number; block_i++) {
         res = file_free_block(file, block_i);
         if (res < 0) return res;
     }
-    
+
     return 0;
 }
 
 /* Remove file
  * return -E_BAD_PATH if path to directory
  */
-int 
+int
 file_remove(const char *path) {
-    struct File* dir = NULL;
-    struct File* file = NULL;
+    struct File *dir = NULL;
+    struct File *file = NULL;
     char lastelem[MAXPATHLEN] = {};
 
     int res = walk_path(path, &dir, &file, lastelem);
@@ -587,5 +584,21 @@ file_remove(const char *path) {
     free_block((uint64_t)file);
 
     flush_bitmap();
+    return 0;
+}
+
+int
+file_chmod(const char *path, uint32_t new_mode) {
+    struct File *dir = NULL;
+    struct File *file = NULL;
+    char lastelem[MAXPATHLEN] = {};
+
+    int res = walk_path(path, &dir, &file, lastelem);
+    if (res < 0) return res;
+    if (file == NULL || lastelem[0] != 0) return -E_FILE_EXISTS;
+
+    int mask = IRWXU | IRWXG | IRWXO;
+    file->f_mode = (file->f_mode & ~mask) | (new_mode & mask);
+
     return 0;
 }
