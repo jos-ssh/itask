@@ -103,16 +103,16 @@ again:
                 close(p[0]);
                 goto runit;
             }
-            panic("| not implemented");
-            break;
+            printf("sh: | not implemented");
+            exit();
 
         case 0: /* String is complete */
             /* Run the current command! */
             goto runit;
 
         default:
-            panic("bad return %d from gettoken", c);
-            break;
+            printf("sh: bad token %c\n", c);
+            exit();
         }
     }
 
@@ -145,7 +145,7 @@ runit:
     /* Spawn the command! */
     if ((r = spawn(argv[0], (const char **)argv)) < 0) {
         if (r != -E_NOT_FOUND) {
-            cprintf("spawn: %s: %i\n", argv[0], r);
+            cprintf("sh: spawn: %s: %i\n", argv[0], r);
             exit();
         }
         /* Try add PATH*/
@@ -154,7 +154,7 @@ runit:
         strcat(cmd, argv[0]);
 
         if ((r = spawn(cmd, (const char **)argv)) < 0) {
-            cprintf("spawn: %s: %i\n", cmd, r);
+            cprintf("sh: spawn: %s: %i\n", cmd, r);
         }
     }
 
@@ -322,7 +322,10 @@ umain(int argc, char **argv) {
         if (buf[0] == '#') continue;
         if (echocmds) printf("# %s\n", buf);
         if (debug) cprintf("BEFORE FORK\n");
-        if ((r = fork()) < 0) panic("fork: %i", r);
+        if ((r = fork()) < 0) {
+            printf("sh: fork: %i", r);
+            continue;
+        }
         if (debug) cprintf("FORK: %d\n", r);
         if (r == 0) {
             runcmd(buf);

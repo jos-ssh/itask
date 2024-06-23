@@ -53,7 +53,7 @@ lsdir(const char *path, const char *prefix) {
 static void
 print_mode(uint32_t mode) {
     printf("%c", ISDIR(mode) ? 'd' : '-');
-    printf("%c%c%c", mode & IRUSR ? 'r' : '-', mode & IWUSR ? 'w' : '-', mode & IXUSR ? 'x' : '-');
+    printf("%c%c%c", mode & IRUSR ? 'r' : '-', mode & IWUSR ? 'w' : '-', mode & ISUID ? 's' : (mode & IXUSR ? 'x' : '-'));
     printf("%c%c%c", mode & IRGRP ? 'r' : '-', mode & IWGRP ? 'w' : '-', mode & IXGRP ? 'x' : '-');
     printf("%c%c%c", mode & IROTH ? 'r' : '-', mode & IWOTH ? 'w' : '-', mode & IXOTH ? 'x' : '-');
 }

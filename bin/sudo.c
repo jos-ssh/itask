@@ -14,17 +14,18 @@ static bool login(void);
 
 void
 umain(int argc, char** argv) {
-    if(argc != 3) {
-        printf("requires 2 argument 'cmd' & 'argument'\n");
+    if (argc < 2) {
+        help();
         return;
     }
 
-    if(!login())
+    if (!login())
         return;
 
-    printf("sudo: spawning '%s' with '%s'\n", argv[1], argv[2]);
-    envid_t env = spawnl(argv[1], argv[1], argv[2], NULL);
-
+    envid_t env = spawn(argv[1], (const char**)argv + 1);
+    if (env < 0) {
+        printf("sudo: %i\n", env);
+    }
     wait(env);
     return;
 }
@@ -32,7 +33,9 @@ umain(int argc, char** argv) {
 
 static void
 help(void) {
-    printf("TODO: write help\n");
+    printf("sudo - execute a command as another user\n"
+           "\n"
+           "usage: sudo [command [arg ...]]\n");
 }
 
 int
@@ -71,7 +74,7 @@ login(void) {
     static union UsersdRequest request = {};
 
     strncpy(request.login.username, "root", MAX_USERNAME_LENGTH);
-    strncpy(request.login.password, readline_noecho("Enter password: "), MAX_PASSWORD_LENGTH);
+    strncpy(request.login.password, readline_noecho("Enter root password: "), MAX_PASSWORD_LENGTH);
     printf("\n");
 
     static envid_t sUsersService;
@@ -95,9 +98,9 @@ login(void) {
     printf("Hello '%s', welcome back!\n", request.login.username);
 
     request.set_env_info.info.euid = ROOT_UID;
-    request.set_env_info.info.ruid = ROOT_UID;
+    request.set_env_info.info.ruid = info.ruid;
     request.set_env_info.info.egid = ROOT_GID;
-    request.set_env_info.info.rgid = ROOT_GID;
+    request.set_env_info.info.rgid = info.rgid;
 
     res = rpc_execute(sUsersService, USERSD_REQ_SET_ENV_INFO, &request, NULL);
     assert(res == 0);
