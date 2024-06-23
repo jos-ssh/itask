@@ -155,7 +155,7 @@ finishfile(struct File *f, uint32_t start, uint32_t len) {
 void
 startdir(struct File *f, struct Dir *dout) {
     dout->f = f;
-    dout->ents = malloc(MAX_DIR_ENTS * sizeof *dout->ents);
+    dout->ents = calloc(MAX_DIR_ENTS, sizeof *dout->ents);
     dout->n = 0;
 }
 
@@ -246,22 +246,28 @@ main(int argc, char **argv) {
     char buffer[kbufferLength];
     char path[kbufferLength];
     struct Dir cwd = {NULL, NULL, 0};
-    bool plain_mode = 1;
 
     FILE *cfg_file = fopen(config, "r");
 
     while (fgets(buffer, kbufferLength, cfg_file)) {
         if (strncmp(buffer, "#plain files", 12) == 0) {
-            plain_mode = 1;
-            printf("plain mode\n");
-            break;
-        }
+            objdir = "";
 
-        if (buffer[0] == '#') {
+            finishdir(&cwd);
+
+            cwd.f = root.f;
+            cwd.n = root.n;
+            cwd.ents = root.ents;
+        } else if (buffer[0] == '#') {
             // finish old jos directory
             if (cwd.f != NULL) {
-                finishdir(&cwd);
+                if (cwd.f == root.f) {
+                    root = cwd;
+                } else {
+                    finishdir(&cwd);
+                }
             }
+
             const char *folder_end = strchr(buffer, ' ');
             uint32_t mode = strtol(folder_end, NULL, 8);
             memset(path, 0, kbufferLength);
@@ -269,31 +275,14 @@ main(int argc, char **argv) {
 
             struct File *fdir = diradd(&root, IFDIR | mode, path, DEFAULT_UID, DEFAULT_GID);
             startdir(fdir, &cwd);
+
         } else if (buffer[0] != '\n') {
-            printf("buffer: %s", buffer);
-            const char *path_end = strchr(buffer, ' ');
-            uint32_t mode = strtol(path_end, NULL, 8);
-            printf("mode: %o\n", mode);
-
-            strcpy(path, objdir);
-            strncat(path, buffer, path_end - buffer);
-
-            writefile(&cwd, path, mode, DEFAULT_UID, DEFAULT_GID);
-        }
-    }
-    finishdir(&cwd);
-
-    if (plain_mode) {
-        while (fgets(buffer, kbufferLength, cfg_file)) {
-            if (buffer[0] == '\n' || buffer[0] == '#' || buffer[0] == '/') {
-                continue;
-            }
-            printf("buffer: %s", buffer);
             const char *path_end = strchr(buffer, ' ');
             char *num_end = NULL;
 
             memset(path, 0, sizeof(path));
-            strncpy(path, buffer, path_end - buffer);
+            strcpy(path, objdir);
+            strncat(path, buffer, path_end - buffer);
 
             uint32_t mode = strtol(path_end, &num_end, 8);
             path_end = num_end;
@@ -310,13 +299,15 @@ main(int argc, char **argv) {
                 }
             }
 
-            writefile(&root, path, mode, uid, gid);
+            writefile(&cwd, path, mode, uid, gid);
         }
     }
-
+    finishdir(&cwd);
+    if (cwd.f != root.f && cwd.ents != root.ents && cwd.n != root.n) {
+        finishdir(&root);
+    }
     fclose(cfg_file);
 
-    finishdir(&root);
     finishdisk();
 
     return 0;

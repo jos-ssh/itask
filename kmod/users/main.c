@@ -203,8 +203,7 @@ write_passw_line(struct UsersdUseradd* req, uid_t uid, guid_t guid) {
     write(fd, ":", 1);
     write(fd, req->homedir, strlen(req->homedir));
 
-    write(fd, ":", 1);
-    write(fd, "/bin/sh", 3);
+    write(fd, ":/bin/sh", 8);
 
     close(fd);
 }

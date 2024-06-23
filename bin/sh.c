@@ -297,7 +297,7 @@ umain(int argc, char **argv) {
         char cwd[100];
         strcpy(cwd, blue);
         get_cwd(cwd + sizeof(blue) - 1);
-        strcat(cwd, "$ " clear);
+        strcat(cwd, clear"$ ");
 
         buf = readline(interactive ? cwd : NULL);
         if (buf == NULL) {

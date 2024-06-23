@@ -2,8 +2,8 @@
 
 #include <inc/types.h>
 
-#define PASSWD_PATH "/passwd"
-#define SHADOW_PATH "/shadow"
+#define PASSWD_PATH "/etc/passwd"
+#define SHADOW_PATH "/etc/shadow"
 
 #define kMaxLineBufLength 512
 

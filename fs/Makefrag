@@ -34,7 +34,9 @@ BINAPPS :=	$(OBJDIR)/bin/init \
 			$(OBJDIR)/bin/pwd \
 			$(OBJDIR)/bin/chmod \
 			$(OBJDIR)/bin/sudo \
-			$(OBJDIR)/bin/test_chmod
+			$(OBJDIR)/bin/test_chmod \
+			$(OBJDIR)/bin/test
+
 
 USERAPPS := $(OBJDIR)/user/num \
 			$(OBJDIR)/user/forktree \
