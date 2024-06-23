@@ -71,6 +71,7 @@ umain(int argc, char** argv) {
     initd_load_module("/kmod/acpid");
     initd_load_module("/kmod/pcid");
     initd_load_module("/kmod/filed");
+    initd_load_module("/kmod/sigd");
     initd_load_module("/kmod/usersd");
     
     while (1) {
