@@ -144,14 +144,17 @@ runit:
 
     /* Spawn the command! */
     if ((r = spawn(argv[0], (const char **)argv)) < 0) {
-
+        if (r != -E_NOT_FOUND) {
+            cprintf("spawn: %s: %i\n", argv[0], r);
+            exit();
+        }
         /* Try add PATH*/
         char cmd[BUFSIZ];
         strcpy(cmd, PATH);
         strcat(cmd, argv[0]);
 
         if ((r = spawn(cmd, (const char **)argv)) < 0) {
-            cprintf("spawn %s: %i\n", cmd, r);
+            cprintf("spawn: %s: %i\n", cmd, r);
         }
     }
 
@@ -297,7 +300,7 @@ umain(int argc, char **argv) {
         char cwd[100];
         strcpy(cwd, blue);
         get_cwd(cwd + sizeof(blue) - 1);
-        strcat(cwd, clear"$ ");
+        strcat(cwd, clear "$ ");
 
         buf = readline(interactive ? cwd : NULL);
         if (buf == NULL) {

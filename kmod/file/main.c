@@ -166,7 +166,7 @@ get_file_info(int fileid, struct Fsret_stat* buffer) {
 
 
 static int
-check_perm(const struct EnvInfo* info, int fileid, int flags) {
+check_rw_perm(const struct EnvInfo* info, int fileid, int flags) {
     int res;
 
     struct Fsret_stat stat;
@@ -196,6 +196,35 @@ check_perm(const struct EnvInfo* info, int fileid, int flags) {
             return -E_PERM_DENIED;
 
         if (!(IWOTH & stat.ret_mode) && !(!(flags & O_WRONLY) || (flags & O_RDWR)))
+            return -E_PERM_DENIED;
+    }
+
+    return 0;
+}
+
+
+static int
+check_exec_perm(const struct EnvInfo* info, int fileid) {
+    int res;
+
+    struct Fsret_stat stat;
+    res = get_file_info(fileid, &stat);
+    if (res)
+        return res;
+
+    if (stat.ret_uid == info->euid) {
+        // owner
+        if (!(IXUSR & stat.ret_mode))
+            res = -E_PERM_DENIED;
+
+    } else if (stat.ret_gid == info->egid) {
+        // group
+        if (!(IXGRP & stat.ret_mode))
+            return -E_PERM_DENIED;
+
+    } else {
+        // others
+        if (!(IXOTH & stat.ret_mode))
             return -E_PERM_DENIED;
     }
 
@@ -251,7 +280,7 @@ filed_serve_open(envid_t from, const void* request,
     if (res)
         goto exit;
 
-    res = check_perm(&env_info, ((struct Fd*)FdBuffer)->fd_file.id, freq->open.req_flags);
+    res = check_rw_perm(&env_info, ((struct Fd*)FdBuffer)->fd_file.id, freq->open.req_flags);
     if (res)
         goto exit;
 
@@ -294,7 +323,13 @@ filed_serve_spawn(envid_t from, const void* request,
         return res;
     }
 
-    res = check_perm(&env_info, ((struct Fd*)FdBuffer)->fd_file.id, freq->open.req_flags);
+    res = check_rw_perm(&env_info, ((struct Fd*)FdBuffer)->fd_file.id, freq->open.req_flags);
+    if (res) {
+        int temp = sys_unmap_region(CURENVID, FdBuffer, PAGE_SIZE);
+        assert(temp == 0);
+        return res;
+    }
+    res = check_exec_perm(&env_info, ((struct Fd*)FdBuffer)->fd_file.id);
     if (res) {
         int temp = sys_unmap_region(CURENVID, FdBuffer, PAGE_SIZE);
         assert(temp == 0);
