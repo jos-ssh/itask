@@ -150,6 +150,8 @@ login(void) {
     res = rpc_execute(kmod_find_any_version(FILED_MODNAME), FILED_REQ_SETCWD, &file_request, NULL);
     assert(res == 0);
 
+    // cprintf("%d%d %d%d\n", info.euid, info.egid, info.ruid, info.rgid);
+
     request.set_env_info.info.euid = info.euid;
     request.set_env_info.info.ruid = info.ruid;
     request.set_env_info.info.egid = info.egid;
