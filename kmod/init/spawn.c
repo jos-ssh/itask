@@ -196,6 +196,7 @@ load_executable(envid_t child, int fd, const char **argv) {
         elf->e_type != ET_EXEC /* executable */ ||
         elf->e_machine != 0x3E /* amd64 */) {
         cprintf("Elf magic %08x want %08x\n", elf->e_magic, ELF_MAGIC);
+        cprintf("or.. machine %d != %d, type %d != %d\n", elf->e_machine, 0x3e, elf->e_type, ET_EXEC); 
         close(fd);
         return -E_NOT_EXEC;
     }

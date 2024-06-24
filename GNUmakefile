@@ -403,8 +403,13 @@ qemu-nox-gdb: $(IMAGES) pre-qemu
 
 ssh_build: $(OBJDIR)/lib/libjos.a
 	$(MAKE) -C $(SSH_SRC_DIR)
+	rm $(OBJDIR)/tinysshd.asm
+	$(V)$(OBJDUMP) -S $(SSH_SRC_DIR)/build/bin/tinysshd > $(OBJDIR)/tinysshd.asm
 
 ssh-nox: ssh_build $(IMAGES) pre-qemu
+	$(QEMU) -display none $(QEMUOPTS)
+
+ssh-nox-nobuild: $(IMAGES) pre-qemu
 	$(QEMU) -display none $(QEMUOPTS)
 
 ssh-nox-gdb: ssh_build $(IMAGES) pre-qemu
