@@ -1,0 +1,81 @@
+
+void _start() {
+    asm("mov $60, %rax");  // Системный вызов exit
+    asm("mov $0, %rdi");   // Передача аргумента 0 для exit
+    asm("syscall");        // Вызов системного вызова
+}
+
+void* pipe;
+void* stderr;
+void* __fprintf_chk;
+void* fflush;
+void* _exit;
+void* fcntl;
+void* close;
+void* waitpid;
+void* fork;
+void* execve;
+void* close;
+void* __errno_location;
+void* openlog;
+void* __syslog_chk;
+void* write;
+void* read;
+void* ioctl;
+void* ptsname;
+void* signal;
+void* isatty;
+void* ttyname;
+void* chown;
+void* chmod;
+void* chdir;
+void* setsid;
+void* poll;
+void* getpwnam;
+void* dup;
+void* open;
+void* grantpt;
+void* unlockpt;
+void* dup2;
+void* getsockname;
+void* getpeername;
+void* geteuid;
+void* setgid;
+void* getgid;
+void* initgroups;
+void* setuid;
+void* getuid;
+void* inet_pton;
+void* gettimeofday;
+void* getpid;
+void* setutent;
+void* pututline;
+void* sleep;
+void* endutent;
+void* environ;
+void* getpwuid;
+void* stat;
+void* execvp;
+void* alarm;
+void* strcmp;
+void* strncmp;
+void* setenv;
+void* unsetenv;
+void* socket;
+void* bind;
+void* connect;
+void* getegid;
+// void* savesync;
+void* fsync;
+void* unlink;
+void* __snprintf_chk;
+void* __printf_chk;
+void* umask;
+void* mkdir;
+void* rmdir;
+void* symlink;
+void* getcwd;
+void* mkfifo;
+void* fchdir;
+void* usleep;
+void* __poll_chk;
