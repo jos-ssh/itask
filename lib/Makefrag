@@ -37,6 +37,7 @@ LIB_SRCFILES :=		$(LIB_SRCFILES) \
       		lib/kmod.c \
 			lib/random.c \
 			lib/ssh-dummies.c \
+			lib/entry.S
 
 LIB_SRCFILES :=		$(LIB_SRCFILES) \
 			lib/vsyscall.c
@@ -91,4 +92,4 @@ $(OBJDIR)/lib/%.o: lib/%.S $(OBJDIR)/.vars.USER_CFLAGS
 
 $(OBJDIR)/lib/libjos.a: $(LIB_OBJFILES)
 	@echo + ar $@
-	$(V)$(AR) r $@ $(LIB_OBJFILES) $(OBJDIR)/lib/entry.o
+	$(V)$(AR) r $@ $(LIB_OBJFILES)

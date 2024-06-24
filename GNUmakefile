@@ -401,16 +401,13 @@ qemu-nox-gdb: $(IMAGES) pre-qemu
 	@echo "***"
 	$(QEMU) -display none $(QEMUOPTS) -S
 
-ssh: $(IMAGES) pre-qemu
+ssh_build: $(OBJDIR)/lib/libjos.a
 	$(MAKE) -C $(SSH_SRC_DIR)
-	$(QEMU) $(QEMUOPTS)
 
-ssh-nox: $(IMAGES) pre-qemu
-	$(MAKE) -C $(SSH_SRC_DIR)
+ssh-nox: ssh_build $(IMAGES) pre-qemu
 	$(QEMU) -display none $(QEMUOPTS)
 
-ssh-nox-gdb: $(IMAGES) pre-qemu
-	$(MAKE) -C $(SSH_SRC_DIR)
+ssh-nox-gdb: ssh_build $(IMAGES) pre-qemu
 	$(QEMU) -display none -S $(QEMUOPTS)
 
 print-qemu:
@@ -425,7 +422,8 @@ format:
 # For deleting the build
 clean:
 	rm -rf $(OBJDIR) .gdbinit jos.in qemu.log $(JOS_LOADER) $(JOS_LOADER_BUILD) $(JOS_ESP) kern/kernel.ld
-
+	$(MAKE) -C $(SSH_SRC_DIR) clean
+	
 realclean: clean
 	rm -rf lab$(LAB).tar.gz \
 		jos.out $(wildcard jos.out.*) \
