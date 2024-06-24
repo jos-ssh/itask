@@ -314,76 +314,71 @@ copy_shared_region(void *start, void *end, void *arg) {
 }
 
 
+#define LOG(...) do {                               \
+    cprintf("%s %s:%d ", __FILE__,  __func__, __LINE__);         \
+    cprintf(__VA_ARGS__);                           \
+    cprintf("\n");                                  \
+} while(0)
+
+
 static int
 map_segment(envid_t child, uintptr_t va, size_t memsz,
             int fd, size_t filesz, off_t fileoffset, int perm) {
 
-    // cprintf("map_segment %x+%x\n", va, memsz);
+    // cprintf("map_segment %lx+%lx\n", va, memsz);
 
     /* Fixup unaligned destination */
-    int offset = PAGE_OFFSET(va);
-    if (offset) {
-        va -= offset;
-        memsz += offset;
-        filesz += offset;
-        fileoffset -= offset;
+    int res = PAGE_OFFSET(va);
+    if (res) {
+        LOG("Alignment: va: %p, memsz: %ld, filesz: %ld\n", (void*) va, memsz, filesz);
+        va -= res;
+        memsz += res;
+        filesz += res;
+        fileoffset -= res;
     }
 
     // LAB 11: Your code here
     /* NOTE: There's restriction on maximal filesz
      * for each program segment (HUGE_PAGE_SIZE) */
     if (filesz > HUGE_PAGE_SIZE) {
+        LOG("filesz");
+        return -E_INVAL;
+        }
+
+    if (memsz < filesz) {
+        LOG("memsz");
         return -E_INVAL;
     }
 
-    int res = 0;
-    void *const temp_mem = (void *)UTEMP;
-    const size_t temp_size = ROUNDUP(filesz, PAGE_SIZE);
-
-    if (filesz > 0) {
-        /* Allocate filesz in parent to UTEMP */
-        res = sys_alloc_region(CURENVID, temp_mem, temp_size, PROT_RW | perm);
-        assert(res >= 0);
-        if (res < 0) goto end;
-
-        /* seek() fd to fileoffset  */
-        res = seek(fd, fileoffset);
-        assert(res >= 0);
-        if (res < 0) goto unmap_temp;
-
-        /* read filesz to UTEMP */
-        ssize_t count = read(fd, temp_mem, filesz);
-        if (count < 0) {
-            res = count;
-            assert(res >= 0);
-            goto unmap_temp;
-        }
-        /* Map read section conents to child */
-        res = sys_map_region(CURENVID, temp_mem, child, (void *)va, temp_size, perm);
-        assert(res >= 0);
-        if (res < 0) goto unmap_temp;
-
-    unmap_temp:
-        /* Unmap temporary memory from parent */
-        {
-            int unmap_res = sys_unmap_region(CURENVID, temp_mem, temp_size);
-            if (unmap_res < 0) {
-                return unmap_res;
-            }
-        }
-        if (res < 0) goto end;
-    }
-
     /* Allocate filesz - memsz in child */
-    if (memsz > temp_size) {
-        const uintptr_t alloc_start = va + temp_size;
-        const uintptr_t alloc_size = ROUNDUP(memsz, PAGE_SIZE) - temp_size;
-        res = sys_alloc_region(child, (void *)alloc_start, alloc_size, perm);
-        assert(res >= 0);
-        if (res < 0) goto end;
+    /* Allocate filesz in parent to UTEMP */
+    /* seek() fd to fileoffset  */
+    /* read filesz to UTEMP */
+    /* Map read section conents to child */
+    /* Unmap it from parent */
+    memsz = ROUNDUP(memsz, PAGE_SIZE);
+    if ((res = sys_alloc_region(0, UTEMP, memsz, perm | PROT_W)) < 0) {
+        LOG("alloc UTEMP");
+        return res;
+        }
+
+    if ((res = seek(fd, fileoffset)) < 0) {
+        LOG("seek");
+        goto error;
+    }
+    
+    if ((res = readn(fd, UTEMP, filesz)) != filesz) {
+        LOG("readn error (res: %d, filesz: %ld, memsz: %ld", res, filesz, memsz);
+        goto error;
     }
 
-end:
-    assert(res >= 0);
+    if((res = sys_map_region(0, UTEMP, child, (void*)va, memsz, perm)) < 0) {
+        LOG("copy");
+        goto error;
+    }
+
+    error:
+    sys_unmap_region(0, UTEMP, memsz);
+    
     return res;
 }
