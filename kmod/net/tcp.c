@@ -155,6 +155,11 @@ echo_to(struct tcp_hdr_t* packet) {
     send_virtio_packet(reply_packet);
 }
 
+
+void send_to(struct tcp_hdr_t* client, const char *data, size_t ndata) {
+
+}
+
 void
 process_tcp_packet(struct tcp_hdr_t* packet) {
     if (trace_net && ntohl(packet->th_seq) < in_num) {
@@ -180,7 +185,7 @@ process_tcp_packet(struct tcp_hdr_t* packet) {
     // le FIN
     if (packet->th_flags & TH_FIN) {
         reply_to_fin(packet);
-        g_SessionComplete = true;
+        g_SessionComplete = true; // TODO: return connection closed flag instread
         return;
     }
 
@@ -195,6 +200,7 @@ process_tcp_packet(struct tcp_hdr_t* packet) {
     tcp_checksum(reply);
     send_virtio_packet(reply_packet);
 
+    // TODO: move to netd module
     echo_to(packet);
 
     char* data = get_payload(packet);
