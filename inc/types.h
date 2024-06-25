@@ -9,9 +9,11 @@ typedef uintptr_t physaddr_t;
 typedef ptrdiff_t ssize_t;
 typedef int32_t off_t;
 
+typedef int32_t envid_t;
 
 typedef unsigned int uid_t;
 typedef unsigned int gid_t;
+typedef envid_t pid_t;
 
 /* Efficient min and max operations */
 #ifndef MIN
