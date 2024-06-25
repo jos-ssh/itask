@@ -160,7 +160,7 @@ usersd_serve_login(envid_t from, const void* request,
 
         if (sys_crypto(shadow.hashed, shadow.salt, req->password)) {
             sCurrentUser = strtol(passw.uid, NULL, 10);
-            guid_t current_group = strtol(passw.gid, NULL, 10);
+            gid_t current_group = strtol(passw.gid, NULL, 10);
 
             union UsersdResponse* resp = response;
             resp->env_info.info.euid = sCurrentUser;

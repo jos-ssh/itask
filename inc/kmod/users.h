@@ -24,17 +24,16 @@ enum UsersdRequestType {
 #define ROOT_UID 0
 #define ROOT_GID 0
 
-#define NOT_AN_ID -1
+#define UINT_MAX ((unsigned)(-1))
+#define NOT_AN_ID UINT_MAX
 
-typedef int uid_t;
-typedef int guid_t;
 
 struct EnvInfo {
     uid_t ruid;
     uid_t euid;
 
-    guid_t rgid;
-    guid_t egid;
+    gid_t rgid;
+    gid_t egid;
 };
 
 union UsersdRequest {
