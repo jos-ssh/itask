@@ -225,7 +225,7 @@ setup_queue(struct virtq *queue, volatile struct virtio_pci_common_cfg_t *cfg_he
 void
 notify_queue(struct virtq *queue);
 
-bool
+int
 process_receive_queue(struct virtq *queue);
 
 struct virtio_packet_t*

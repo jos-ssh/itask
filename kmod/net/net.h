@@ -7,7 +7,6 @@
 
 extern envid_t g_InitdEnvid;
 extern envid_t g_PcidEnvid;
-extern bool g_SessionComplete;
 
 extern struct virtio_net_device_t* net;
 
@@ -35,7 +34,7 @@ struct send_buffer_t {
 
 void initialize();
 
-void process_packet(struct virtio_net_hdr* net_hdr);
+int process_packet(struct virtio_net_hdr* net_hdr);
 void *reverse_recv_buffer_addr(int64_t index);
 
 void serve_teapot();

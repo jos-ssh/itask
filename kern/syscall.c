@@ -470,11 +470,11 @@ sys_map_physical_region(uintptr_t pa, envid_t envid, uintptr_t va, size_t size, 
     // TIP: Use map_physical_region() with (perm | PROT_USER_ | MAP_USER_MMIO)
     //      And don't forget to validate arguments as always.
     TRACE_SYSCALL_ENTER(("0x%lx", pa)("%x", envid)("0x%lx", va)("0x%zx", size)("%x", perm));
-    SYSCALL_ASSERT(curenv->env_type == ENV_TYPE_FS || curenv->env_type == ENV_TYPE_KERNEL, E_BAD_ENV);
+    SYSCALL_ASSERT(curenv->env_type == ENV_TYPE_FS || curenv->env_type == ENV_TYPE_KERNEL || curenv->env_type == ENV_TYPE_USER, E_BAD_ENV);
     struct Env* target = NULL;
     int lookup_res = envid2env(envid, &target, true);
     SYSCALL_ASSERT(lookup_res == 0, E_BAD_ENV);
-    SYSCALL_ASSERT(target->env_type == ENV_TYPE_FS || target->env_type == ENV_TYPE_KERNEL, E_BAD_ENV);
+    SYSCALL_ASSERT(target->env_type == ENV_TYPE_FS || target->env_type == ENV_TYPE_KERNEL || target->env_type == ENV_TYPE_USER, E_BAD_ENV);
     SYSCALL_ASSERT(va < MAX_USER_ADDRESS, E_INVAL);
     SYSCALL_ASSERT(va % PAGE_SIZE == 0, E_INVAL);
     SYSCALL_ASSERT(pa % PAGE_SIZE == 0, E_INVAL);

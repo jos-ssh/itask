@@ -111,9 +111,9 @@ void send_virtio_packet(struct virtio_packet_t* packet) {
     virtio_snd_buffers(&net->sendq, packet, false);
 }
 
-bool process_receive_queue(struct virtq *queue) {
+int process_receive_queue(struct virtq *queue) {
     if (queue->used_tail == queue->used.idx) {
-        return false; // No new data arrived
+        return 0; // No new data arrived
     }
 
     uint16_t index = queue->used_tail % VIRTQ_SIZE;
@@ -121,7 +121,7 @@ bool process_receive_queue(struct virtq *queue) {
     uint16_t desc_idx = used_elem->id;
 
     void *buff_addr = queue->reverse_addr[desc_idx];
-    process_packet(buff_addr);
+    int res = process_packet(buff_addr);
 
     queue->desc_free_count += 1;
 
@@ -130,5 +130,5 @@ bool process_receive_queue(struct virtq *queue) {
     virtio_snd_buffers(queue, buff_addr, true);
 
     queue->used_tail += 1;
-    return true;
+    return res;
 }
