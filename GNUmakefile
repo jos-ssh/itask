@@ -412,6 +412,9 @@ ssh-nox: ssh_build $(IMAGES) pre-qemu
 ssh-nox-nobuild: $(IMAGES) pre-qemu
 	$(QEMU) -display none $(QEMUOPTS)
 
+ssh-nox-gdb-nobuild: $(IMAGES) pre-qemu
+	$(QEMU) -display none -S $(QEMUOPTS)
+
 ssh-nox-gdb: ssh_build $(IMAGES) pre-qemu
 	$(QEMU) -display none -S $(QEMUOPTS)
 
