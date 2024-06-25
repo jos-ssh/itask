@@ -1,7 +1,9 @@
+#include "connection.h"
 #include "ethernet.h"
 #include "inc/stdio.h"
 #include "queue.h"
 #include <inc/assert.h>
+#include <stdatomic.h>
 #include <stdint.h>
 #include <string.h>
 #include "net.h"
@@ -102,7 +104,7 @@ fill_reply_to(struct tcp_hdr_t* reply, const struct tcp_hdr_t* in) {
     reply->th_win = htons(65535); // ?
 }
 
-static void
+static int
 reply_to_syn(struct tcp_hdr_t* syn) {
     struct virtio_packet_t* reply_packet = allocate_virtio_packet();
     struct tcp_hdr_t* reply = (struct tcp_hdr_t*)(&reply_packet->data);
@@ -114,9 +116,10 @@ reply_to_syn(struct tcp_hdr_t* syn) {
     reply->th_flags |= TH_ACK | TH_SYN;
     tcp_checksum(reply);
     send_virtio_packet(reply_packet);
+    return CONNECTION_PROCESSED;
 }
 
-static void
+static int
 reply_to_fin(struct tcp_hdr_t* fin) {
     struct virtio_packet_t* reply_packet = allocate_virtio_packet();
     struct tcp_hdr_t* reply = (struct tcp_hdr_t*)(&reply_packet->data);
@@ -126,6 +129,7 @@ reply_to_fin(struct tcp_hdr_t* fin) {
     reply->th_flags = TH_RST;
     tcp_checksum(reply);
     send_virtio_packet(reply_packet);
+    return CONNECTION_PROCESSED;
 }
 
 static char*
@@ -156,11 +160,11 @@ echo_to(struct tcp_hdr_t* packet) {
 }
 
 
-void send_to(struct tcp_hdr_t* client, const char *data, size_t ndata) {
-
+void
+send_to(struct tcp_hdr_t* client, const char* data, size_t ndata) {
 }
 
-void
+int
 process_tcp_packet(struct tcp_hdr_t* packet) {
     if (trace_net && ntohl(packet->th_seq) < in_num) {
         cprintf("Runaway detected, %u with remembered %u [possible retransmission]", ntohl(packet->th_seq), in_num);
@@ -179,37 +183,38 @@ process_tcp_packet(struct tcp_hdr_t* packet) {
 
     // Just ACK from client... let it pass
     if (packet->th_flags == TH_ACK && packet_size == 0) {
-        return;
+        if (atomic_load(&g_Connection.state) == kCreated) {
+            memcpy(&g_Connection.client, packet, sizeof(*packet));
+            return CONNECTION_ESTABLISHED;
+        }
+        return SEND_PROCESSED;
     }
 
     // le FIN
     if (packet->th_flags & TH_FIN) {
         reply_to_fin(packet);
-        g_SessionComplete = true; // TODO: return connection closed flag instread
-        return;
+        return CONNECTION_CLOSED;
     }
+
+
+    // TODO: remove, debug only
+    echo_to(packet);
+
+    char* data = get_payload(packet);
+    size_t n = strlen(data) + 1;
+    write_buf(&g_Connection.recieve_buf, data, n);
 
     struct virtio_packet_t* reply_packet = allocate_virtio_packet();
     struct tcp_hdr_t* reply = (struct tcp_hdr_t*)(&reply_packet->data);
 
     in_num += packet_size;
-    // send ACK to client (for data buffer)
+
+    // send ACK to client
     fill_reply_to(reply, packet);
 
     reply->th_flags = TH_ACK;
     tcp_checksum(reply);
     send_virtio_packet(reply_packet);
 
-    // TODO: move to netd module
-    echo_to(packet);
-
-    char* data = get_payload(packet);
-    cprintf("netcat: \n");
-    for (size_t i = 0; i < packet_size; ++i) {
-        cputchar(data[i]);
-    }
-
-    if (data[packet_size - 1] != '\n') {
-        cputchar('\n');
-    }
+    return RECIEVE_PROCESSED;
 }

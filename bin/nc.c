@@ -44,15 +44,15 @@ find_netd(envid_t initd) {
 void netcat(envid_t netd) {
     union NetdResponce* response = (void*) RECEIVE_ADDR;
 
-    static union NetdRequest req;
-    req.req = 42;
+    // static union NetdRequest req;
+    // req.req = 42;
 
-    int res = rpc_execute(netd, NETD_NETCAT, &req,
-        (void**)&response);
+    // int res = rpc_execute(netd, NETD_NETCAT, &req,
+    //     (void**)&response);
 
-    if (res < 0) {
-      panic("netcat failed: %i\n", res);
-    }
+    // if (res < 0) {
+    //   panic("netcat failed: %i\n", res);
+    // }
 
     sys_unmap_region(CURENVID, response, PAGE_SIZE);
 }
