@@ -1,6 +1,6 @@
 #include <inc/socket.h>
-#include "inc/kmod/net.h"
-
+#include <inc/kmod/net.h>
+#include <inc/rpc.h>
 #include <inc/lib.h>
 
 int getsockname(int sockfd, struct sockaddr *restrict addr,
