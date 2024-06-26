@@ -27,6 +27,8 @@ envid_t g_PcidEnvid;
 static int netd_start_loop();
 
 struct Connection g_Connection = {{0, 0}, kCreated};
+struct RingBuffer __attribute__((aligned(PAGE_SIZE))) g_SendBuffer = {0, 0};
+
 bool StartupDone = false;
 
 struct virtio_net_device_t* net = (void*)UTEMP;
@@ -55,7 +57,6 @@ umain(int argc, char** argv) {
     for (;;) {
         bool already_done = StartupDone;
         rpc_listen(&Server, NULL);
-        cprintf("loop..\n");
         if (!already_done && StartupDone) {
             cprintf("netd start loop\n");
             netd_start_loop();
@@ -98,8 +99,11 @@ netd_serve_recieve(envid_t from, const void* request,
 static int
 netd_serve_send(envid_t from, const void* request,
                 void* response, int* response_perm) {
-    const struct NetdSend* req = response;
-    write_buf(&g_Connection.recieve_buf, req->data, req->size);
+    const struct NetdSend* req = request;
+    // TODO:
+    struct Message msg = {req->size};
+    memcpy(msg.data, req->data, req->size);
+    write_buf(&g_SendBuffer, (const char*)&msg, msg.size + sizeof(msg.size));
     return 0;
 }
 
@@ -127,6 +131,10 @@ netd_start_loop() {
     static_assert(sizeof(g_Connection) % PAGE_SIZE == 0, "Unaligned shared data");
     res = sys_map_region(CURENVID, &g_Connection, child, &g_Connection,
                          sizeof(g_Connection), PROT_RW | PROT_SHARE);
+    if (res < 0) goto error;
+
+    res = sys_map_region(CURENVID, &g_SendBuffer, child, &g_SendBuffer,
+                         sizeof(g_SendBuffer), PROT_RW | PROT_SHARE);
     if (res < 0) goto error;
 
     res = sys_env_set_status(child, ENV_RUNNABLE);

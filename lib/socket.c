@@ -13,20 +13,27 @@ int socket(int domain, int type, int protocol) NOTIMPLEMENTED(int)
 
 
 static union NetdResponce sResponse;
-static union NetdResponce * const sResponseAddr = &sResponse;
+static union NetdResponce *const sResponseAddr = &sResponse;
 
 int
-socket_recieve(char *out_buf, size_t n) {
+devsocket_recv(char *out_buf, size_t n) {
     union NetdRequest request;
-    request.recieve.target = CURENVID;
+    request.recieve.target = sys_getenvid();
 
-    union NetdResponce *response = sResponseAddr; 
+    union NetdResponce *response = sResponseAddr;
     int res = rpc_execute(kmod_find_any_version(NETD_MODNAME), NETD_REQ_RECIEVE, &request, (void **)&response);
-    printf("recieved %ld\n", response->recieve_data.size);
-    return res;
+    if (res < 0) {
+        return res;
+    }
+    memcpy(out_buf, response->recieve_data.data, response->recieve_data.size);
+    return response->recieve_data.size;
 }
 
-// int
-// socket_send(char *in_buf, size_t n) {
-//     union NetdRequest
-// }
+int
+devsocket_send(char *in_buf, size_t n) {
+    union NetdRequest request;
+    memcpy(request.send.data, in_buf, n);
+    request.send.size = n;
+    int res = rpc_execute(kmod_find_any_version(NETD_MODNAME), NETD_REQ_SEND, &request, NULL);
+    return res < 0 ? res : n;
+}

@@ -27,8 +27,6 @@ recieve_from_net() {
                 atomic_store(&g_Connection.state, kFinished);
             }
             if (res == RECIEVE_PROCESSED) {
-                // char buf[BUFSIZE];
-                // read_buf(&g_Connection.recieve_buf, buf, BUFSIZE);
                 cprintf("[netd-loop] data recieved\n");
             }
         }
@@ -41,10 +39,13 @@ send_to_net() {
         return;
     }
 
-    // TODO:
-    // достать из очереди необходимые для отправки данные
-    char *data = NULL;
-    size_t n = 0;
+    char data[BUFSIZE];
+    int res = read_buf(&g_SendBuffer, data, sizeof(size_t));
+    if (res < sizeof(size_t)) {
+        return;
+    }
+    size_t n = *(size_t *)data;
+    read_buf(&g_SendBuffer, data, n);
     send_to(&g_Connection.client, data, n);
 }
 
