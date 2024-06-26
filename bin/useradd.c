@@ -8,7 +8,7 @@
 
 int flag[256];
 uid_t current_uid = 1;
-guid_t current_guid = 1;
+gid_t current_guid = 1;
 
 static void
 usage(void) {
@@ -21,7 +21,7 @@ usage(void) {
 
 
 static int
-write_passw_line(struct UsersdUseradd* req, uid_t uid, guid_t guid) {
+write_passw_line(struct UsersdUseradd* req, uid_t uid, gid_t guid) {
     char str_buf[100];
 
     int fd = open(PASSWD_PATH, O_WRONLY);
