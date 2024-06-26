@@ -4,7 +4,7 @@
 #include <inc/lib.h>
 
 void
-umain(int argc, char **argv) {
+umain(int argc, char** argv) {
     char time[20];
     int now = vsys_gettime();
     struct tm tnow;

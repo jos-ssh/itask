@@ -14,17 +14,18 @@ static bool login(void);
 
 void
 umain(int argc, char** argv) {
-    if(argc != 3) {
-        printf("requires 2 argument 'cmd' & 'argument'\n");
+    if (argc < 2) {
+        help();
         return;
     }
 
-    if(!login())
+    if (!login())
         return;
 
-    printf("sudo: spawning '%s' with '%s'\n", argv[1], argv[2]);
-    envid_t env = spawnl(argv[1], argv[1], argv[2], NULL);
-
+    envid_t env = spawn(argv[1], (const char**)argv + 1);
+    if (env < 0) {
+        printf("sudo: %i\n", env);
+    }
     wait(env);
     return;
 }
@@ -32,7 +33,9 @@ umain(int argc, char** argv) {
 
 static void
 help(void) {
-    printf("TODO: write help\n");
+    printf("sudo - execute a command as another user\n"
+           "\n"
+           "usage: sudo [command [arg ...]]\n");
 }
 
 int
@@ -66,38 +69,59 @@ find_passw_line_u(const char* username, char* buff, size_t size,
 }
 
 
+static void
+get_current_user(envid_t sUsersService, char* out_buffer) {
+    static union UsersdRequest request = {};
+    request.get_env_info.target = sys_getenvid();
+
+    union UsersdResponse* response = (void*)RECEIVE_ADDR;
+
+    int res = rpc_execute(sUsersService, USERSD_REQ_GET_ENV_INFO, &request, (void**)&response);
+    if (res < 0) {
+        printf("sudo: %i\n", res);
+        exit();
+    }
+    get_username(response->env_info.info.ruid, out_buffer);
+    sys_unmap_region(CURENVID, (void*)RECEIVE_ADDR, PAGE_SIZE);
+}
+
+
 static bool
 login(void) {
-    static union UsersdRequest request = {};
-
-    strncpy(request.login.username, "root", MAX_USERNAME_LENGTH);
-    strncpy(request.login.password, readline_noecho("Enter password: "), MAX_PASSWORD_LENGTH);
-    printf("\n");
-
     static envid_t sUsersService;
     if (!sUsersService) {
         sUsersService = kmod_find_any_version(USERSD_MODNAME);
         assert(sUsersService > 0);
     }
 
+    static union UsersdRequest request = {};
+
+    get_current_user(sUsersService, request.login.username);
+
+    char promtt[MAX_USERNAME_LENGTH];
+    strcpy(promtt, "[sudo] password for ");
+    strcat(promtt, request.login.username);
+    strcat(promtt, ": ");
+
+    strncpy(request.login.password, readline_noecho(promtt), MAX_PASSWORD_LENGTH);
+    printf("\n");
+
     union UsersdResponse* response = (void*)RECEIVE_ADDR;
     struct EnvInfo info;
 
     int res = rpc_execute(sUsersService, USERSD_REQ_LOGIN, &request, (void**)&response);
     if (res < 0) {
-        printf("Wrong password for '%s'\n", request.login.username);
+        printf("sudo: wrong password for '%s'\n", request.login.username);
         return false;
     }
 
     memcpy(&info, &response->env_info.info, sizeof(info));
     sys_unmap_region(CURENVID, (void*)RECEIVE_ADDR, PAGE_SIZE);
 
-    printf("Hello '%s', welcome back!\n", request.login.username);
-
     request.set_env_info.info.euid = ROOT_UID;
-    request.set_env_info.info.ruid = ROOT_UID;
+    request.set_env_info.info.ruid = info.ruid;
     request.set_env_info.info.egid = ROOT_GID;
-    request.set_env_info.info.rgid = ROOT_GID;
+    request.set_env_info.info.rgid = info.rgid;
 
     res = rpc_execute(sUsersService, USERSD_REQ_SET_ENV_INFO, &request, NULL);
     assert(res == 0);

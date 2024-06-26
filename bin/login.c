@@ -14,15 +14,6 @@ static void help(void);
 static void no_users_login(void);
 static bool login(void);
 
-// Workaround for preventing overlapping of initd output
-static void
-sleep(int secons) {
-    secons *= 1000;
-    while (secons--) {
-        sys_yield();
-    }
-}
-
 void
 umain(int argc, char** argv) {
     int r;
@@ -51,9 +42,6 @@ umain(int argc, char** argv) {
     if (passwd_stat.st_size == 0)
         return no_users_login();
 
-
-    // workaround for prety console print
-    sleep(1);
 
     while (true) {
         size_t attempt = 0;
@@ -149,6 +137,8 @@ login(void) {
     strncpy(file_request.setcwd.req_path, passw.homedir, passw.shell - passw.homedir - 1);
     res = rpc_execute(kmod_find_any_version(FILED_MODNAME), FILED_REQ_SETCWD, &file_request, NULL);
     assert(res == 0);
+
+    // cprintf("%d%d %d%d\n", info.euid, info.egid, info.ruid, info.rgid);
 
     request.set_env_info.info.euid = info.euid;
     request.set_env_info.info.ruid = info.ruid;

@@ -1,6 +1,14 @@
+#include "inc/passw.h"
+#include "inc/rpc.h"
 #include <inc/lib.h>
 
 #define BUFSIZ 1024 /* Find the buffer overrun bug! */
+static char PATH[BUFSIZ] = {"/bin"};
+#define clear "\x1b[0m"
+#define green "\x1b[1;32m"
+#define blue  "\x1b[1;34m"
+
+#define RECEIVE_ADDR 0x0FFFF000
 
 /* gettoken(s, 0) prepares gettoken for subsequent calls and returns 0.
  * gettoken(0, token) parses a shell token from the previously set string,
@@ -99,16 +107,16 @@ again:
                 close(p[0]);
                 goto runit;
             }
-            panic("| not implemented");
-            break;
+            printf("sh: | not implemented");
+            exit();
 
         case 0: /* String is complete */
             /* Run the current command! */
             goto runit;
 
         default:
-            panic("bad return %d from gettoken", c);
-            break;
+            printf("sh: bad token %c\n", c);
+            exit();
         }
     }
 
@@ -139,8 +147,20 @@ runit:
     }
 
     /* Spawn the command! */
-    if ((r = spawn(argv[0], (const char **)argv)) < 0)
-        cprintf("spawn %s: %i\n", argv[0], r);
+    if ((r = spawn(argv[0], (const char **)argv)) < 0) {
+        if (r != -E_NOT_FOUND) {
+            cprintf("sh: spawn: %s: %i\n", argv[0], r);
+            exit();
+        }
+        /* Try add PATH*/
+        char cmd[BUFSIZ];
+        strcpy(cmd, PATH);
+        strcat(cmd, argv[0]);
+
+        if ((r = spawn(cmd, (const char **)argv)) < 0) {
+            cprintf("sh: spawn: %s: %i\n", cmd, r);
+        }
+    }
 
     /* In the parent, close all file descriptors and wait for the
      * spawned command to exit. */
@@ -238,6 +258,60 @@ gettoken(char *s, char **p1) {
     return c;
 }
 
+static void
+cd_emulation(const char *buf) {
+    char full_path[100];
+    int res = get_cwd(full_path);
+    if (res) {
+        printf("cd: %i", res);
+    }
+    char *dir = strchr(buf, ' ');
+    if (dir == NULL) {
+        return;
+    }
+    while (*dir == ' ') {
+        dir += 1;
+    }
+
+    if (strncmp(dir, "..", 2) == 0) {
+        char *last_dir = strchr(full_path, '/') + 1;
+        while (strchr(last_dir, '/')) {
+            last_dir = strchr(last_dir, '/') + 1;
+        }
+        char new_cwd[100];
+        memset(new_cwd, 0, sizeof new_cwd);
+        strncpy(new_cwd, full_path, last_dir - full_path);
+        res = set_cwd(new_cwd);
+        if (res) {
+            printf("cd: %s: %i\n", strchr(buf, ' ') + 1, res);
+        }
+        return;
+    }
+
+    strcat(full_path, dir);
+
+    res = set_cwd(full_path);
+    if (res) {
+        printf("cd: %s: %i\n", strchr(buf, ' ') + 1, res);
+    }
+}
+
+static void
+get_current_user(char *out_buffer) {
+    static union UsersdRequest request = {};
+    request.get_env_info.target = sys_getenvid();
+
+    union UsersdResponse *response = (void *)RECEIVE_ADDR;
+
+    int res = rpc_execute(kmod_find_any_version(USERSD_MODNAME), USERSD_REQ_GET_ENV_INFO, &request, (void **)&response);
+    if (res < 0) {
+        printf("sh: %i\n", res);
+        return;
+    }
+    get_username(response->env_info.info.ruid, out_buffer);
+    sys_unmap_region(CURENVID, (void *)RECEIVE_ADDR, PAGE_SIZE);
+}
+
 void
 usage(void) {
     cprintf("usage: sh [-dix] [command-file]\n");
@@ -281,17 +355,34 @@ umain(int argc, char **argv) {
     while (1) {
         char *buf;
 
-        buf = readline(interactive ? "$ " : NULL);
+        char cwd[BUFSIZ];
+        memset(cwd, 0, sizeof(cwd));
+        strcpy(cwd, green);
+        get_current_user(cwd + strlen(cwd));
+        strcat(cwd, clear ":" blue);
+        get_cwd(cwd + strlen(cwd));
+        strcat(cwd, clear "$ ");
+
+        buf = readline(interactive ? cwd : NULL);
         if (buf == NULL) {
             if (debug) cprintf("EXITING\n");
             exit(); /* end of file */
         }
+
+        if (strncmp(buf, "cd", 2) == 0) {
+            cd_emulation(buf);
+            continue;
+        }
+
         if (strncmp(buf, "exit", 4) == 0) exit();
         if (debug) cprintf("LINE: %s\n", buf);
         if (buf[0] == '#') continue;
         if (echocmds) printf("# %s\n", buf);
         if (debug) cprintf("BEFORE FORK\n");
-        if ((r = fork()) < 0) panic("fork: %i", r);
+        if ((r = fork()) < 0) {
+            printf("sh: fork: %i", r);
+            continue;
+        }
         if (debug) cprintf("FORK: %d\n", r);
         if (r == 0) {
             runcmd(buf);

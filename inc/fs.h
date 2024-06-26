@@ -41,9 +41,9 @@ typedef uint32_t blockno_t;
 struct File {
     char f_name[MAXNAMELEN]; /* filename */
     off_t f_size;            /* file size in bytes */
-    uint32_t f_mode;         /* file type and access rights */
     uint32_t f_uid;          /* file user id */
     uint32_t f_gid;          /* file group id */
+    uint32_t f_mode;         /* file type and access rights */
 
     /* Block pointers. */
     /* A block is allocated iff its value is != 0. */
