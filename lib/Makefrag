@@ -17,7 +17,12 @@ LIB_SRCFILES :=		lib/console.c \
 			lib/unistd.c \
 			lib/socket.c \
 			lib/pwd.c \
-			lib/stat.c
+			lib/stat.c \
+			lib/poll.c \
+			lib/grp.c \
+			lib/fcntl.c \
+			lib/ioctl.c \
+			lib/syslog.c
 
 ifeq ($(CONFIG_KSPACE),y)
 LIB_SRCFILES +=		lib/random.c \

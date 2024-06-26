@@ -31,5 +31,20 @@ int chdir(const char *path);
 int fchdir(int fd);
 int fsync(int fd);
 char *getcwd(char buf, size_t size);
+int dup2(int oldfd, int newfd);
+int chown(const char *pathname, uid_t owner, gid_t group);
+
+pid_t setsid(void);
+
+char *ttyname(int fd);
+
+// man says it's from stdlid.h
+int grantpt(int fd);
+int unlockpt(int fd);
+char *ptsname(int fd);
 
 unsigned int sleep(unsigned int seconds);
+
+int isatty(int fd);
+int execve(const char *pathname, char *const argv[],
+           char *const envp[]);
