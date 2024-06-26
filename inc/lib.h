@@ -16,6 +16,7 @@
 #include <inc/args.h>
 #include <inc/unistd.h>
 #include <inc/signal.h>
+#include <inc/wait.h>
 
 #include <inc/error.h>
 #include <inc/env.h>
@@ -26,6 +27,9 @@
 #include <inc/fs.h>
 #include <inc/fd.h>
 #include <inc/kmod.h>
+
+extern char **environ;
+#define NOTIMPLEMENTED(type) { panic("Not implemented!"); return (type) 0; }
 
 #ifdef SANITIZE_USER_SHADOW_BASE
 /* asan unpoison routine used for whitelisting regions. */
@@ -179,8 +183,6 @@ int opencons(void);
 int pipe(int pipefds[2]);
 int pipeisclosed(int pipefd);
 
-/* wait.c */
-void wait(envid_t env);
 
 
 #if 0 /* JOS_PROG */

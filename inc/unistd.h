@@ -24,3 +24,12 @@ int setgid(gid_t gid);
 uid_t geteuid(void);
 uid_t getuid(void);
 gid_t getgid(void);
+
+pid_t getpid(void);
+
+int chdir(const char *path);
+int fchdir(int fd);
+int fsync(int fd);
+char *getcwd(char buf, size_t size);
+
+unsigned int sleep(unsigned int seconds);

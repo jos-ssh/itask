@@ -1,10 +1,8 @@
 #pragma once
 
+#include <inc/types.h>
+
 #define WNOHANG 0xBAD
-
-
-/* Everything extant so far uses these same bits.  */
-
 
 /* If WIFEXITED(STATUS), the low-order 8 bits of the status.  */
 #define __WEXITSTATUS(status) (((status) & 0xff00) >> 8)
@@ -22,10 +20,13 @@
 /* Nonzero if STATUS indicates normal termination.  */
 #define __WIFEXITED(status) (__WTERMSIG(status) == 0)
 
-
 #define WEXITSTATUS(status) __WEXITSTATUS(status)
 #define WIFSIGNALED(status) __WIFSIGNALED(status)
 #define WTERMSIG(status)    __WTERMSIG(status)
 #define WIFEXITED(status)   __WIFEXITED(status)
 
-// #include <sys/wait.h>
+
+/* wait.c */
+void wait(envid_t env);
+
+pid_t waitpid(pid_t pid, int * wstatus, int options);

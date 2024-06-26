@@ -15,6 +15,8 @@ typedef unsigned int uid_t;
 typedef unsigned int gid_t;
 typedef envid_t pid_t;
 
+typedef uint32_t mode_t;
+
 /* Efficient min and max operations */
 #ifndef MIN
 #define MIN(_a, _b) ({      \

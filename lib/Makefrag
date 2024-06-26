@@ -14,7 +14,10 @@ LIB_SRCFILES :=		lib/console.c \
 			lib/signal.c \
 			lib/stdio.c \
 			lib/passw.c \
-			lib/unistd.c
+			lib/unistd.c \
+			lib/socket.c \
+			lib/pwd.c \
+			lib/stat.c
 
 ifeq ($(CONFIG_KSPACE),y)
 LIB_SRCFILES +=		lib/random.c \

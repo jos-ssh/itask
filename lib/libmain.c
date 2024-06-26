@@ -12,6 +12,8 @@ extern void umain(int argc, char **argv);
 const volatile struct Env *thisenv;
 const char *binaryname = "<unknown>";
 
+char **environ;
+
 // FIXME:
 static char SavedTrapframeBuf[PAGE_SIZE] __attribute__((aligned(PAGE_SIZE)));
 extern sighandler_t signal_handlers[NSIGNAL];

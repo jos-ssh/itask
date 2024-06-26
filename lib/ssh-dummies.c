@@ -10,53 +10,46 @@ __attribute__((weak)) void* __ctors_end;
 void syslog(int priority, const char *format, ...) {
 }
 
-void* stderr;
 void* fflush;
 void* fcntl;
-void* waitpid;
 void* execve;
 void* openlog;
+
 void* ioctl;
 void* ptsname;
 void* isatty;
 void* ttyname;
 void* chown;
-void* chdir;
+
+
 void* setsid;
 void* poll;
 void* getpwnam;
 void* grantpt;
 void* unlockpt;
 void* dup2;
-void* getsockname;
-void* getpeername;
-
 
 void* initgroups;
 void* inet_pton;
 void* gettimeofday;
-void* getpid;
-void* setutent;
-void* pututline;
-void* sleep;
-void* endutent;
-void* environ;
-void* getpwuid;
-void* execvp;
-void* setenv;
-void* unsetenv;
-void* socket;
-void* bind;
-void* connect;
-void* getegid;
-void* fsync;
-void* unlink;
-void* umask;
-void* rmdir;
-void* symlink;
-void* getcwd;
-void* mkfifo;
-void* fchdir;
-void* usleep;
+// void* setutent;
+// void* pututline;
+// void* endutent;
+// void* environ;
+// void* execvp;
+// void* setenv;
+// void* unsetenv;
+// void* bind;
+// void* connect;
+// void* getegid;
+// void* fsync;
+// void* unlink;
+// void* rmdir;
+// void* symlink;
+// void* getcwd;
+// void* mkfifo;
+
+
+// void* usleep;
 
 int __jos_errno_loc;
