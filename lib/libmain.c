@@ -5,6 +5,7 @@
 #include <inc/kmod/signal.h>
 #include <inc/lib.h>
 #include <inc/x86.h>
+#include <inc/unistd.h>
 
 extern void umain(int argc, char **argv);
 
@@ -35,12 +36,6 @@ global_signal_handler(uint8_t sig_no, struct Trapframe *saved_tf) {
     panic("Unreachable");
 }
 
-
-static void
-_exit(int sig_no) {
-    printf("Killed\n");
-    exit();
-}
 
 void
 libmain(int argc, char **argv) {

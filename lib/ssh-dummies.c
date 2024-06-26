@@ -12,7 +12,6 @@ void syslog(int priority, const char *format, ...) {
 
 void* stderr;
 void* fflush;
-void* _exit;
 void* fcntl;
 void* waitpid;
 void* execve;
@@ -31,12 +30,9 @@ void* unlockpt;
 void* dup2;
 void* getsockname;
 void* getpeername;
-void* geteuid;
-void* setgid;
-void* getgid;
+
+
 void* initgroups;
-void* setuid;
-void* getuid;
 void* inet_pton;
 void* gettimeofday;
 void* getpid;

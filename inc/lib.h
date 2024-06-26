@@ -7,12 +7,17 @@
 #ifndef JOS_INC_LIB_H
 #define JOS_INC_LIB_H 1
 
+// libc
 #include <inc/types.h>
 #include <inc/stdio.h>
 #include <inc/stdarg.h>
 #include <inc/string.h>
-#include <inc/error.h>
 #include <inc/assert.h>
+#include <inc/args.h>
+#include <inc/unistd.h>
+#include <inc/signal.h>
+
+#include <inc/error.h>
 #include <inc/env.h>
 #include <inc/memlayout.h>
 #include <inc/syscall.h>
@@ -20,8 +25,7 @@
 #include <inc/trap.h>
 #include <inc/fs.h>
 #include <inc/fd.h>
-#include <inc/args.h>
-#include <inc/unistd.h>
+#include <inc/kmod.h>
 
 #ifdef SANITIZE_USER_SHADOW_BASE
 /* asan unpoison routine used for whitelisting regions. */
@@ -123,9 +127,6 @@ int32_t ipc_recv(envid_t *from_env_store, void *pg, size_t *psize, int *perm_sto
 int32_t ipc_recv_from(envid_t from, void *pg, size_t *psize, int *perm_store);
 envid_t ipc_find_env(enum EnvType type);
 
-/* kmod.c */
-int kmod_find(const char *name_prefix, int min_version, int max_version);
-int kmod_find_any_version(const char *name_prefix);
 
 /* fork.c */
 envid_t fork(void);
@@ -180,29 +181,6 @@ int pipeisclosed(int pipefd);
 
 /* wait.c */
 void wait(envid_t env);
-
-/* signal.c */
-unsigned int alarm(unsigned int seconds);
-int kill(envid_t env, int sig_no);
-
-typedef void (*sighandler_t)(int);
-sighandler_t signal(int signo, sighandler_t handler);
-
-/* Fake signal functions.  */
-
-#define SIG_ERR ((sighandler_t)-1) /* Error return */
-#define SIG_DFL ((sighandler_t)0)  /* Default action */
-#define SIG_IGN ((sighandler_t)1)  /* Ignore signal */
-
-enum Signal {
-    SIGALRM,
-    SIGKILL,
-    SIGTERM,
-    SIGCHLD,
-    SIGPIPE,
-
-    NSIGNAL,
-};
 
 
 #if 0 /* JOS_PROG */
