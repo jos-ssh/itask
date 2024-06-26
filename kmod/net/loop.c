@@ -27,9 +27,9 @@ recieve_from_net() {
                 atomic_store(&g_Connection.state, kFinished);
             }
             if (res == RECIEVE_PROCESSED) {
-                char buf[BUFSIZE];
-                read_buf(&g_Connection.recieve_buf, buf, BUFSIZE);
-                cprintf("[netd-loop] data recieved: %s\n", buf);
+                // char buf[BUFSIZE];
+                // read_buf(&g_Connection.recieve_buf, buf, BUFSIZE);
+                cprintf("[netd-loop] data recieved\n");
             }
         }
     }
