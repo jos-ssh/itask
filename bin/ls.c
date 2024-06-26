@@ -5,6 +5,7 @@ int flag[256];
 #define clear "\x1b[0m"
 #define green "\x1b[1;32m"
 #define blue  "\x1b[1;34m"
+const size_t padding = 20;
 
 void lsdir(const char *, const char *);
 void ls1(const char *, struct Stat, off_t, const char *);
@@ -83,7 +84,7 @@ ls1(const char *prefix, struct Stat st, off_t size, const char *name) {
     if (flag['l']) {
         print_mode(st.st_mode);
 
-        printf("  %d %d", st.st_uid, st.st_gid);
+        printf("  %3d %3d", st.st_uid, st.st_gid);
         printf(" %8d ", size);
     }
     if (prefix) {

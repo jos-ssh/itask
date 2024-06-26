@@ -177,10 +177,10 @@ check_rw_perm(const struct EnvInfo* info, int fileid, int flags) {
     if (stat.ret_uid == info->euid) {
         // owner
         if (!(IRUSR & stat.ret_mode) && (!(flags & O_RDONLY) || (flags & O_RDWR)))
-            res = -E_PERM_DENIED;
+            return -E_PERM_DENIED;
 
         if (!(IWUSR & stat.ret_mode) && ((flags & O_WRONLY) || (flags & O_RDWR)))
-            res = -E_PERM_DENIED;
+            return -E_PERM_DENIED;
 
     } else if (stat.ret_gid == info->egid) {
         // group
@@ -446,7 +446,6 @@ filed_serve_setcwd(envid_t from, const void* request,
     const char* abs_path = NULL;
     res = filed_get_absolute_path(from, freq->remove.req_path, &abs_path);
     if (res < 0) return res;
-
     // TODO: check permissions
     filed_set_env_cwd(from, abs_path);
     return 0;

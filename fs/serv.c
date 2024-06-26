@@ -105,6 +105,7 @@ serve_open(envid_t envid, struct Fsreq_open *req,
 
     /* Copy in the path, making sure it's null-terminated */
     memmove(path, req->req_path, MAXPATHLEN);
+
     path[MAXPATHLEN - 1] = 0;
 
     /* Find an open file ID */

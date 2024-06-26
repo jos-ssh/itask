@@ -161,7 +161,7 @@ file_block_walk(struct File *f, blockno_t filebno, blockno_t **ppdiskbno, bool a
     }
 
     blockno_t *indirect = diskaddr(f->f_indirect);
-    *ppdiskbno = &indirect[filebno + 1 - NDIRECT];
+    *ppdiskbno = &indirect[filebno - NDIRECT];
     return 0;
 }
 
