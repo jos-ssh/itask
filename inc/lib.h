@@ -7,12 +7,18 @@
 #ifndef JOS_INC_LIB_H
 #define JOS_INC_LIB_H 1
 
+// libc
 #include <inc/types.h>
 #include <inc/stdio.h>
 #include <inc/stdarg.h>
 #include <inc/string.h>
-#include <inc/error.h>
 #include <inc/assert.h>
+#include <inc/args.h>
+#include <inc/unistd.h>
+#include <inc/signal.h>
+#include <inc/wait.h>
+
+#include <inc/error.h>
 #include <inc/env.h>
 #include <inc/memlayout.h>
 #include <inc/syscall.h>
@@ -20,7 +26,10 @@
 #include <inc/trap.h>
 #include <inc/fs.h>
 #include <inc/fd.h>
-#include <inc/args.h>
+#include <inc/kmod.h>
+
+extern char **environ;
+#define NOTIMPLEMENTED(type) { panic("Not implemented!"); return (type) 0; }
 
 #ifdef SANITIZE_USER_SHADOW_BASE
 /* asan unpoison routine used for whitelisting regions. */
@@ -122,9 +131,6 @@ int32_t ipc_recv(envid_t *from_env_store, void *pg, size_t *psize, int *perm_sto
 int32_t ipc_recv_from(envid_t from, void *pg, size_t *psize, int *perm_store);
 envid_t ipc_find_env(enum EnvType type);
 
-/* kmod.c */
-int kmod_find(const char *name_prefix, int min_version, int max_version);
-int kmod_find_any_version(const char *name_prefix);
 
 /* fork.c */
 envid_t fork(void);
@@ -177,42 +183,7 @@ int opencons(void);
 int pipe(int pipefds[2]);
 int pipeisclosed(int pipefd);
 
-/* wait.c */
-void wait(envid_t env);
 
-/* signal.c */
-unsigned int alarm(unsigned int seconds);
-int kill(envid_t env, int sig_no);
-
-typedef void (*sighandler_t)(int);
-sighandler_t signal(int signo, sighandler_t handler);
-
-/* Fake signal functions.  */
-
-#define SIG_ERR ((sighandler_t)-1) /* Error return */
-#define SIG_DFL ((sighandler_t)0)  /* Default action */
-#define SIG_IGN ((sighandler_t)1)  /* Ignore signal */
-
-enum Signal {
-    SIGALRM,
-    SIGKILL,
-    SIGTERM,
-    SIGCHLD,
-    SIGPIPE,
-
-    NSIGNAL,
-};
-
-/* File open modes */
-#define O_RDONLY  0x0000 /* open for reading only */
-#define O_WRONLY  0x0001 /* open for writing only */
-#define O_RDWR    0x0002 /* open for reading and writing */
-#define O_ACCMODE 0x0003 /* mask for above modes */
-
-#define O_CREAT 0x0100 /* create if nonexistent */
-#define O_TRUNC 0x0200 /* truncate to zero length */
-#define O_EXCL  0x0400 /* error if already exists */
-#define O_MKDIR 0x0800 /* create directory, not regular file */
 
 #if 0 /* JOS_PROG */
 extern void (*volatile sys_exit)(void);

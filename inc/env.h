@@ -8,7 +8,6 @@
 #include <inc/memlayout.h>
 #include <inc/assert.h>
 
-typedef int32_t envid_t;
 
 /* An environment ID 'envid_t' has three parts:
  *

@@ -8,6 +8,9 @@
 OBJDIR := obj
 SHELL := /bin/bash
 
+SSH_SRC_DIR := jos-tinyssh
+TINYSSH = $(SSH_SRC_DIR)/build/bin/tinysshd
+
 # UEFI firmware definitions
 JOS_LOADER_DEPS := LoaderPkg/Loader/*.c LoaderPkg/Loader/*.h LoaderPkg/Loader/*.inf LoaderPkg/*.dsc LoaderPkg/*.dec
 JOS_LOADER_BUILD := LoaderPkg/UDK/Build/LoaderPkg
@@ -23,6 +26,7 @@ JOS_LOADER_DEPS += LoaderPkg/Loader/X64/*.c
 JOS_BOOTER := BOOTX64.efi
 endif
 JOS_ESP := LoaderPkg/ESP
+
 
 # Run 'make V=1' to turn on verbose commands, or 'make V=0' to turn them off.
 ifeq ($(V),1)
@@ -398,6 +402,14 @@ qemu-nox-gdb: $(IMAGES) pre-qemu
 	@echo "***"
 	$(QEMU) -display none $(QEMUOPTS) -S
 
+jos-tinyssh:
+	git submodule update --remote
+
+$(TINYSSH): jos-tinyssh $(OBJDIR)/lib/libjos.a
+	$(MAKE) -C $(SSH_SRC_DIR)
+	rm -f $(OBJDIR)/tinysshd.asm
+	$(V)$(OBJDUMP) -S $(SSH_SRC_DIR)/build/bin/tinysshd > $(OBJDIR)/tinysshd.asm
+
 print-qemu:
 	@echo $(QEMU)
 
@@ -408,8 +420,11 @@ format:
 	@find . -name *.[ch] -not -path "./LoaderPkg/*" -exec $(CLANGPREFIX)clang-format -i {} \;
 
 # For deleting the build
-clean:
+clean: clean-shh
 	rm -rf $(OBJDIR) .gdbinit jos.in qemu.log $(JOS_LOADER) $(JOS_LOADER_BUILD) $(JOS_ESP) kern/kernel.ld
+	
+clean-shh:
+	$(MAKE) -C $(SSH_SRC_DIR) clean
 
 realclean: clean
 	rm -rf lab$(LAB).tar.gz \

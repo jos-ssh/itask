@@ -127,8 +127,8 @@ usersd_serve_identify(envid_t from, const void* request,
     return 0;
 }
 
-static void
-sleep(int nanosecons) {
+static  void
+sleep_(int nanosecons) {
     while (nanosecons--) {
         // No-op
     }
@@ -156,11 +156,11 @@ usersd_serve_login(envid_t from, const void* request,
 
     if (res1 == 0 && res2 == 0) {
         // Jos Security
-        sleep(rand() & kMaxDelay);
+        sleep_(rand() & kMaxDelay);
 
         if (sys_crypto(shadow.hashed, shadow.salt, req->password)) {
             sCurrentUser = strtol(passw.uid, NULL, 10);
-            guid_t current_group = strtol(passw.gid, NULL, 10);
+            gid_t current_group = strtol(passw.gid, NULL, 10);
 
             union UsersdResponse* resp = response;
             resp->env_info.info.euid = sCurrentUser;

@@ -59,8 +59,10 @@ TESTS := $(OBJDIR)/test/test_initd \
       $(OBJDIR)/test/test_pcid \
 	  $(OBJDIR)/test/test_sigd
 
-FSIMGFILES := $(FSIMGTXTFILES) $(BINAPPS) $(USERAPPS) $(KERNMODS) $(TESTS)
+TINYSSH = $(SSH_SRC_DIR)/build/bin/tinysshd
+
 FSFORMATFILES := $(OBJDIR) fs/fs_image/fs_image.cfg
+FSIMGFILES := $(FSIMGTXTFILES) $(BINAPPS) $(USERAPPS) $(KERNMODS) $(TESTS) $(TINYSSH)
 
 $(OBJDIR)/fs/%.o: fs/%.c fs/fs.h fs/pci.h fs/nvme.h inc/lib.h $(OBJDIR)/.vars.USER_CFLAGS
 	@echo + cc[USER] $<

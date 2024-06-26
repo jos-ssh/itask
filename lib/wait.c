@@ -1,3 +1,4 @@
+#include <inc/wait.h>
 #include <inc/lib.h>
 
 /* Waits until 'envid' exits. */
@@ -11,4 +12,9 @@ wait(envid_t envid) {
            env->env_status != ENV_FREE) {
         sys_yield();
     }
+}
+
+pid_t waitpid(pid_t pid, int * wstatus, int options) {
+    wait(pid);
+    return -1;
 }
