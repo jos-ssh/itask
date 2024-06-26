@@ -126,6 +126,13 @@ get_cwd(char *buffer) {
 
 int
 set_cwd(const char *path) {
+    struct Stat st;
+    int res = stat(path, &st);
+    if (res) {
+        return res;
+    } else if (!st.st_isdir) {
+        return -E_BAD_PATH;
+    }
     strlcpy(filed_req.setcwd.req_path, path, MAXPATHLEN);
     return filed_rpc_execute(FILED_REQ_SETCWD, &filed_req, NULL);
 }

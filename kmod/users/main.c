@@ -52,7 +52,6 @@ struct RpcServer Server = {
                 [USERSD_REQ_REG_ENV] = usersd_serve_register_env,
                 [USERSD_REQ_GET_ENV_INFO] = usersd_serve_get_env_info,
                 [USERSD_REQ_SET_ENV_INFO] = usersd_serve_set_env_info,
-                [USERSD_REQ_USERADD] = usersd_serve_useradd,
         }};
 
 static void
@@ -83,7 +82,7 @@ start_login(void) {
 
     static union InitdRequest req;
     req.spawn.parent = thisenv->env_id;
-    strcpy(req.spawn.file, "/login");
+    strcpy(req.spawn.file, "/bin/login");
     req.spawn.argc = 0;
     envid_t login = rpc_execute(kmod_find_any_version(INITD_MODNAME), INITD_REQ_SPAWN, &req, NULL);
     KUSERS_LOG("spawned login %x\n", login);
@@ -176,83 +175,6 @@ usersd_serve_login(envid_t from, const void* request,
     }
 
     return -E_ACCESS_DENIED;
-}
-
-static void
-write_passw_line(struct UsersdUseradd* req, uid_t uid, guid_t guid) {
-    char str_buf[100];
-
-    int fd = open_raw_fs(PASSWD_PATH, O_WRONLY);
-    struct Stat st;
-    fstat(fd, &st);
-
-    seek(fd, st.st_size);
-    write(fd, "\n", 1);
-    write(fd, req->username, strlen(req->username));
-
-    write(fd, ":", 1);
-
-    int length = long_to_str(uid, 10, str_buf, sizeof(str_buf));
-    write(fd, str_buf, length);
-
-    write(fd, ":", 1);
-
-    length = long_to_str(guid, 10, str_buf, sizeof(str_buf));
-    write(fd, str_buf, length);
-
-    write(fd, ":", 1);
-    write(fd, req->homedir, strlen(req->homedir));
-
-    write(fd, ":", 1);
-    write(fd, "/sh", 3);
-
-    close(fd);
-}
-
-
-static void
-write_shadow_line(struct UsersdUseradd* req) {
-
-    int fd = open_raw_fs(SHADOW_PATH, O_WRONLY);
-    struct Stat st;
-    fstat(fd, &st);
-
-    seek(fd, st.st_size);
-    write(fd, "\n", 1);
-    write(fd, req->username, strlen(req->username));
-
-    write(fd, ":default:", 9);
-
-    unsigned char hashed_passwd[KEY_LENGTH + 1];
-    sys_crypto_get(req->passwd, "default", hashed_passwd);
-    write(fd, hashed_passwd, KEY_LENGTH);
-
-    // FIXME:
-    write(fd, ":1024", 5);
-
-    close(fd);
-}
-
-static int
-usersd_serve_useradd(envid_t from, const void* request,
-                     void* response, int* response_perm) {
-    static uid_t current_uid = 1;
-    static guid_t current_guid = 1;
-
-    struct UsersdUseradd* req = (struct UsersdUseradd*)request;
-    // TODO:
-    // check what user already added
-
-    struct PasswParsed passw;
-    char passwd_line_buf[kMaxLineBufLength];
-    int res = find_passw_line(req->username, passwd_line_buf, kMaxLineBufLength, &passw);
-    if (res == 0) {
-        return -E_ALREADY_LOGGED_IN;
-    }
-
-    write_passw_line(req, ++current_uid, current_guid);
-    write_shadow_line(req);
-    return 0;
 }
 
 

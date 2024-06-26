@@ -1,9 +1,10 @@
 #pragma once
 
+#include "kmod/users.h"
 #include <inc/types.h>
 
-#define PASSWD_PATH "/passwd"
-#define SHADOW_PATH "/shadow"
+#define PASSWD_PATH "/etc/passwd"
+#define SHADOW_PATH "/etc/shadow"
 
 #define kMaxLineBufLength 512
 
@@ -32,21 +33,21 @@ struct ShadowParsed {
 
 /**
  * @brief Parse the line that has 'n_of_fields' entries separated by ':'
- * 
+ *
  * @param res is an array of char*
- * @param n_of_fields 
- * @param line 
+ * @param n_of_fields
+ * @param line
  */
 void parse_line(const char** res, size_t n_of_fields, const char* line);
 
 inline void
 parse_passw_line(struct PasswParsed* p, const char* line) {
-    return parse_line((const char**) p, sizeof(*p) / sizeof(char*), line);
+    return parse_line((const char**)p, sizeof(*p) / sizeof(char*), line);
 }
 
 inline void
 parse_shadow_line(struct ShadowParsed* s, const char* line) {
-   return parse_line((const char**) s, sizeof(*s) / sizeof(char*), line);
+    return parse_line((const char**)s, sizeof(*s) / sizeof(char*), line);
 }
 
 
@@ -61,14 +62,34 @@ int find_line(const char* username, const char* path_to_file,
               char* buff, size_t size, const char** result, const size_t n_of_fields);
 
 
+/**
+ * @brief uses open instead of open_raw_fs
+ *
+
+*/
+int find_line_user(const char* username, const char* path_to_file,
+                   char* buff, size_t size, const char** result, const size_t n_of_fields);
+
+
 inline int
 find_passw_line(const char* username, char* buff, size_t size,
-                 struct PasswParsed* result) {
-    return find_line(username, PASSWD_PATH, buff, size, (const char**) result, sizeof(*result) / sizeof(char*));
+                struct PasswParsed* result) {
+    return find_line(username, PASSWD_PATH, buff, size, (const char**)result, sizeof(*result) / sizeof(char*));
 }
+
+inline int
+find_passw_line_user(const char* username, char* buff, size_t size,
+                     struct PasswParsed* result) {
+    return find_line_user(username, PASSWD_PATH, buff, size, (const char**)result, sizeof(*result) / sizeof(char*));
+}
+
 
 inline int
 find_shadow_line(const char* username, char* buff, size_t size,
                  struct ShadowParsed* result) {
-    return find_line(username, SHADOW_PATH, buff, size, (const char**) result, sizeof(*result) / sizeof(char*));
+    return find_line(username, SHADOW_PATH, buff, size, (const char**)result, sizeof(*result) / sizeof(char*));
 }
+
+
+int
+get_username(uid_t uid, char* out_buffer);

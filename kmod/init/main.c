@@ -68,11 +68,11 @@ umain(int argc, char** argv) {
         panic("dup: %i", r);
 
     printf("[%08x: initd] Starting up module...\n", thisenv->env_id);
-    initd_load_module("/acpid");
-    initd_load_module("/pcid");
-    initd_load_module("/sigd");
-    initd_load_module("/filed");
-    initd_load_module("/usersd");
+    initd_load_module("/kmod/acpid");
+    initd_load_module("/kmod/pcid");
+    initd_load_module("/kmod/filed");
+    initd_load_module("/kmod/sigd");
+    initd_load_module("/kmod/usersd");
     
     while (1) {
         rpc_listen(&Server, NULL);
