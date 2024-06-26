@@ -3,7 +3,6 @@ OBJDIRS += lib
 LIB_SRCFILES :=		lib/console.c \
      	    lib/convert.c \
 			lib/libmain.c \
-			lib/exit.c \
 			lib/panic.c \
 			lib/printf.c \
 			lib/printfmt.c \
@@ -14,7 +13,16 @@ LIB_SRCFILES :=		lib/console.c \
 			lib/syscall.c \
 			lib/signal.c \
 			lib/stdio.c \
-			lib/passw.c
+			lib/passw.c \
+			lib/unistd.c \
+			lib/socket.c \
+			lib/pwd.c \
+			lib/stat.c \
+			lib/poll.c \
+			lib/grp.c \
+			lib/fcntl.c \
+			lib/ioctl.c \
+			lib/syslog.c
 
 ifeq ($(CONFIG_KSPACE),y)
 LIB_SRCFILES +=		lib/random.c \
@@ -35,7 +43,9 @@ LIB_SRCFILES :=		$(LIB_SRCFILES) \
 			lib/wait.c \
 			lib/uvpt.c \
       		lib/kmod.c \
-			lib/random.c
+			lib/random.c \
+			lib/ssh-dummies.c \
+			lib/entry.S
 
 LIB_SRCFILES :=		$(LIB_SRCFILES) \
 			lib/vsyscall.c

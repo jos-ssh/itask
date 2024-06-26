@@ -5,11 +5,14 @@
 #include <inc/kmod/signal.h>
 #include <inc/lib.h>
 #include <inc/x86.h>
+#include <inc/unistd.h>
 
 extern void umain(int argc, char **argv);
 
 const volatile struct Env *thisenv;
 const char *binaryname = "<unknown>";
+
+char **environ;
 
 // FIXME:
 static char SavedTrapframeBuf[PAGE_SIZE] __attribute__((aligned(PAGE_SIZE)));
@@ -35,12 +38,6 @@ global_signal_handler(uint8_t sig_no, struct Trapframe *saved_tf) {
     panic("Unreachable");
 }
 
-
-static void
-_exit(int sig_no) {
-    printf("Killed\n");
-    exit();
-}
 
 void
 libmain(int argc, char **argv) {
