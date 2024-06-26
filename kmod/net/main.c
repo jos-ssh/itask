@@ -91,7 +91,7 @@ netd_serve_recieve(envid_t from, const void* request,
     struct NetdRecieveData* res = response;
     res->size = read_buf(&g_Connection.recieve_buf, res->data, BUFSIZE);
     *response_perm = PROT_R;
-    return 0;
+    return res->size;
 }
 
 

@@ -10,6 +10,7 @@
 #include <inc/kmod/request.h>
 
 #define RECEIVE_ADDR 0x0FFFF000
+static char sNetdResponse[PAGE_SIZE] __attribute__((aligned(PAGE_SIZE)));
 
 envid_t
 find_initd() {
@@ -41,20 +42,24 @@ find_netd(envid_t initd) {
     return rpc_execute(initd, INITD_REQ_FIND_KMOD, &request, &res_data);
 }
 
-void netcat(envid_t netd) {
-    union NetdResponce* response = (void*) RECEIVE_ADDR;
+void
+netcat(envid_t netd) {
+    union NetdResponce* response = (union NetdResponce*)sNetdResponse;
 
-    // static union NetdRequest req;
-    // req.req = 42;
+    static union NetdRequest req;
+    req.recieve.target = sys_getenvid();
 
-    // int res = rpc_execute(netd, NETD_NETCAT, &req,
-    //     (void**)&response);
+    for (;;) {
+        int res = rpc_execute(netd, NETD_REQ_RECIEVE, &req,
+                              (void**)&response);
 
-    // if (res < 0) {
-    //   panic("netcat failed: %i\n", res);
-    // }
-
-    sys_unmap_region(CURENVID, response, PAGE_SIZE);
+        if (res < 0) {
+            panic("netcat failed: %i\n", res);
+        } else if (res != 0) {
+            printf("netcat: %s", response->recieve_data.data);
+        }
+        sys_yield();
+    }
 }
 
 void
