@@ -9,6 +9,7 @@ OBJDIR := obj
 SHELL := /bin/bash
 
 SSH_SRC_DIR := jos-tinyssh
+TINYSSH = $(SSH_SRC_DIR)/build/bin/tinysshd
 
 # UEFI firmware definitions
 JOS_LOADER_DEPS := LoaderPkg/Loader/*.c LoaderPkg/Loader/*.h LoaderPkg/Loader/*.inf LoaderPkg/*.dsc LoaderPkg/*.dec
@@ -401,22 +402,13 @@ qemu-nox-gdb: $(IMAGES) pre-qemu
 	@echo "***"
 	$(QEMU) -display none $(QEMUOPTS) -S
 
-ssh_build: $(OBJDIR)/lib/libjos.a
+jos-tinyssh:
+	git submodule update --remote
+
+$(TINYSSH): jos-tinyssh $(OBJDIR)/lib/libjos.a
 	$(MAKE) -C $(SSH_SRC_DIR)
 	rm -f $(OBJDIR)/tinysshd.asm
 	$(V)$(OBJDUMP) -S $(SSH_SRC_DIR)/build/bin/tinysshd > $(OBJDIR)/tinysshd.asm
-
-ssh-nox: ssh_build $(IMAGES) pre-qemu
-	$(QEMU) -display none $(QEMUOPTS)
-
-ssh-nox-nobuild: $(IMAGES) pre-qemu
-	$(QEMU) -display none $(QEMUOPTS)
-
-ssh-nox-gdb-nobuild: $(IMAGES) pre-qemu
-	$(QEMU) -display none -S $(QEMUOPTS)
-
-ssh-nox-gdb: ssh_build $(IMAGES) pre-qemu
-	$(QEMU) -display none -S $(QEMUOPTS)
 
 print-qemu:
 	@echo $(QEMU)
@@ -428,10 +420,12 @@ format:
 	@find . -name *.[ch] -not -path "./LoaderPkg/*" -exec $(CLANGPREFIX)clang-format -i {} \;
 
 # For deleting the build
-clean:
+clean: clean-shh
 	rm -rf $(OBJDIR) .gdbinit jos.in qemu.log $(JOS_LOADER) $(JOS_LOADER_BUILD) $(JOS_ESP) kern/kernel.ld
-	$(MAKE) -C $(SSH_SRC_DIR) clean
 	
+clean-shh:
+	$(MAKE) -C $(SSH_SRC_DIR) clean
+
 realclean: clean
 	rm -rf lab$(LAB).tar.gz \
 		jos.out $(wildcard jos.out.*) \
