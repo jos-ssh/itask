@@ -1,11 +1,11 @@
 #include "connection.h"
 #include "ethernet.h"
 #include "inc/stdio.h"
+#include "inc/string.h"
 #include "queue.h"
 #include <inc/assert.h>
 #include <stdatomic.h>
 #include <stdint.h>
-#include <string.h>
 #include "net.h"
 
 static uint32_t in_num = 0;
@@ -139,30 +139,34 @@ get_payload(struct tcp_hdr_t* packet) {
 
 
 void
-echo_to(struct tcp_hdr_t* packet) {
+send_to(struct tcp_hdr_t* client, const char* data, size_t ndata) {
     struct virtio_packet_t* reply_packet = allocate_virtio_packet();
     struct tcp_hdr_t* reply = (struct tcp_hdr_t*)(&reply_packet->data);
 
-    fill_reply_to(reply, packet);
+    fill_reply_to(reply, client);
 
     reply->th_flags = TH_ACK | TH_PUSH;
 
-    strcpy(get_payload(reply), "Server: ");
-    strcat(get_payload(reply), get_payload(packet));
-    short msg_len = strlen(get_payload(reply));
-    out_num += msg_len;
+    memcpy(get_payload(reply), data, ndata);
+    out_num += ndata;
 
-    reply->ipv4_hdr.len += htons(msg_len);
+    reply->ipv4_hdr.len += htons(ndata);
     reply->ipv4_hdr.hdr_checksum = ipv4_checksum(&reply->ipv4_hdr);
 
     tcp_checksum(reply);
     send_virtio_packet(reply_packet);
 }
 
-
 void
-send_to(struct tcp_hdr_t* client, const char* data, size_t ndata) {
+echo_to(struct tcp_hdr_t* packet) {
+    char buf[1000];
+    memset(buf, 0, sizeof(buf));
+    strcpy(buf, "Server: ");
+    strcat(buf, get_payload(packet));
+
+    send_to(packet, buf, strlen(buf));
 }
+
 
 int
 process_tcp_packet(struct tcp_hdr_t* packet) {
@@ -198,7 +202,7 @@ process_tcp_packet(struct tcp_hdr_t* packet) {
 
 
     // TODO: remove, debug only
-    echo_to(packet);
+    // echo_to(packet);
 
     char* data = get_payload(packet);
     size_t n = strlen(data) + 1;

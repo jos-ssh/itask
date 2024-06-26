@@ -176,6 +176,8 @@ envid_t spawnl(const char *program, const char *arg0, ...);
 /* console.c */
 void cputchar(int c);
 int getchar(void);
+int getchar_unlocked(void);
+
 int iscons(int fd);
 int opencons(void);
 

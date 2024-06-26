@@ -30,11 +30,12 @@ struct Connection {
 } __attribute__((aligned(PAGE_SIZE)));
 
 extern struct Connection g_Connection;
-
+extern struct RingBuffer g_SendBuffer;
 
 struct Message {
     size_t size;
-    char data[];
-};
+    char data[BUFSIZE];
+} __attribute__((packed));
+
 
 void netd_process_loop(envid_t parent);
