@@ -1,15 +1,27 @@
+#include "inc/netinet/in.h"
+
 #include <inc/socket.h>
 #include <inc/kmod/net.h>
 #include <inc/rpc.h>
 #include <inc/lib.h>
 
-int getsockname(int sockfd, struct sockaddr *restrict addr,
-                socklen_t *restrict addrlen) NOTIMPLEMENTED(int)
+static struct sockaddr_in sSocketAddr = {PF_INET, 2222, {0}};
 
-int getpeername(int sockfd, struct sockaddr *restrict addr,
-                socklen_t *restrict addrlen) NOTIMPLEMENTED(int)
+int
+getsockname(int sockfd, struct sockaddr *restrict addr,
+            socklen_t *restrict addrlen) {
+    memcpy(addr, &sSocketAddr, *addrlen);
+    return 0;
+}
 
-int socket(int domain, int type, int protocol) NOTIMPLEMENTED(int)
+int
+getpeername(int sockfd, struct sockaddr *restrict addr,
+            socklen_t *restrict addrlen) {
+    memcpy(addr, &sSocketAddr, *addrlen);
+    return 0;
+}
+
+int socket(int domain, int type, int protocol) NOTIMPLEMENTED(int);
 
 
 static union NetdResponce sResponse;
@@ -37,4 +49,16 @@ devsocket_send(char *in_buf, size_t n) {
     request.send.size = n;
     int res = rpc_execute(kmod_find_any_version(NETD_MODNAME), NETD_REQ_SEND, &request, NULL);
     return res < 0 ? res : n;
+}
+
+int
+devsocket_poll() {
+    union NetdRequest request;
+    request.poll.target = sys_getenvid();
+
+    int res = 0;
+    while (res == 0) {
+        res = rpc_execute(kmod_find_any_version(NETD_MODNAME), NETD_REQ_POLL, &request, NULL);
+    }
+    return 0;
 }
