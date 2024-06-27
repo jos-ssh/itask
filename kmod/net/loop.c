@@ -39,14 +39,14 @@ send_to_net() {
         return;
     }
 
-    char data[BUFSIZE];
+    unsigned char data[BUFSIZE];
     int res = read_buf(&g_SendBuffer, data, sizeof(size_t));
     if (res < sizeof(size_t)) {
         return;
     }
     size_t n = *(size_t *)data;
     read_buf(&g_SendBuffer, data, n);
-    send_to(&g_Connection.client, data, n);
+    send_to(&g_Connection.client, (char *)data, n);
 }
 
 

@@ -10,7 +10,7 @@ get_idx(_Atomic volatile size_t* val) {
 }
 
 int
-read_buf(struct RingBuffer* buf, char* out_buf, size_t n) {
+read_buf(struct RingBuffer* buf, unsigned char* out_buf, size_t n) {
     size_t head = get_idx(&buf->head);
     size_t can_grab = get_idx(&buf->tail) - head;
     size_t can_read = MIN(can_grab, n);
@@ -25,7 +25,7 @@ read_buf(struct RingBuffer* buf, char* out_buf, size_t n) {
 
 
 void
-write_buf(struct RingBuffer* buf, const char* in_buf, size_t n) {
+write_buf(struct RingBuffer* buf, const unsigned char* in_buf, size_t n) {
     size_t tail = get_idx(&buf->tail);
 
     for (size_t idx = 0; idx < n; ++idx) {
