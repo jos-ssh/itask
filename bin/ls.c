@@ -15,7 +15,7 @@ ls(const char *path, const char *prefix) {
     int r;
     struct Stat st;
 
-    if ((r = stat(path, &st)) < 0 && r != -E_PERM_DENIED) {
+    if ((r = stat(path, &st)) < 0) {
         printf("ls: stat error with %s: %i\n", path, r);
         exit();
     }
@@ -43,11 +43,11 @@ lsdir(const char *path, const char *prefix) {
         strcat(full_path, file[i].f_name);
 
         int res = stat(full_path, &st);
-        if (res && res != -E_PERM_DENIED) {
+        if (res) {
             printf("stat: %s: %i\n", full_path, res);
-            exit();
+        } else {
+            ls1(prefix, st, st.st_size, file[i].f_name);
         }
-        ls1(prefix, st, st.st_size, file[i].f_name);
     }
 }
 

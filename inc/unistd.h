@@ -1,6 +1,7 @@
 #pragma once
 
 #include <inc/types.h>
+#include <inc/lib.h>
 
 /* File open modes */
 #define O_RDONLY  0x0000 /* open for reading only */
