@@ -31,7 +31,7 @@ pid_t getpid(void);
 int chdir(const char *path);
 int fchdir(int fd);
 int fsync(int fd);
-char *getcwd(char buf, size_t size);
+char *getcwd(char *buf, size_t size);
 int dup2(int oldfd, int newfd);
 int chown(const char *pathname, uid_t owner, gid_t group);
 

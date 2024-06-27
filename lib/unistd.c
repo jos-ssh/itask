@@ -39,7 +39,7 @@ pid_t getpid(void) NOTIMPLEMENTED(pid_t);
 int chdir(const char *path) NOTIMPLEMENTED(int);
 int fchdir(int fd) NOTIMPLEMENTED(int);
 int fsync(int fd) NOTIMPLEMENTED(int);
-char *getcwd(char buf, size_t size) NOTIMPLEMENTED(char *);
+char *getcwd(char *buf, size_t size) NOTIMPLEMENTED(char *);
 int dup2(int oldfd, int newfd) NOTIMPLEMENTED(int);
 int chown(const char *pathname, uid_t owner, gid_t group) NOTIMPLEMENTED(int);
 
