@@ -22,12 +22,13 @@ recieve_from_net() {
             atomic_store(&g_Connection.state, kConnected);
 
         } else if (atomic_load(&g_Connection.state) == kConnected) {
-            int res = process_receive_queue(&net->recvq);
+            int res;
+            while ((res = process_receive_queue(&net->recvq)) != NO_PACKETS) {
+                ;
+            }
+
             if (res == CONNECTION_CLOSED) {
                 atomic_store(&g_Connection.state, kFinished);
-            }
-            if (res == RECIEVE_PROCESSED) {
-                cprintf("[netd-loop] data recieved\n");
             }
         }
     }
