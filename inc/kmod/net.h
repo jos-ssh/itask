@@ -1,7 +1,6 @@
 #ifndef __INC_KMOD_NET_H
 #define __INC_KMOD_NET_H
 
-#include "inc/env.h"
 #include "kmod/net/ring_buf.h"
 #include <inc/kmod/request.h>
 #include <stdint.h>
@@ -16,6 +15,7 @@ enum VirtioNetRequestType {
     NETD_IDENTITY = KMOD_REQ_IDENTIFY,
     NETD_REQ_RECIEVE = KMOD_REQ_FIRST_USABLE,
     NETD_REQ_SEND,
+    NETD_REQ_POLL,
     NETD_NREQUESTS
 };
 
@@ -28,6 +28,9 @@ union NetdRequest {
         size_t size;
         char data[BUFSIZE];
     } send;
+    struct NetdPoll {
+        envid_t target;
+    } poll;
     uint8_t pad_[PAGE_SIZE];
 } __attribute__((aligned(PAGE_SIZE)));
 

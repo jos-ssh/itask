@@ -14,3 +14,4 @@ struct RingBuffer {
 
 int read_buf(struct RingBuffer* buf, unsigned char* out_buf, size_t n);
 void write_buf(struct RingBuffer* buf, const unsigned char* in_buf, size_t n);
+int size_buf(struct RingBuffer* buf);

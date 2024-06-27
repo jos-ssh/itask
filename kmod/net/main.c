@@ -21,6 +21,9 @@ static int netd_serve_recieve(envid_t from, const void* request,
 static int netd_serve_send(envid_t from, const void* request,
                            void* response, int* response_perm);
 
+static int netd_serve_poll(envid_t from, const void* request,
+                           void* response, int* response_perm);
+
 envid_t g_InitdEnvid;
 envid_t g_PcidEnvid;
 
@@ -42,6 +45,7 @@ struct RpcServer Server = {
                 [NETD_IDENTITY] = netd_serve_identify,
                 [NETD_REQ_RECIEVE] = netd_serve_recieve,
                 [NETD_REQ_SEND] = netd_serve_send,
+                [NETD_REQ_POLL] = netd_serve_poll,
         }};
 
 void
@@ -100,13 +104,21 @@ static int
 netd_serve_send(envid_t from, const void* request,
                 void* response, int* response_perm) {
     const struct NetdSend* req = request;
-    // TODO:
     struct Message msg = {req->size};
     memcpy(msg.data, req->data, req->size);
     write_buf(&g_SendBuffer, (const unsigned char*)&msg, msg.size + sizeof(msg.size));
     return 0;
 }
 
+
+static int
+netd_serve_poll(envid_t from, const void* request,
+                void* response, int* response_perm) {
+    const struct NetdPoll* req = request;
+    assert(req->target == from);
+
+    return size_buf(&g_Connection.recieve_buf);
+}
 
 static int
 netd_start_loop() {

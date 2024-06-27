@@ -33,3 +33,8 @@ write_buf(struct RingBuffer* buf, const unsigned char* in_buf, size_t n) {
     }
     atomic_fetch_add(&buf->tail, n);
 }
+
+int
+size_buf(struct RingBuffer* buf) {
+    return get_idx(&buf->tail) - get_idx(&buf->head);
+}
