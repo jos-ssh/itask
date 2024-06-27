@@ -90,7 +90,7 @@ netd_serve_recieve(envid_t from, const void* request,
     }
 
     struct NetdRecieveData* res = response;
-    res->size = read_buf(&g_Connection.recieve_buf, res->data, BUFSIZE);
+    res->size = read_buf(&g_Connection.recieve_buf, res->data, req->size);
     *response_perm = PROT_R;
     return res->size;
 }
@@ -103,7 +103,7 @@ netd_serve_send(envid_t from, const void* request,
     // TODO:
     struct Message msg = {req->size};
     memcpy(msg.data, req->data, req->size);
-    write_buf(&g_SendBuffer, (const char*)&msg, msg.size + sizeof(msg.size));
+    write_buf(&g_SendBuffer, (const unsigned char*)&msg, msg.size + sizeof(msg.size));
     return 0;
 }
 

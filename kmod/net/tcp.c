@@ -137,6 +137,12 @@ get_payload(struct tcp_hdr_t* packet) {
     return ((char*)&packet->ipv4_hdr) + sizeof(struct ethernet_hdr_t) + (packet->ipv4_hdr.header_len << 2u) + (packet->th_off << 2u);
 }
 
+size_t
+get_payload_size(struct tcp_hdr_t* packet) {
+    uint32_t size = packet->ipv4_hdr.len - htons(sizeof(struct tcp_hdr_t) - sizeof(struct ethernet_hdr_t));
+    return ntohs(size);
+}
+
 
 void
 send_to(struct tcp_hdr_t* client, const char* data, size_t ndata) {
@@ -205,8 +211,8 @@ process_tcp_packet(struct tcp_hdr_t* packet) {
     // echo_to(packet);
 
     char* data = get_payload(packet);
-    size_t n = strlen(data) + 1;
-    write_buf(&g_Connection.recieve_buf, data, n);
+    size_t n = get_payload_size(packet);
+    write_buf(&g_Connection.recieve_buf, (const unsigned char*)data, n);
 
     struct virtio_packet_t* reply_packet = allocate_virtio_packet();
     struct tcp_hdr_t* reply = (struct tcp_hdr_t*)(&reply_packet->data);

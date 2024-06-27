@@ -22,6 +22,7 @@ enum VirtioNetRequestType {
 union NetdRequest {
     struct NetdRecieve {
         envid_t target;
+        size_t size;
     } recieve;
     struct NetdSend {
         size_t size;
@@ -33,7 +34,7 @@ union NetdRequest {
 union NetdResponce {
     struct NetdRecieveData {
         size_t size;
-        char data[BUFSIZE];
+        unsigned char data[BUFSIZE];
     } recieve_data;
     uint8_t pad_[PAGE_SIZE];
 } __attribute__((aligned(PAGE_SIZE)));

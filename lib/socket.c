@@ -16,9 +16,10 @@ static union NetdResponce sResponse;
 static union NetdResponce *const sResponseAddr = &sResponse;
 
 int
-devsocket_recv(char *out_buf, size_t n) {
+devsocket_recv(void *out_buf, size_t n) {
     union NetdRequest request;
     request.recieve.target = sys_getenvid();
+    request.recieve.size = n;
 
     union NetdResponce *response = sResponseAddr;
     int res = rpc_execute(kmod_find_any_version(NETD_MODNAME), NETD_REQ_RECIEVE, &request, (void **)&response);
