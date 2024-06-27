@@ -15,10 +15,11 @@ ls(const char *path, const char *prefix) {
     int r;
     struct Stat st;
 
-    if ((r = stat(path, &st)) < 0) {
+    if ((r = stat(path, &st)) < 0 && r != -E_PERM_DENIED) {
         printf("ls: stat error with %s: %i\n", path, r);
         exit();
     }
+
     if (st.st_isdir && !flag['d'])
         lsdir(path, prefix);
     else
@@ -42,7 +43,7 @@ lsdir(const char *path, const char *prefix) {
         strcat(full_path, file[i].f_name);
 
         int res = stat(full_path, &st);
-        if (res) {
+        if (res && res != -E_PERM_DENIED) {
             printf("stat: %s: %i\n", full_path, res);
             exit();
         }

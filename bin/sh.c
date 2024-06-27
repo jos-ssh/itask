@@ -3,7 +3,7 @@
 #include <inc/lib.h>
 
 #define BUFSIZ 1024 /* Find the buffer overrun bug! */
-static char PATH[BUFSIZ] = {"/bin"};
+static char PATH[BUFSIZ] = {"/bin/"};
 #define clear "\x1b[0m"
 #define green "\x1b[1;32m"
 #define blue  "\x1b[1;34m"
@@ -25,7 +25,7 @@ int gettoken(char *s, char **token);
 #define MAXARGS 16
 void
 runcmd(char *s) {
-    char *argv[MAXARGS], *t, argv0buf[BUFSIZ];
+    char *argv[MAXARGS], *t;
     int argc, c, i, r, p[2], fd, pipe_child;
 
     pipe_child = 0;
@@ -127,15 +127,6 @@ runit:
         return;
     }
 
-    /* Clean up command line.
-     * Read all commands from the filesystem: add an initial '/' to
-     * the command name.
-     * This essentially acts like 'PATH=/'. */
-    if (argv[0][0] != '/') {
-        argv0buf[0] = '/';
-        strcpy(argv0buf + 1, argv[0]);
-        argv[0] = argv0buf;
-    }
     argv[argc] = 0;
 
     /* Print the command. */
@@ -380,10 +371,10 @@ umain(int argc, char **argv) {
         if (echocmds) printf("# %s\n", buf);
         if (debug) cprintf("BEFORE FORK\n");
         if ((r = fork()) < 0) {
-            printf("sh: fork: %i", r);
+            printf("sh: fork: %x", r);
             continue;
         }
-        if (debug) cprintf("FORK: %d\n", r);
+        if (debug) cprintf("FORK: %x\n", r);
         if (r == 0) {
             runcmd(buf);
             exit();

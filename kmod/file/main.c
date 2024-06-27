@@ -263,6 +263,7 @@ filed_serve_open(envid_t from, const void* request,
     const char* abs_path = NULL;
     res = filed_get_absolute_path(from, freq->open.req_path, &abs_path);
     if (res < 0) return res;
+    KFILE_LOG("rel_path %s, abs_path %s\n", freq->open.req_path, abs_path);
 
     // set FsBuffer request
     memcpy(FsBuffer.open.req_path, abs_path, MAXPATHLEN);
@@ -304,6 +305,7 @@ filed_serve_spawn(envid_t from, const void* request,
     const char* abs_path = NULL;
     res = filed_get_absolute_path(from, freq->spawn.req_path, &abs_path);
     if (res < 0) return res;
+    KFILE_LOG("rel_path %s, abs_path %s\n", freq->spawn.req_path, abs_path);
 
     // Check Permissions
     struct EnvInfo env_info;
@@ -392,6 +394,7 @@ filed_serve_fork(envid_t from, const void* request,
 
     envid_t child = res;
     const char* parent_cwd = filed_get_env_cwd(from);
+    KFILE_LOG("parent_cwd[%x]=%s child[%x]\n", from, parent_cwd, child);
     if (parent_cwd) {
         filed_set_env_cwd(child, parent_cwd);
     }
