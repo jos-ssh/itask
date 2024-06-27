@@ -38,8 +38,10 @@ devsocket_recv(void *out_buf, size_t n) {
     if (res < 0) {
         return res;
     }
+    size_t size = response->recieve_data.size;
     memcpy(out_buf, response->recieve_data.data, response->recieve_data.size);
-    return response->recieve_data.size;
+    sys_unmap_region(CURENVID, (void *)sResponseAddr, PAGE_SIZE);
+    return size;
 }
 
 int
