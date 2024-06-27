@@ -9,7 +9,7 @@ umain(int argc, char **argv) {
         return;
     }
 
-    const int mode = 0;
+    const int mode = 0777;
     int res = mkdir(argv[1], mode);
 
     if (res < 0) {
