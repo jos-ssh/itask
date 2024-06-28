@@ -1,3 +1,4 @@
+#include "inc/lib.h"
 #include <inc/stdio.h>
 #include <inc/error.h>
 #include <inc/types.h>
@@ -20,7 +21,15 @@ readline_impl(const char *prompt, bool is_echo) {
     bool echo = iscons(0) && is_echo;
 
     for (size_t i = 0;;) {
+#ifdef JOS_KERNEL
         int c = getchar();
+#else
+        int c;
+        int res = read(0, &c, 1);
+        sys_yield();
+        if (res == 0) continue;
+        if (res < 0) c = res;
+#endif
 
         if (c < 0) {
             if (c != -E_EOF)
@@ -53,10 +62,12 @@ readline_impl(const char *prompt, bool is_echo) {
     }
 }
 
-char *readline(const char *prompt) {
+char *
+readline(const char *prompt) {
     return readline_impl(prompt, true);
 }
 
-char *readline_noecho(const char *prompt) {
+char *
+readline_noecho(const char *prompt) {
     return readline_impl(prompt, false);
 }
