@@ -3,8 +3,8 @@
 int flag[256];
 
 #define clear "\x1b[0m"
-#define green "\r\x1b[1;32m"
-#define blue  "\r\x1b[1;34m"
+#define green "\x1b[1;32m"
+#define blue  "\x1b[1;34m"
 const size_t padding = 20;
 
 void lsdir(const char *, const char *);
@@ -44,7 +44,7 @@ lsdir(const char *path, const char *prefix) {
 
         int res = stat(full_path, &st);
         if (res) {
-            printf("stat: %s: %i\n", full_path, res);
+            printf("stat: %s: %i\r\n", full_path, res);
         } else {
             ls1(prefix, st, st.st_size, file[i].f_name);
         }
@@ -101,7 +101,7 @@ ls1(const char *prefix, struct Stat st, off_t size, const char *name) {
 
 void
 usage(void) {
-    printf("usage: ls [-dFl] [file...]\n");
+    printf("usage: ls [-dFl] [file...]\r\n");
     exit();
 }
 
