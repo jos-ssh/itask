@@ -1,4 +1,3 @@
-#include "inc/error.h"
 #include "inc/socket.h"
 #include <inc/lib.h>
 #include <inc/fcntl.h>
@@ -6,9 +5,9 @@
 
 void
 run_child(int pipefd) {
-    for (size_t i = 0; i < 10; ++i) {
-        printf("%08x -> %zu\n", thisenv->env_id, i);
-        fprintf(pipefd, "%zu", i);
+    for (;;) {
+        printf("%08x -> #\n", thisenv->env_id);
+        fprintf(pipefd, "#");
         sys_yield();
         sys_yield();
         sys_yield();
@@ -21,9 +20,6 @@ umain(int argc, char** argv) {
     int child_rd, child_wr;
     int res;
 
-    int net = opensock();
-    fcntl(net, F_SETFL, O_NONBLOCK);
-
     res = pipe(pipes);
     if (res < 0) { panic("pipe: %i", res); }
     child_rd = pipes[0];
@@ -31,7 +27,6 @@ umain(int argc, char** argv) {
 
     fcntl(child_rd, F_SETFL, O_NONBLOCK);
 
-    /*
     res = fork();
     if (res < 0) { panic("fork: %i", res); }
     if (res == 0) {
@@ -39,13 +34,16 @@ umain(int argc, char** argv) {
         run_child(child_wr);
         exit();
     }
-    */
     close(child_wr);
+
+    int net = opensock();
+    fcntl(net, F_SETFL, O_NONBLOCK);
+
 
     char buffer[1024];
     bool done1 = false, done2 = false;
     while (!done1 || !done2) {
-        struct pollfd poll_info[] = {{child_rd, 0}, {net, POLLIN}};
+        struct pollfd poll_info[] = {{child_rd, POLLIN}, {net, POLLIN}};
         res = poll(poll_info, 2, 10000);
 
         if (res < 0) { panic("poll: %i", res); }
@@ -70,8 +68,9 @@ umain(int argc, char** argv) {
                 done2 = true;
             } else {
                 buffer[res] = '\0';
+                printf("=================================================\n");
                 printf("net: %s\n", buffer);
-                // break;
+                printf("=================================================\n");
             }
         }
     }

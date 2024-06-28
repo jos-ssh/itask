@@ -61,7 +61,8 @@ TESTS := $(OBJDIR)/test/test_initd \
       $(OBJDIR)/test/test_pcid \
       $(OBJDIR)/test/test_sigd \
       $(OBJDIR)/test/test_pipe_poll \
-      $(OBJDIR)/test/test_net_pipe
+      $(OBJDIR)/test/test_net_pipe \
+      $(OBJDIR)/test/test_net_fork
 
 TINYSSH = $(SSH_SRC_DIR)/build/bin/tinysshd
 
