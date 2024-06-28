@@ -3,8 +3,8 @@
 int flag[256];
 
 #define clear "\x1b[0m"
-#define green "\x1b[1;32m"
-#define blue  "\x1b[1;34m"
+#define green "\r\x1b[1;32m"
+#define blue  "\r\x1b[1;34m"
 const size_t padding = 20;
 
 void lsdir(const char *, const char *);
@@ -96,7 +96,7 @@ ls1(const char *prefix, struct Stat st, off_t size, const char *name) {
         printf("%s%s", prefix, sep);
     }
     print_colored(name, st.st_mode);
-    printf("\n");
+    printf("\r\n");
 }
 
 void

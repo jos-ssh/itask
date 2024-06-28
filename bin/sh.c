@@ -364,7 +364,7 @@ umain(int argc, char **argv) {
 
         char cwd[BUFSIZ];
         memset(cwd, 0, sizeof(cwd));
-        strcpy(cwd, green);
+        strcpy(cwd, "\r"green);
         get_current_user(cwd + strlen(cwd));
         strcat(cwd, clear ":" blue);
         get_cwd(cwd + strlen(cwd), MAXPATHLEN);
