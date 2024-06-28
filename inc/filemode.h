@@ -7,13 +7,15 @@
 
 #define IFMT 0170000 // bit mask for the file type bit field
 
-#define IFREG 0100000 // regular file
-#define IFDIR 0040000 // directory
-#define IFIFO 0010000 // pipe
+#define IFREG  0100000 // regular file
+#define IFDIR  0040000 // directory
+#define IFIFO  0010000 // pipe
+#define IFSOCK 0140000 // socket
 
-#define ISREG(m)  ((m & IFMT) == IFREG)
-#define ISDIR(m)  ((m & IFMT) == IFDIR)
-#define ISFIFO(m) ((m & IFMT) == IFIFO)
+#define ISREG(m)  (((m) & IFMT) == IFREG)
+#define ISDIR(m)  (((m) & IFMT) == IFDIR)
+#define ISFIFO(m) (((m) & IFMT) == IFIFO)
+#define ISSOCK(m) (((m) & IFMT) == IFSOCK)
 
 
 #define ISUID 04000 // set-user-ID bit
