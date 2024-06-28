@@ -29,6 +29,7 @@ BINAPPS :=	$(OBJDIR)/bin/init \
 			$(OBJDIR)/bin/sh \
 			$(OBJDIR)/bin/login \
 			$(OBJDIR)/bin/useradd \
+			$(OBJDIR)/bin/userdel \
 			$(OBJDIR)/bin/mkdir \
 			$(OBJDIR)/bin/pwd \
 			$(OBJDIR)/bin/chmod \
