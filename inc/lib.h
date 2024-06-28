@@ -29,7 +29,11 @@
 #include <inc/kmod.h>
 
 extern char **environ;
-#define NOTIMPLEMENTED(type) { panic("Not implemented!"); return (type) 0; }
+#define NOTIMPLEMENTED(type)       \
+    {                              \
+        panic("Not implemented!"); \
+        return (type)0;            \
+    }
 
 #ifdef SANITIZE_USER_SHADOW_BASE
 /* asan unpoison routine used for whitelisting regions. */
@@ -109,7 +113,7 @@ int sys_ipc_try_send(envid_t to_env, uint64_t value, void *pg, size_t size, int 
 int sys_ipc_recv(void *rcv_pg, size_t size);
 int sys_ipc_recv_from(envid_t from, void *rcv_pg, size_t size);
 int sys_gettime(void);
-int sys_get_rsdp_paddr(physaddr_t* paddr);
+int sys_get_rsdp_paddr(physaddr_t *paddr);
 int sys_crypto(const char *hashed, const char *salt, const char *password);
 int sys_crypto_get(const char *password, const char *salt, unsigned char *hashed);
 
@@ -155,6 +159,7 @@ ssize_t readn(int fd, void *buf, size_t nbytes);
 int dup(int oldfd, int newfd);
 int fstat(int fd, struct Stat *statbuf);
 int stat(const char *path, struct Stat *statbuf);
+int fpoll(int fd);
 
 /* file.c */
 int open(const char *path, int mode, ...);
@@ -185,7 +190,6 @@ int opencons(void);
 /* pipe.c */
 int pipe(int pipefds[2]);
 int pipeisclosed(int pipefd);
-
 
 
 #if 0 /* JOS_PROG */

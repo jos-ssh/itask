@@ -36,3 +36,4 @@ compile_commands.json
 /LoaderPkg/efibuild.sh
 /LoaderPkg/mtoc-mac64.sha256
 log
+netdump.*

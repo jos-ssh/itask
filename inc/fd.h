@@ -29,11 +29,13 @@ struct Dev {
     int (*dev_close)(struct Fd *fd);
     int (*dev_stat)(struct Fd *fd, struct Stat *stat);
     int (*dev_trunc)(struct Fd *fd, off_t length);
+    int (*dev_poll)(struct Fd *fd);
 };
 
 struct FdFile {
     int id;
 };
+
 
 struct Fd {
     int fd_dev_id;
