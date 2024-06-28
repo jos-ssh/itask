@@ -450,6 +450,7 @@ filed_serve_setcwd(envid_t from, const void* request,
     res = filed_get_absolute_path(from, freq->remove.req_path, &abs_path);
     if (res < 0) return res;
     // TODO: check permissions
+    printf("file_serve_setcwd: from = %d\n", from);
     filed_set_env_cwd(from, abs_path);
     return 0;
 }

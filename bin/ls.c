@@ -124,7 +124,7 @@ umain(int argc, char **argv) {
 
     if (argc == 1) {
         char cwd[MAXPATHLEN];
-        int res = get_cwd(cwd);
+        int res = get_cwd(cwd, MAXPATHLEN);
         if (res) {
             panic("get_cwd: %i", res);
         }

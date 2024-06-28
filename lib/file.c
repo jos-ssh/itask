@@ -114,12 +114,12 @@ open(const char *path, int flags, ...) {
 }
 
 int
-get_cwd(char *buffer) {
+get_cwd(char *buffer, size_t size) {
     int res = 0;
     res = filed_rpc_execute(FILED_REQ_GETCWD, &filed_req, &filed_resp); /* filed_req isn`t really necessary here */
 
     if (res < 0) return res;
-    strlcpy(buffer, filed_resp.cwd, MAXPATHLEN);
+    strlcpy(buffer, filed_resp.cwd, MIN(MAXPATHLEN, size));
 
     return 0;
 }
