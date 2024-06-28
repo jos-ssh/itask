@@ -1,9 +1,4 @@
-#include "inc/env.h"
-#include "inc/kmod/init.h"
-#include "inc/rpc.h"
-#include "inc/stdio.h"
 #include <inc/lib.h>
-#include <inc/kmod/request.h>
 
 void test_set_get_cwd() {
     printf("=========test_set_get_cwd=========\n");

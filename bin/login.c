@@ -133,9 +133,9 @@ login(void) {
     res = find_passw_line_u(request.login.username, passwd_line_buf, kMaxLineBufLength, &passw);
     assert(res == 0);
 
-    static union FiledRequest file_request;
-    strncpy(file_request.setcwd.req_path, passw.homedir, passw.shell - passw.homedir - 1);
-    res = rpc_execute(kmod_find_any_version(FILED_MODNAME), FILED_REQ_SETCWD, &file_request, NULL);
+    char set_cwd_buffer[MAX_PATH_LEN] = {};
+    strncpy(set_cwd_buffer, passw.homedir, passw.shell - passw.homedir - 1);
+    res = set_cwd(set_cwd_buffer);
     assert(res == 0);
 
     // cprintf("%d%d %d%d\n", info.euid, info.egid, info.ruid, info.rgid);

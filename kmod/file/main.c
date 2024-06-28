@@ -86,7 +86,7 @@ struct RpcServer Server = {
                 [FILED_REQ_FORK] = filed_serve_fork,
                 [FILED_REQ_REMOVE] = filed_serve_remove,
                 [FILED_REQ_CHMOD] = filed_serve_chmod,
-                [FILED_REQ_CHOWN] = filed_serve_chown,              // TODO: implement
+                [FILED_REQ_CHOWN] = filed_serve_chown,
                 [FILED_REQ_GETCWD] = filed_serve_getcwd,
                 [FILED_REQ_SETCWD] = filed_serve_setcwd,
 
