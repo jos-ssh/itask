@@ -41,6 +41,7 @@ static const char *const error_string[MAXERROR] = {
         [E_NO_CWD] = "current working directory not set",
         [E_PERM_DENIED] = "permission denied",
         [E_ACPI_BAD_CHECKSUM] = "wrong acpi table checksum",
+        [E_CONNECTION_СLOSED] = "connection is closed",
 };
 
 /*

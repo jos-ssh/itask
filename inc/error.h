@@ -38,6 +38,7 @@ enum {
     E_NOT_ENOUGH_PRIVILEGES = 24,
     E_ALREADY_LOGGED_IN = 25,
     E_ACCESS_DENIED = 26,
+    E_CONNECTION_СLOSED = 27,
     
     MAXERROR
 };
