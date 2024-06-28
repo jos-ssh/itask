@@ -82,7 +82,7 @@ write_shadow_line(struct UsersdUseradd* req) {
 
 
 static void
-add_user(const char* username) {
+add_user(const char* username, const char* home_dir) {
     if (strchr(username, ':')) {
         printf("useradd: unsupported character ':'\n");
         return;
@@ -99,10 +99,17 @@ add_user(const char* username) {
         exit();
     }
 
+    res = mkdir(home_dir, 0);
+    if (res < 0 && res != -E_FILE_EXISTS) {
+        printf("useradd: error during creating working directory (%i %d)\n", res, res);
+        exit();
+    }
+
     struct UsersdUseradd request;
 
     strcpy(request.username, username);
-    strcpy(request.homedir, "/");
+    strcpy(request.homedir, home_dir);
+
 
     // fill /etc/passwd
     res = write_passw_line(&request, ++current_uid, current_guid);
@@ -138,20 +145,28 @@ void
 umain(int argc, char** argv) {
     int i;
     struct Argstate args;
+    const char* home_dir = NULL;
 
     argstart(&argc, argv, &args);
     while ((i = argnext(&args)) >= 0) {
         switch (i) {
         case 'd':
             flag[i]++;
+            home_dir = args.curarg;
             break;
         case 'h':
         default:
             usage();
         }
     }
+
+    printf("argc = %d\n", argc);
+
     if (argc == 2) {
-        add_user(argv[1]);
+        if (home_dir != NULL)
+            add_user(argv[1], home_dir);
+        else 
+            add_user(argv[1], "/");
     } else {
         usage();
     }
