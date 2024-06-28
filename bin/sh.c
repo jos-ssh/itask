@@ -141,7 +141,7 @@ runit:
     /* Spawn the command! */
     if ((r = spawn(argv[0], (const char **)argv)) < 0) {
         if (r != -E_NOT_FOUND) {
-            cprintf("sh: spawn: %s: %i\n", argv[0], r);
+            printf("sh: spawn: %s: %i\n", argv[0], r);
             exit();
         }
         /* Try add PATH*/
@@ -150,7 +150,7 @@ runit:
         strcat(cmd, argv[0]);
 
         if ((r = spawn(cmd, (const char **)argv)) < 0) {
-            cprintf("sh: spawn: %s: %i\n", cmd, r);
+            printf("sh: spawn: %s: %i\n", cmd, r);
         }
     }
 
@@ -375,9 +375,6 @@ umain(int argc, char **argv) {
         if (buf == NULL) {
             if (debug) cprintf("EXITING\n");
             exit(); /* end of file */
-        }
-        if (pipe) {
-            fprintf(1, "%s\r\n", buf);
         }
 
         if (strncmp(buf, "cd", 2) == 0) {

@@ -18,7 +18,7 @@ readline_impl(const char *prompt, bool is_echo) {
 #endif
     }
 
-    bool echo = iscons(0) && is_echo;
+    bool echo = is_echo;
 
     for (size_t i = 0;;) {
 #ifdef JOS_KERNEL
@@ -27,7 +27,7 @@ readline_impl(const char *prompt, bool is_echo) {
         int c;
         int res = read(0, &c, 1);
         sys_yield();
-        if (res == 0) continue;
+        if (res == 0 || res == -E_WOULD_BLOCK) continue;
         if (res < 0) c = res;
 #endif
 
