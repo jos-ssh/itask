@@ -1,4 +1,4 @@
 [submodule "jos-tinyssh"]
 	path = jos-tinyssh
 	url = https://github.com/ArsenySamoylov/jos-tinyssh.git
-	branch = jos-port
+	branch = josssh
