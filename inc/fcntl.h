@@ -5,6 +5,4 @@
 #define F_GETFL 3 /* Get file status flags.  */
 #define F_SETFL 4 /* Set file status flags.  */
 
-#define O_NONBLOCK 04000
-
 int fcntl(int fd, int cmd, ... /* arg */);

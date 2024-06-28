@@ -28,17 +28,18 @@ enum {
     E_NOT_EXEC = 18,    /* File not a valid executable */
     E_NOT_SUPP = 19,    /* Operation not supported */
     E_NO_CWD = 20,      /* Attempted relative path access with no cwd */
-    E_PERM_DENIED = 21, /* Not matching permision */ 
+    E_PERM_DENIED = 21, /* Not matching permision */
+    E_WOULD_BLOCK = 22, /* Non-blocking IO impossible */
 
     /* ACPI errors */
-    E_ACPI_BAD_CHECKSUM = 22, /* ACPI table has wrong checksum */
+    E_ACPI_BAD_CHECKSUM = 23, /* ACPI table has wrong checksum */
 
     /* UsersD errors*/
-    E_ENV_ALREADY_REGISTERED = 23,
-    E_NOT_ENOUGH_PRIVILEGES = 24,
-    E_ALREADY_LOGGED_IN = 25,
-    E_ACCESS_DENIED = 26,
-    
+    E_ENV_ALREADY_REGISTERED = 24,
+    E_NOT_ENOUGH_PRIVILEGES = 25,
+    E_ALREADY_LOGGED_IN = 26,
+    E_ACCESS_DENIED = 27,
+
     MAXERROR
 };
 
