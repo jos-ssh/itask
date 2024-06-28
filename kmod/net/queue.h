@@ -2,7 +2,7 @@
 
 #include <inc/types.h>
 #include <inc/pool_alloc.h>
-#include <stdint.h>
+#include <inc/types.h>
 #include "ethernet.h"
 
 #define VIRTQ_LOG_SIZE 8

@@ -1,6 +1,5 @@
 #pragma once
-#include <stdint.h>
-#include <sys/cdefs.h>
+#include <inc/types.h>
 
 // Predefined values
 

@@ -2,7 +2,7 @@
 
 #include "queue.h"
 #include <inc/env.h>
-#include <stdint.h>
+#include <inc/types.h>
 #include <inc/pool_alloc.h>
 
 extern envid_t g_InitdEnvid;
