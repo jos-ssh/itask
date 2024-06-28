@@ -11,15 +11,16 @@ notify_parent() {
     kill(thisenv->env_parent_id, SIGCHLD);
 }
 
-[[noreturn]] void
+__attribute__((noreturn)) void
 exit(void) {
     close_all();
     notify_parent();
     sys_env_destroy(0);
-    exit(); // so surpress warnig =)
+    panic("Failed to die");
+    /* exit(); // so surpress warnig =) */
 }
 
-[[noreturn]] void
+__attribute__((noreturn)) void
 _exit(int status) {
     printf("Exit\n");
     (void)status;
