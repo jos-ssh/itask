@@ -1,6 +1,7 @@
 #include "inc/error.h"
 #include <inc/lib.h>
 #include <inc/poll.h>
+#include <inc/fcntl.h>
 
 static ssize_t devpipe_read(struct Fd *fd, void *buf, size_t n);
 static ssize_t devpipe_write(struct Fd *fd, const void *buf, size_t n);
@@ -184,13 +185,13 @@ devpipe_poll(struct Fd *fd) {
     struct Pipe *p = (struct Pipe *)fd2data(fd);
     int res = 0;
     if (p->p_wpos < p->p_rpos + sizeof(p->p_buf)) /* pipe is not full */ {
-        res |= POLLIN;
-    }
-    if (p->p_rpos < p->p_wpos) /* pipe is not empty */ {
         res |= POLLOUT;
     }
+    if (p->p_rpos < p->p_wpos) /* pipe is not empty */ {
+        res |= POLLIN;
+    }
     if (_pipeisclosed(fd, p)) {
-        res |= POLLHUP;
+        res |= POLLHUP | POLLIN | POLLOUT;
     }
     return res;
 }
