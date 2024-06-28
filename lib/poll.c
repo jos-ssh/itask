@@ -10,10 +10,13 @@ poll(struct pollfd *fds, nfds_t nfds, int timeout) {
     while (timeout < 0 || elapsed <= timeout / 1000) {
         size_t event_count = 0;
 
+        // printf("poll: probing fds\n");
         for (size_t i = 0; i < nfds; ++i) {
             fds[i].revents = 0;
 
+            // printf("poll: probing fd %zu\n", i);
             int flags = fpoll(fds[i].fd);
+            // printf("poll: probing fd %zu done\n", i);
             if (flags < 0) {
                 fds[i].revents |= POLLNVAL;
                 return flags;
@@ -25,6 +28,7 @@ poll(struct pollfd *fds, nfds_t nfds, int timeout) {
                 ++event_count;
             }
         }
+        // printf("poll: probing fds done\n");
 
         if (event_count > 0 || timeout == 0) {
             return event_count;
