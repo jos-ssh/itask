@@ -99,12 +99,6 @@ add_user(const char* username, const char* home_dir) {
         exit();
     }
 
-    res = mkdir(home_dir, 0);
-    if (res < 0 && res != -E_FILE_EXISTS) {
-        printf("useradd: error during creating working directory (%i %d)\n", res, res);
-        exit();
-    }
-
     struct UsersdUseradd request;
 
     strcpy(request.username, username);
