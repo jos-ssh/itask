@@ -13,11 +13,6 @@
 #define O_EXCL  0x0400 /* error if already exists */
 #define O_MKDIR 0x0800 /* create directory, not regular file */
 
-#define O_NONBLOCK 0x1000 /* non-blocking IO */
-
-/* Flags available to set through fcntl */
-#define O_MOD_FLAGS (O_NONBLOCK)
-
 #define O_NOCTTY 0xBAD
 
 int setuid(uid_t uid);
