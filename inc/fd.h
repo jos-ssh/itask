@@ -36,6 +36,9 @@ struct FdFile {
     int id;
 };
 
+struct FdSock {
+    bool is_closed;
+};
 
 struct Fd {
     int fd_dev_id;
@@ -44,6 +47,7 @@ struct Fd {
     union {
         /* File server files */
         struct FdFile fd_file;
+        struct FdSock fd_sock;
     };
 };
 
@@ -67,5 +71,6 @@ int dev_lookup(int devid, struct Dev **dev_store);
 extern struct Dev devfile;
 extern struct Dev devcons;
 extern struct Dev devpipe;
+extern struct Dev devsock;
 
 #endif /* not JOS_INC_FD_H */
