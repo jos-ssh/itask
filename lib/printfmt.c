@@ -42,6 +42,7 @@ static const char *const error_string[MAXERROR] = {
         [E_PERM_DENIED] = "permission denied",
         [E_WOULD_BLOCK] = "operation would block",
         [E_ACPI_BAD_CHECKSUM] = "wrong acpi table checksum",
+        [E_CONNECTION_СLOSED] = "connection is closed",
 };
 
 /*

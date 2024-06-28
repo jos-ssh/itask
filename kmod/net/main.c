@@ -6,6 +6,7 @@
 #include <inc/convert.h>
 #include <inc/lib.h>
 #include <inc/rpc.h>
+#include <stdatomic.h>
 
 #include "inc/stdio.h"
 #include "net.h"
@@ -88,6 +89,9 @@ netd_serve_identify(envid_t from, const void* request,
 static int
 netd_serve_recieve(envid_t from, const void* request,
                    void* response, int* response_perm) {
+    if (atomic_load(&g_Connection.state) == kFinished) {
+        return -E_CONNECTION_СLOSED;
+    }
     const struct NetdRecieve* req = request;
     if (req->target != from) {
         return -E_BAD_ENV;
@@ -103,6 +107,9 @@ netd_serve_recieve(envid_t from, const void* request,
 static int
 netd_serve_send(envid_t from, const void* request,
                 void* response, int* response_perm) {
+    if (atomic_load(&g_Connection.state) == kFinished) {
+        return -E_CONNECTION_СLOSED;
+    }
     const struct NetdSend* req = request;
     struct Message msg = {req->size};
     memcpy(msg.data, req->data, req->size);
@@ -116,6 +123,9 @@ netd_serve_poll(envid_t from, const void* request,
                 void* response, int* response_perm) {
     const struct NetdPoll* req = request;
     assert(req->target == from);
+    if (atomic_load(&g_Connection.state) == kFinished) {
+        return -E_CONNECTION_СLOSED;
+    }
 
     return size_buf(&g_Connection.recieve_buf);
 }

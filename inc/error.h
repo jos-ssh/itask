@@ -35,11 +35,12 @@ enum {
     E_ACPI_BAD_CHECKSUM = 23, /* ACPI table has wrong checksum */
 
     /* UsersD errors*/
-    E_ENV_ALREADY_REGISTERED = 24,
-    E_NOT_ENOUGH_PRIVILEGES = 25,
-    E_ALREADY_LOGGED_IN = 26,
-    E_ACCESS_DENIED = 27,
-
+    E_ENV_ALREADY_REGISTERED = 23,
+    E_NOT_ENOUGH_PRIVILEGES = 24,
+    E_ALREADY_LOGGED_IN = 25,
+    E_ACCESS_DENIED = 26,
+    E_CONNECTION_СLOSED = 27,
+    
     MAXERROR
 };
 
