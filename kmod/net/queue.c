@@ -3,8 +3,7 @@
 #include "inc/stdio.h"
 #include "net.h"
 #include <inc/lib.h>
-#include <stdbool.h>
-#include <string.h>
+#include <inc/string.h>
 
 void
 setup_queue(struct virtq *queue, volatile struct virtio_pci_common_cfg_t *cfg_header) {

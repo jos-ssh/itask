@@ -5,7 +5,7 @@
 #include "queue.h"
 #include <inc/assert.h>
 #include <stdatomic.h>
-#include <stdint.h>
+#include <inc/types.h>
 #include "net.h"
 
 static uint32_t in_num = 0;

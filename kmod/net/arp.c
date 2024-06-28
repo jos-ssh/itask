@@ -1,8 +1,6 @@
 #include "ethernet.h"
 #include "inc/stdio.h"
-#include <alloca.h>
-#include <stdalign.h>
-#include <string.h>
+#include <inc/string.h>
 #include "net.h"
 #include "queue.h"
 

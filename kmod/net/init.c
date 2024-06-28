@@ -6,8 +6,8 @@
 #include "inc/mmu.h"
 #include <inc/lib.h>
 #include <inc/rpc.h>
-#include <stdint.h>
-#include <string.h>
+#include <inc/types.h>
+#include <inc/string.h>
 #include <fs/pci_classes.h>
 #include <kmod/pci/pci.h>
 #include <inc/kmod/init.h>
