@@ -15,9 +15,6 @@
 
 #define O_NOCTTY 0xBAD
 
-[[noreturn]] void exit(void);
-[[noreturn]] void _exit(int status);
-
 int setuid(uid_t uid);
 int setgid(gid_t gid);
 
