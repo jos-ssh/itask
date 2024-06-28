@@ -152,7 +152,7 @@ umain(int argc, char** argv) {
         switch (i) {
         case 'd':
             flag[i]++;
-            home_dir = args.curarg;
+            home_dir = args.argvalue;
             break;
         case 'h':
         default:
@@ -160,12 +160,10 @@ umain(int argc, char** argv) {
         }
     }
 
-    printf("argc = %d\n", argc);
-
-    if (argc == 2) {
-        if (home_dir != NULL)
-            add_user(argv[1], home_dir);
-        else 
+    if (argc == 3 && flag['d']) {
+        add_user(argv[2], argv[1]);
+    }
+    else if (argc == 2) { 
             add_user(argv[1], "/");
     } else {
         usage();
