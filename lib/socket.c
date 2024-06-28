@@ -31,6 +31,7 @@ static int devsock_poll(struct Fd *);
 
 static int
 devsock_close(struct Fd *fd) {
+    // TODO: actually close connection
     USED(fd);
     return 0;
 }
@@ -46,6 +47,18 @@ struct Dev devsock = {
 
 int socket(int domain, int type, int protocol) NOTIMPLEMENTED(int);
 
+int
+opensock(void) {
+    int res;
+    struct Fd *fd;
+    if ((res = fd_alloc(&fd)) < 0) return res;
+
+    if ((res = sys_alloc_region(0, fd, PAGE_SIZE, PROT_RW | PROT_SHARE)) < 0) return res;
+
+    fd->fd_dev_id = devsock.dev_id;
+    fd->fd_omode = O_RDWR;
+    return fd2num(fd);
+}
 
 static union NetdResponce sResponse;
 static union NetdResponce *const sResponseAddr = &sResponse;
@@ -85,6 +98,14 @@ devsocket_poll() {
     // while (res == 0) {
     res = rpc_execute(kmod_find_any_version(NETD_MODNAME), NETD_REQ_POLL, &request, NULL);
     // }
+    /*
+    if (res >= 0) {
+      printf("socket has %d bytes of data\n", res);
+    }
+    else {
+      printf("poll err: %i\n", res);
+    }
+    */
     return res;
 }
 
