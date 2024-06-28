@@ -38,23 +38,35 @@ readline_impl(const char *prompt, bool is_echo) {
         } else if ((c == '\b' || c == '\x7F')) {
             if (i) {
                 if (echo) {
+#if JOS_KERNEL
                     cputchar('\b');
                     cputchar(' ');
                     cputchar('\b');
+#else
+                    fprintf(1, "\b \b");
+#endif
                 }
                 i--;
             }
         } else if (c >= ' ') {
             if (i < BUFLEN - 1) {
                 if (echo) {
+#if JOS_KERNEL
                     cputchar(c);
+#else
+                    fprintf(1, "%c", c);
+#endif
                 }
                 buf[i++] = (char)c;
             }
             // FIXME: it seem's that when we reach end of buffer, we start to just ignore chars
         } else if (c == '\n' || c == '\r') {
             if (echo) {
+#if JOS_KERNEL
                 cputchar('\n');
+#else
+                fprintf(1, "\r\n");
+#endif
             }
             buf[i] = 0;
             return buf;
