@@ -168,6 +168,7 @@ int getdents(const char* path, struct FileInfo* buffer, uint32_t count);
 int get_cwd(char* buffer, size_t size);
 int set_cwd(const char* path);
 int chmod(const char* path, uint32_t mode);
+int lib_chown(const char *pathname, uint64_t owner, uint64_t group);
 
 /* spawn.c */
 envid_t spawn(const char *program, const char **argv);

@@ -353,3 +353,13 @@ getdents(const char *path, struct FileInfo *buffer, uint32_t count) {
 
     return 0;
 }
+
+int 
+lib_chown(const char *pathname, uint64_t owner, uint64_t group) {
+    filed_req.chown.req_gid = group;
+    filed_req.chown.req_uid = owner;
+
+    strlcpy(filed_req.chown.req_path, pathname, MAXPATHLEN);
+
+    return filed_rpc_execute(FILED_REQ_CHOWN, &filed_req, &filed_resp);
+}

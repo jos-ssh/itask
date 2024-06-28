@@ -301,6 +301,11 @@ serve_chmod(envid_t envid, union Fsipc *req) {
 }
 
 int
+serve_chown(envid_t envid, union Fsipc *req) {
+    return file_chown(req->chown.req_path, req->chown.req_gid, req->chown.req_uid);
+}
+
+int
 serve_getdents(envid_t envid, union Fsipc *req, void **page) {
     *page = (void *)req;
     return file_getdents(req->getdents.req_path, req->getdents.buffer, req->getdents.count, req->getdents.from_which_count);
@@ -319,7 +324,8 @@ fshandler handlers[] = {
         [FSREQ_SYNC] = serve_sync,
         [FSREQ_REMOVE] = serve_remove,
         [FSREQ_MKDIR] = serve_mkdir,
-        [FSREQ_CHMOD] = serve_chmod};
+        [FSREQ_CHMOD] = serve_chmod,
+        [FSREQ_CHOWN] = serve_chown};
 #define NHANDLERS (sizeof(handlers) / sizeof(handlers[0]))
 
 void

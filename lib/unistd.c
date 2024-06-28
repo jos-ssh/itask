@@ -41,7 +41,7 @@ int fchdir(int fd) NOTIMPLEMENTED(int);
 int fsync(int fd) NOTIMPLEMENTED(int);
 char *getcwd(char *buf, size_t size) { assert(buf != NULL); get_cwd(buf, size); return buf; }
 int dup2(int oldfd, int newfd) NOTIMPLEMENTED(int);
-int chown(const char *pathname, uid_t owner, gid_t group) NOTIMPLEMENTED(int);
+int chown(const char *pathname, uid_t owner, gid_t group) { return lib_chown(pathname, owner, group); }
 
 pid_t setsid(void) NOTIMPLEMENTED(pid_t);
 

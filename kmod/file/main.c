@@ -85,8 +85,8 @@ struct RpcServer Server = {
                 [FILED_REQ_SPAWN] = filed_serve_spawn,
                 [FILED_REQ_FORK] = filed_serve_fork,
                 [FILED_REQ_REMOVE] = filed_serve_remove,
-                [FILED_REQ_CHMOD] = filed_serve_chmod, // TODO: implement
-                [FILED_REQ_CHOWN] = NULL,              // TODO: implement
+                [FILED_REQ_CHMOD] = filed_serve_chmod,
+                [FILED_REQ_CHOWN] = filed_serve_chown,              // TODO: implement
                 [FILED_REQ_GETCWD] = filed_serve_getcwd,
                 [FILED_REQ_SETCWD] = filed_serve_setcwd,
 
@@ -469,4 +469,21 @@ filed_serve_chmod(envid_t from, const void* request,
 
     // TODO: check permissions
     return fs_rpc_execute(FSREQ_CHMOD, &FsBuffer, NULL, NULL);
+}
+
+static int
+filed_serve_chown(envid_t from, const void* request,
+                  void* response, int* response_perm) {
+    int res = 0;
+    const union FiledRequest* freq = request;
+    const char* abs_path = NULL;
+    res = filed_get_absolute_path(from, freq->chown.req_path, &abs_path);
+    if (res < 0) return res;
+
+    FsBuffer.chown.req_gid = freq->chown.req_gid;
+    FsBuffer.chown.req_uid = freq->chown.req_uid;
+    strlcpy(FsBuffer.chown.req_path, abs_path, MAXPATHLEN);
+
+    // TODO: check permissions
+    return fs_rpc_execute(FSREQ_CHOWN, &FsBuffer, NULL, NULL);
 }

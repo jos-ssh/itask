@@ -602,3 +602,18 @@ file_chmod(const char *path, uint32_t new_mode) {
 
     return 0;
 }
+
+int 
+file_chown(const char* path, uint64_t gid, uint64_t uid) {
+    struct File *dir = NULL;
+    struct File *file = NULL;
+    char lastelem[MAXPATHLEN] = {};
+
+    int res = walk_path(path, &dir, &file, lastelem);
+    if (res < 0) return res;
+    if (file == NULL || lastelem[0] != 0) return -E_FILE_EXISTS;
+
+    file->f_gid = gid;
+    file->f_uid = uid;
+    return 0;
+}
