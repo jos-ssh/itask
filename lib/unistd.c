@@ -37,10 +37,19 @@ gid_t getgid(void) NOTIMPLEMENTED(uid_t);
 pid_t getpid(void) NOTIMPLEMENTED(pid_t);
 
 
-int chdir(const char *path) NOTIMPLEMENTED(int);
+int
+chdir(const char *path) {
+    return set_cwd(path);
+}
+
 int fchdir(int fd) NOTIMPLEMENTED(int);
 int fsync(int fd) NOTIMPLEMENTED(int);
-char *getcwd(char *buf, size_t size) NOTIMPLEMENTED(char *);
+char *
+getcwd(char *buf, size_t size) {
+    get_cwd(buf);
+    return buf;
+}
+
 int dup2(int oldfd, int newfd) NOTIMPLEMENTED(int);
 int chown(const char *pathname, uid_t owner, gid_t group) NOTIMPLEMENTED(int);
 

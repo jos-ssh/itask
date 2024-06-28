@@ -255,7 +255,8 @@ cd_emulation(const char *buf) {
     char full_path[100];
     int res = get_cwd(full_path);
     if (res) {
-        printf("cd: %i", res);
+        printf("cd: %i\r\n", res);
+        return;
     }
     char *dir = strchr(buf, ' ');
     if (dir == NULL) {
@@ -275,7 +276,7 @@ cd_emulation(const char *buf) {
         strncpy(new_cwd, full_path, last_dir - full_path);
         res = set_cwd(new_cwd);
         if (res) {
-            printf("cd: %s: %i\n", strchr(buf, ' ') + 1, res);
+            printf("cd: %s: %i\r\n", strchr(buf, ' ') + 1, res);
         }
         return;
     }
@@ -284,7 +285,7 @@ cd_emulation(const char *buf) {
 
     res = set_cwd(full_path);
     if (res) {
-        printf("cd: %s: %i\n", strchr(buf, ' ') + 1, res);
+        printf("cd: %s: %i\r\n", strchr(buf, ' ') + 1, res);
     }
 }
 
@@ -297,7 +298,7 @@ get_current_user(char *out_buffer) {
 
     int res = rpc_execute(kmod_find_any_version(USERSD_MODNAME), USERSD_REQ_GET_ENV_INFO, &request, (void **)&response);
     if (res < 0) {
-        printf("sh: %i\n", res);
+        printf("sh: %i\r\n", res);
         return;
     }
     get_username(response->env_info.info.ruid, out_buffer);
@@ -364,7 +365,7 @@ umain(int argc, char **argv) {
 
         char cwd[BUFSIZ];
         memset(cwd, 0, sizeof(cwd));
-        strcpy(cwd, green);
+        strcpy(cwd, "\r" green);
         get_current_user(cwd + strlen(cwd));
         strcat(cwd, clear ":" blue);
         get_cwd(cwd + strlen(cwd));
@@ -376,7 +377,7 @@ umain(int argc, char **argv) {
             exit(); /* end of file */
         }
         if (pipe) {
-            fprintf(1, "%s\n", buf);
+            fprintf(1, "%s\r\n", buf);
         }
 
         if (strncmp(buf, "cd", 2) == 0) {

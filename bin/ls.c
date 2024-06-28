@@ -44,7 +44,7 @@ lsdir(const char *path, const char *prefix) {
 
         int res = stat(full_path, &st);
         if (res) {
-            printf("stat: %s: %i\n", full_path, res);
+            printf("stat: %s: %i\r\n", full_path, res);
         } else {
             ls1(prefix, st, st.st_size, file[i].f_name);
         }
@@ -96,12 +96,12 @@ ls1(const char *prefix, struct Stat st, off_t size, const char *name) {
         printf("%s%s", prefix, sep);
     }
     print_colored(name, st.st_mode);
-    printf("\n");
+    printf("\r\n");
 }
 
 void
 usage(void) {
-    printf("usage: ls [-dFl] [file...]\n");
+    printf("usage: ls [-dFl] [file...]\r\n");
     exit();
 }
 
