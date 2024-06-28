@@ -97,16 +97,16 @@ devpipe_read(struct Fd *fd, void *vbuf, size_t n) {
 
     uint8_t *buf = vbuf;
     for (size_t i = 0; i < n; i++) {
-        while (p->p_rpos == p->p_wpos) /* pipe is empty */ {
+        if (p->p_rpos == p->p_wpos) /* pipe is empty */ {
             /* If we got any data, return it */
             if (i > 0) return i;
 
             /* If all the writers are gone, note eof */
             if (_pipeisclosed(fd, p)) return 0;
 
-            /* Yield and see what happens */
             if (debug) cprintf("devpipe_read yield\n");
-            sys_yield();
+            /* NonBlocking pipe */
+            return 0;
         }
 
         /* There's a byte. Take it.

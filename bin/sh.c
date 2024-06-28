@@ -1,3 +1,4 @@
+#include "inc/convert.h"
 #include "inc/passw.h"
 #include "inc/rpc.h"
 #include <inc/lib.h>
@@ -311,11 +312,12 @@ usage(void) {
 
 void
 umain(int argc, char **argv) {
-    int r, interactive, echocmds;
+    int r, interactive, echocmds, pipe;
     struct Argstate args;
 
     interactive = '?';
     echocmds = 0;
+    pipe = 0;
     argstart(&argc, argv, &args);
     while ((r = argnext(&args)) >= 0) {
         switch (r) {
@@ -327,23 +329,37 @@ umain(int argc, char **argv) {
         case 'x':
             echocmds = 1;
             break;
+        case 'p':
+            pipe = 1;
+            break;
         default:
             usage();
         }
     }
 
-    if (argc > 2)
+    if (argc > 2 && !pipe)
         usage();
+    if (argc == 3) {
+        long stdin, stdout;
+        str_to_long(argv[1], 10, &stdin);
+        str_to_long(argv[2], 10, &stdout);
+        close(0);
+        close(1);
+        dup(stdin, 0);
+        dup(stdout, 1);
+        cprintf("success shell configuration\n");
+    }
     if (argc == 2) {
         close(0);
         if ((r = open(argv[1], O_RDONLY)) < 0)
             panic("open %s: %i", argv[1], r);
         assert(r == 0);
     }
-    if (interactive == '?')
+    if (interactive == '?' && !pipe)
         interactive = iscons(0);
 
     while (1) {
+        sys_yield();
         char *buf;
 
         char cwd[BUFSIZ];
@@ -358,6 +374,9 @@ umain(int argc, char **argv) {
         if (buf == NULL) {
             if (debug) cprintf("EXITING\n");
             exit(); /* end of file */
+        }
+        if (pipe) {
+            fprintf(1, "%s\n", buf);
         }
 
         if (strncmp(buf, "cd", 2) == 0) {
