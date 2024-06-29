@@ -33,6 +33,7 @@ void file_flush(struct File *f);
 int file_remove(const char *path);
 int file_getdents(const char* path, struct FileInfo* buffer, uint32_t count, uint32_t from_which_count);
 int file_chmod(const char* path, uint32_t new_mode);
+int file_chown(const char* path, uint64_t gid, uint64_t uid);
 void fs_sync(void);
 
 bool block_is_free(blockno_t blockno);

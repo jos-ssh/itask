@@ -12,6 +12,9 @@
 static void help(void);
 static bool login(void);
 
+#define BUFSIZ 1024 /* Find the buffer overrun bug! */
+static char PATH[BUFSIZ] = {"/bin/"};
+
 void
 umain(int argc, char** argv) {
     if (argc < 2) {
@@ -24,8 +27,20 @@ umain(int argc, char** argv) {
 
     envid_t env = spawn(argv[1], (const char**)argv + 1);
     if (env < 0) {
-        printf("sudo: %i\n", env);
-    }
+        if (env != -E_NOT_FOUND) {
+                printf("sh: spawn: %s: %i\n", argv[1], env);
+                exit();
+            }
+            /* Try add PATH*/
+            char cmd[BUFSIZ];
+            strcpy(cmd, PATH);
+            strcat(cmd, argv[0]);
+
+            if ((env = spawn(cmd, (const char **)argv)) < 0) {
+                printf("sh: spawn: %s: %i\n", cmd, env);
+            }
+        }
+
     wait(env);
     return;
 }

@@ -114,12 +114,12 @@ open(const char *path, int flags, ...) {
 }
 
 int
-get_cwd(char *buffer) {
+get_cwd(char *buffer, size_t size) {
     int res = 0;
     res = filed_rpc_execute(FILED_REQ_GETCWD, &filed_req, &filed_resp); /* filed_req isn`t really necessary here */
 
     if (res < 0) return res;
-    strlcpy(buffer, filed_resp.cwd, MAXPATHLEN);
+    strlcpy(buffer, filed_resp.cwd, MIN(MAXPATHLEN, size));
 
     return 0;
 }
@@ -352,4 +352,14 @@ getdents(const char *path, struct FileInfo *buffer, uint32_t count) {
     }
 
     return 0;
+}
+
+int 
+lib_chown(const char *pathname, uint64_t owner, uint64_t group) {
+    filed_req.chown.req_gid = group;
+    filed_req.chown.req_uid = owner;
+
+    strlcpy(filed_req.chown.req_path, pathname, MAXPATHLEN);
+
+    return filed_rpc_execute(FILED_REQ_CHOWN, &filed_req, &filed_resp);
 }

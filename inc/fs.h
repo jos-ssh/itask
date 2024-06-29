@@ -82,7 +82,8 @@ enum {
     FSREQ_SYNC,
     FSREQ_MKDIR,
     FSREQ_GETDENTS,
-    FSREQ_CHMOD
+    FSREQ_CHMOD,
+    FSREQ_CHOWN,
 };
 
 struct FileInfo {
@@ -148,6 +149,11 @@ union Fsipc {
         char req_path[MAXPATHLEN];
         int req_mode;
     } chmod;
+    struct Fsreq_chown {
+        char req_path[MAXPATHLEN];
+        uint64_t req_uid;
+        uint64_t req_gid;
+    } chown;
 
     /* Ensure Fsipc is one page */
     char _pad[PAGE_SIZE];
