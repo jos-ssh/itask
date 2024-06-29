@@ -252,7 +252,7 @@ gettoken(char *s, char **p1) {
 static void
 cd_emulation(const char *buf) {
     char full_path[100];
-    int res = get_cwd(full_path);
+    int res = get_cwd(full_path, 100);
     if (res) {
         printf("cd: %i", res);
     }
@@ -351,7 +351,7 @@ umain(int argc, char **argv) {
         strcpy(cwd, green);
         get_current_user(cwd + strlen(cwd));
         strcat(cwd, clear ":" blue);
-        get_cwd(cwd + strlen(cwd));
+        get_cwd(cwd + strlen(cwd), MAXPATHLEN);
         strcat(cwd, clear "$ ");
 
         buf = readline(interactive ? cwd : NULL);

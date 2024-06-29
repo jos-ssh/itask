@@ -82,7 +82,7 @@ write_shadow_line(struct UsersdUseradd* req) {
 
 
 static void
-add_user(const char* username) {
+add_user(const char* username, const char* home_dir) {
     if (strchr(username, ':')) {
         printf("useradd: unsupported character ':'\n");
         return;
@@ -102,7 +102,8 @@ add_user(const char* username) {
     struct UsersdUseradd request;
 
     strcpy(request.username, username);
-    strcpy(request.homedir, "/");
+    strcpy(request.homedir, home_dir);
+
 
     // fill /etc/passwd
     res = write_passw_line(&request, ++current_uid, current_guid);
@@ -138,20 +139,26 @@ void
 umain(int argc, char** argv) {
     int i;
     struct Argstate args;
+    const char* home_dir = NULL;
 
     argstart(&argc, argv, &args);
     while ((i = argnext(&args)) >= 0) {
         switch (i) {
         case 'd':
             flag[i]++;
+            home_dir = args.argvalue;
             break;
         case 'h':
         default:
             usage();
         }
     }
-    if (argc == 2) {
-        add_user(argv[1]);
+
+    if (argc == 3 && flag['d']) {
+        add_user(argv[2], argv[1]);
+    }
+    else if (argc == 2) { 
+            add_user(argv[1], "/");
     } else {
         usage();
     }

@@ -10,7 +10,7 @@ umain(int argc, char **argv) {
     }
 
     char pwd[MAXPATHLEN] = {}; 
-    int res = get_cwd(pwd);
+    int res = get_cwd(pwd, MAXPATHLEN);
     if (res < 0) {
         printf("pwd: error %i(%d)\n", res, res);
         return;
