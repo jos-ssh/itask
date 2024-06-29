@@ -1,3 +1,4 @@
+#include "inc/error.h"
 #include <inc/lib.h>
 
 /* Maximum number of file descriptors a program may hold open concurrently */
@@ -111,6 +112,7 @@ static struct Dev *devtab[] = {
         &devfile,
         &devpipe,
         &devcons,
+        &devsock,
         NULL};
 
 int
@@ -292,4 +294,19 @@ stat(const char *path, struct Stat *stat) {
     close(fd);
 
     return res;
+}
+
+int
+fpoll(int fdnum) {
+    int res;
+
+    struct Fd *fd;
+    if ((res = fd_lookup(fdnum, &fd)) < 0) return res;
+
+    struct Dev *dev;
+    if ((res = dev_lookup(fd->fd_dev_id, &dev)) < 0) return res;
+
+    if (!dev->dev_poll) return -E_NOT_SUPP;
+
+    return dev->dev_poll(fd);
 }

@@ -8,18 +8,19 @@
 
 static void
 notify_parent() {
-    kill(thisenv->env_parent_id, SIGCHLD);
+    // kill(thisenv->env_parent_id, SIGCHLD);
 }
 
-[[noreturn]] void
+__attribute__((noreturn)) void
 exit(void) {
     close_all();
     notify_parent();
     sys_env_destroy(0);
-    exit(); // so surpress warnig =)
+    panic("Failed to die");
+    /* exit(); // so surpress warnig =) */
 }
 
-[[noreturn]] void
+__attribute__((noreturn)) void
 _exit(int status) {
     printf("Exit\n");
     (void)status;
@@ -36,12 +37,24 @@ gid_t getgid(void) NOTIMPLEMENTED(uid_t);
 pid_t getpid(void) NOTIMPLEMENTED(pid_t);
 
 
-int chdir(const char *path) { return set_cwd(path); }
+int chdir(const char *path) { 
+    return set_cwd(path); 
+}
+
 int fchdir(int fd) NOTIMPLEMENTED(int);
 int fsync(int fd) NOTIMPLEMENTED(int);
-char *getcwd(char *buf, size_t size) { assert(buf != NULL); get_cwd(buf, size); return buf; }
+
+char *getcwd(char *buf, size_t size) { 
+    assert(buf != NULL); 
+    get_cwd(buf, size); 
+    return buf; 
+}
+
 int dup2(int oldfd, int newfd) NOTIMPLEMENTED(int);
-int chown(const char *pathname, uid_t owner, gid_t group) { return lib_chown(pathname, owner, group); }
+
+int chown(const char *pathname, uid_t owner, gid_t group) {
+    return lib_chown(pathname, owner, group);
+}
 
 pid_t setsid(void) NOTIMPLEMENTED(pid_t);
 

@@ -1,3 +1,4 @@
+#include "inc/convert.h"
 #include "inc/passw.h"
 #include "inc/rpc.h"
 #include <inc/lib.h>
@@ -140,7 +141,7 @@ runit:
     /* Spawn the command! */
     if ((r = spawn(argv[0], (const char **)argv)) < 0) {
         if (r != -E_NOT_FOUND) {
-            cprintf("sh: spawn: %s: %i\n", argv[0], r);
+            printf("sh: spawn: %s: %i\n", argv[0], r);
             exit();
         }
         /* Try add PATH*/
@@ -149,7 +150,7 @@ runit:
         strcat(cmd, argv[0]);
 
         if ((r = spawn(cmd, (const char **)argv)) < 0) {
-            cprintf("sh: spawn: %s: %i\n", cmd, r);
+            printf("sh: spawn: %s: %i\n", cmd, r);
         }
     }
 
@@ -254,7 +255,8 @@ cd_emulation(const char *buf) {
     char full_path[100];
     int res = get_cwd(full_path, 100);
     if (res) {
-        printf("cd: %i", res);
+        printf("cd: %i\r\n", res);
+        return;
     }
     char *dir = strchr(buf, ' ');
     if (dir == NULL) {
@@ -274,7 +276,7 @@ cd_emulation(const char *buf) {
         strncpy(new_cwd, full_path, last_dir - full_path);
         res = set_cwd(new_cwd);
         if (res) {
-            printf("cd: %s: %i\n", strchr(buf, ' ') + 1, res);
+            printf("cd: %s: %i\r\n", strchr(buf, ' ') + 1, res);
         }
         return;
     }
@@ -283,7 +285,7 @@ cd_emulation(const char *buf) {
 
     res = set_cwd(full_path);
     if (res) {
-        printf("cd: %s: %i\n", strchr(buf, ' ') + 1, res);
+        printf("cd: %s: %i\r\n", strchr(buf, ' ') + 1, res);
     }
 }
 
@@ -296,7 +298,7 @@ get_current_user(char *out_buffer) {
 
     int res = rpc_execute(kmod_find_any_version(USERSD_MODNAME), USERSD_REQ_GET_ENV_INFO, &request, (void **)&response);
     if (res < 0) {
-        printf("sh: %i\n", res);
+        printf("sh: %i\r\n", res);
         return;
     }
     get_username(response->env_info.info.ruid, out_buffer);
@@ -311,11 +313,12 @@ usage(void) {
 
 void
 umain(int argc, char **argv) {
-    int r, interactive, echocmds;
+    int r, interactive, echocmds, pipe;
     struct Argstate args;
 
     interactive = '?';
     echocmds = 0;
+    pipe = 0;
     argstart(&argc, argv, &args);
     while ((r = argnext(&args)) >= 0) {
         switch (r) {
@@ -327,28 +330,42 @@ umain(int argc, char **argv) {
         case 'x':
             echocmds = 1;
             break;
+        case 'p':
+            pipe = 1;
+            break;
         default:
             usage();
         }
     }
 
-    if (argc > 2)
+    if (argc > 2 && !pipe)
         usage();
+    if (argc == 3) {
+        long stdin, stdout;
+        str_to_long(argv[1], 10, &stdin);
+        str_to_long(argv[2], 10, &stdout);
+        close(0);
+        close(1);
+        dup(stdin, 0);
+        dup(stdout, 1);
+        cprintf("success shell configuration\n");
+    }
     if (argc == 2) {
         close(0);
         if ((r = open(argv[1], O_RDONLY)) < 0)
             panic("open %s: %i", argv[1], r);
         assert(r == 0);
     }
-    if (interactive == '?')
+    if (interactive == '?' && !pipe)
         interactive = iscons(0);
 
     while (1) {
+        sys_yield();
         char *buf;
 
         char cwd[BUFSIZ];
         memset(cwd, 0, sizeof(cwd));
-        strcpy(cwd, green);
+        strcpy(cwd, "\r"green);
         get_current_user(cwd + strlen(cwd));
         strcat(cwd, clear ":" blue);
         get_cwd(cwd + strlen(cwd), MAXPATHLEN);
@@ -365,7 +382,12 @@ umain(int argc, char **argv) {
             continue;
         }
 
-        if (strncmp(buf, "exit", 4) == 0) exit();
+        if (strncmp(buf, "exit", 4) == 0) {
+            if (pipe) {
+                printf("Exit\r\n");
+            }
+            exit();
+        }
         if (debug) cprintf("LINE: %s\n", buf);
         if (buf[0] == '#') continue;
         if (echocmds) printf("# %s\n", buf);

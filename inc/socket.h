@@ -22,3 +22,12 @@ int getpeername(int sockfd, struct sockaddr *restrict addr,
                 socklen_t *restrict addrlen);
 
 int socket(int domain, int type, int protocol);
+
+int opensock(void);
+
+// TEMPORARY HERE
+int devsocket_send(char *in_buf, size_t n);
+
+int devsocket_recv(void *out_buf, size_t n);
+
+int devsocket_poll();

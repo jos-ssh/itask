@@ -29,10 +29,15 @@ struct Dev {
     int (*dev_close)(struct Fd *fd);
     int (*dev_stat)(struct Fd *fd, struct Stat *stat);
     int (*dev_trunc)(struct Fd *fd, off_t length);
+    int (*dev_poll)(struct Fd *fd);
 };
 
 struct FdFile {
     int id;
+};
+
+struct FdSock {
+    bool is_closed;
 };
 
 struct Fd {
@@ -42,6 +47,7 @@ struct Fd {
     union {
         /* File server files */
         struct FdFile fd_file;
+        struct FdSock fd_sock;
     };
 };
 
@@ -65,5 +71,6 @@ int dev_lookup(int devid, struct Dev **dev_store);
 extern struct Dev devfile;
 extern struct Dev devcons;
 extern struct Dev devpipe;
+extern struct Dev devsock;
 
 #endif /* not JOS_INC_FD_H */

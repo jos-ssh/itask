@@ -24,6 +24,12 @@ getchar(void) {
                                  -E_EOF;
 }
 
+int
+getchar_unlocked() {
+    int res = sys_cgetc();
+    return res < 0 ? -E_EOF : res;
+}
+
 /* "Real" console file descriptor implementation.
  * The putchar/getchar functions above will still come here by default,
  * but now can be redirected to files, pipes, etc., via the fd layer. */

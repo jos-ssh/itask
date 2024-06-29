@@ -1,9 +1,13 @@
+#include "inc/error.h"
 #include <inc/lib.h>
+#include <inc/poll.h>
+#include <inc/fcntl.h>
 
 static ssize_t devpipe_read(struct Fd *fd, void *buf, size_t n);
 static ssize_t devpipe_write(struct Fd *fd, const void *buf, size_t n);
 static int devpipe_stat(struct Fd *fd, struct Stat *stat);
 static int devpipe_close(struct Fd *fd);
+static int devpipe_poll(struct Fd *fd);
 
 struct Dev devpipe = {
         .dev_id = 'p',
@@ -12,6 +16,7 @@ struct Dev devpipe = {
         .dev_write = devpipe_write,
         .dev_close = devpipe_close,
         .dev_stat = devpipe_stat,
+        .dev_poll = devpipe_poll,
 };
 
 #define PIPEBUFSIZ (PAGE_SIZE - 2 * sizeof(off_t))
@@ -97,14 +102,18 @@ devpipe_read(struct Fd *fd, void *vbuf, size_t n) {
 
     uint8_t *buf = vbuf;
     for (size_t i = 0; i < n; i++) {
-        while (p->p_rpos == p->p_wpos) /* pipe is empty */ {
+        if (p->p_rpos == p->p_wpos) /* pipe is empty */ {
             /* If we got any data, return it */
             if (i > 0) return i;
 
             /* If all the writers are gone, note eof */
             if (_pipeisclosed(fd, p)) return 0;
 
-            /* Yield and see what happens */
+            /* NonBlocking pipe */
+            if (fd->fd_omode & O_NONBLOCK) {
+                return -E_WOULD_BLOCK;
+            }
+
             if (debug) cprintf("devpipe_read yield\n");
             sys_yield();
         }
@@ -135,6 +144,11 @@ devpipe_write(struct Fd *fd, const void *vbuf, size_t n) {
              * note eof */
             if (_pipeisclosed(fd, p)) return 0;
 
+            /* NonBlocking pipe */
+            if (fd->fd_omode & O_NONBLOCK) {
+                return i > 0 ? i : -E_WOULD_BLOCK;
+            }
+
             /* Yield and see what happens */
             if (debug) cprintf("devpipe_write yield\n");
             sys_yield();
@@ -164,4 +178,20 @@ static int
 devpipe_close(struct Fd *fd) {
     USED(sys_unmap_region(0, fd, PAGE_SIZE));
     return sys_unmap_region(0, fd2data(fd), PAGE_SIZE);
+}
+
+static int
+devpipe_poll(struct Fd *fd) {
+    struct Pipe *p = (struct Pipe *)fd2data(fd);
+    int res = 0;
+    if (p->p_wpos < p->p_rpos + sizeof(p->p_buf)) /* pipe is not full */ {
+        res |= POLLOUT;
+    }
+    if (p->p_rpos < p->p_wpos) /* pipe is not empty */ {
+        res |= POLLIN;
+    }
+    if (_pipeisclosed(fd, p)) {
+        res |= POLLHUP | POLLIN | POLLOUT;
+    }
+    return res;
 }

@@ -78,7 +78,7 @@ pcid_serve_fallback(int32_t req_id, envid_t from, const void* request,
                     void* response, int* response_perm) {
 #ifndef TEST_PCI
     enum EnvType type = envs[ENVX(from)].env_type;
-    if (type != ENV_TYPE_FS && type != ENV_TYPE_KERNEL) {
+    if (type != ENV_TYPE_FS && type != ENV_TYPE_KERNEL && type != ENV_TYPE_USER) {
         return -E_BAD_ENV;
     }
 #endif // !TEST_PCI

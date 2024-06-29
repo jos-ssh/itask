@@ -35,6 +35,7 @@ BINAPPS :=	$(OBJDIR)/bin/init \
 			$(OBJDIR)/bin/chmod \
 			$(OBJDIR)/bin/sudo \
 			$(OBJDIR)/bin/test_chmod \
+			$(OBJDIR)/bin/nc \
 			$(OBJDIR)/bin/test
 
 
@@ -53,13 +54,16 @@ KERNMODS := $(OBJDIR)/kmod/acpid \
             $(OBJDIR)/kmod/pcid \
             $(OBJDIR)/kmod/sigd \
             $(OBJDIR)/kmod/filed \
-			$(OBJDIR)/kmod/usersd
+			$(OBJDIR)/kmod/usersd \
+            $(OBJDIR)/kmod/netd
 
 TESTS := $(OBJDIR)/test/test_initd \
-      $(OBJDIR)/test/test_acpid \
-      $(OBJDIR)/test/test_pcid \
-	  $(OBJDIR)/test/test_sigd \
-	  $(OBJDIR)/test/test_login_dir
+      	 $(OBJDIR)/test/test_acpid \
+      	 $(OBJDIR)/test/test_pcid \
+		 $(OBJDIR)/test/test_sigd \
+		 $(OBJDIR)/test/test_login_dir \
+      	 $(OBJDIR)/test/test_pipe_poll \
+      	 $(OBJDIR)/test/test_net_pipe
 
 TINYSSH = $(SSH_SRC_DIR)/build/bin/tinysshd
 
