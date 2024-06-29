@@ -8,7 +8,7 @@
 
 static void
 notify_parent() {
-    kill(thisenv->env_parent_id, SIGCHLD);
+    // kill(thisenv->env_parent_id, SIGCHLD);
 }
 
 __attribute__((noreturn)) void

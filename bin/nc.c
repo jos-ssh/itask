@@ -15,13 +15,20 @@ netcat() {
     for (;;) {
         int res = devsocket_recv(recv_buffer, -1);
 
-        if (res < 0) {
+        if (res == -E_CONNECTION_СLOSED) {
+            printf("Connection closed\n");
+            exit();
+        } else if (res < 0) {
             panic("netcat failed: %i\n", res);
         } else if (res != 0) {
             printf("netcat: %s", recv_buffer);
         }
         res = getchar_unlocked();
         if (res > 0) {
+            if (res == 4 || res == 3) {
+                printf("Exiting...\n");
+                exit();
+            }
             if (res == ENTERC) {
                 printf("\n");
                 send_buffer[send_len++] = '\n';

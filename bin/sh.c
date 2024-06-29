@@ -382,7 +382,12 @@ umain(int argc, char **argv) {
             continue;
         }
 
-        if (strncmp(buf, "exit", 4) == 0) exit();
+        if (strncmp(buf, "exit", 4) == 0) {
+            if (pipe) {
+                printf("Exit\r\n");
+            }
+            exit();
+        }
         if (debug) cprintf("LINE: %s\n", buf);
         if (buf[0] == '#') continue;
         if (echocmds) printf("# %s\n", buf);
