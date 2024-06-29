@@ -14,6 +14,9 @@ netcat() {
     size_t send_len = 0;
     char send_buffer[BUFSIZE];
 
+    int fd = opensock();
+    USED(fd);
+
     for (;;) {
         int res = devsocket_recv(recv_buffer, -1);
 
@@ -27,10 +30,10 @@ netcat() {
         }
         res = getchar_unlocked();
         if (res > 0) {
-            if (res == CtrlC || res == CtrlD) {
-                printf("Exiting...\n");
-                exit();
-            }
+            // if (res == CtrlC || res == CtrlD) {
+            //     printf("Exiting...\n");
+            //     exit();
+            // }
             if (res == ENTERC) {
                 printf("\n");
                 send_buffer[send_len++] = '\n';

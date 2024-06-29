@@ -55,6 +55,8 @@ opensock(void) {
 
     if ((res = sys_alloc_region(0, fd, PAGE_SIZE, PROT_RW | PROT_SHARE)) < 0) return res;
 
+    if ((res = rpc_execute(kmod_find_any_version(NETD_MODNAME), NETD_REQ_OPEN, NULL, NULL)) < 0) return res;
+
     fd->fd_dev_id = devsock.dev_id;
     fd->fd_omode = O_RDWR;
     return fd2num(fd);

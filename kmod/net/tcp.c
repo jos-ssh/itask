@@ -193,7 +193,7 @@ process_tcp_packet(struct tcp_hdr_t* packet) {
 
     // Just ACK from client... let it pass
     if (packet->th_flags == TH_ACK && packet_size == 0) {
-        if (atomic_load(&g_Connection.state) == kCreated) {
+        if (atomic_load(&g_Connection.state) == kReady) {
             memcpy(&g_Connection.client, packet, sizeof(*packet));
             return CONNECTION_ESTABLISHED;
         }

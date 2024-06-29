@@ -11,11 +11,11 @@ static void
 recieve_from_net() {
     uint8_t status = *net->isr_status;
     if (status & VIRTIO_PCI_ISR_NOTIFY) {
-        if (atomic_load(&g_Connection.state) == kCreated) {
+        if (atomic_load(&g_Connection.state) == kReady) {
             // process connection
             cprintf("[netd-loop] try connect\n");
             while (process_receive_queue(&net->recvq) != CONNECTION_ESTABLISHED) {
-                ;
+                sys_yield();
             }
             cprintf("[netd-loop] connected\n");
 
@@ -26,11 +26,20 @@ recieve_from_net() {
             while ((res = process_receive_queue(&net->recvq)) != NO_PACKETS) {
                 if (res == CONNECTION_CLOSED) {
                     cprintf("[netd-loop] connection closed\n");
+                    purge_buf(&g_Connection.recieve_buf);
+                    purge_buf(&g_SendBuffer);
                     atomic_store(&g_Connection.state, kFinished);
                     break;
                 }
                 sys_yield();
             }
+        } else if (atomic_load(&g_Connection.state) == kFinished) {
+            while ((process_receive_queue(&net->recvq)) != NO_PACKETS) {
+                sys_yield();
+            }
+            cprintf("[netd-loop] purge packets\n");
+            purge_buf(&g_Connection.recieve_buf);
+            purge_buf(&g_SendBuffer);
         }
     }
 }

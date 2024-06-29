@@ -16,6 +16,7 @@ enum VirtioNetRequestType {
     NETD_REQ_RECIEVE = KMOD_REQ_FIRST_USABLE,
     NETD_REQ_SEND,
     NETD_REQ_POLL,
+    NETD_REQ_OPEN,
     NETD_NREQUESTS
 };
 

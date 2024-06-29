@@ -7,7 +7,7 @@
 
 
 enum ConnectionState {
-    kCreated,
+    kReady,
     kConnected,
     kFinished
 };

@@ -25,12 +25,16 @@ static int netd_serve_send(envid_t from, const void* request,
 static int netd_serve_poll(envid_t from, const void* request,
                            void* response, int* response_perm);
 
+static int netd_serve_open(envid_t from, const void* request,
+                           void* response, int* response_perm);
+
+
 envid_t g_InitdEnvid;
 envid_t g_PcidEnvid;
 
 static int netd_start_loop();
 
-struct Connection g_Connection = {{0, 0}, kCreated};
+struct Connection g_Connection = {{0, 0}, kReady};
 struct RingBuffer __attribute__((aligned(PAGE_SIZE))) g_SendBuffer = {0, 0};
 
 bool StartupDone = false;
@@ -47,6 +51,7 @@ struct RpcServer Server = {
                 [NETD_REQ_RECIEVE] = netd_serve_recieve,
                 [NETD_REQ_SEND] = netd_serve_send,
                 [NETD_REQ_POLL] = netd_serve_poll,
+                [NETD_REQ_OPEN] = netd_serve_open,
         }};
 
 void
@@ -114,6 +119,17 @@ netd_serve_send(envid_t from, const void* request,
     struct Message msg = {req->size};
     memcpy(msg.data, req->data, req->size);
     write_buf(&g_SendBuffer, (const unsigned char*)&msg, msg.size + sizeof(msg.size));
+    return 0;
+}
+
+static int
+netd_serve_open(envid_t from, const void* request,
+                void* response, int* response_perm) {
+
+    purge_buf(&g_Connection.recieve_buf);
+    purge_buf(&g_SendBuffer);
+    atomic_store(&g_Connection.state, kReady);
+    cprintf("[netd] connection open\n");
     return 0;
 }
 

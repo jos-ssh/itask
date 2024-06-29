@@ -47,3 +47,9 @@ size_buf(struct RingBuffer* buf) {
     }
     return tail - head;
 }
+
+
+void purge_buf(struct RingBuffer* buf) {
+    atomic_store(&buf->head, 0);
+    atomic_store(&buf->tail, 0);
+}
