@@ -5,6 +5,8 @@
 
 
 #define ENTERC 13
+#define CtrlD 4
+#define CtrlC 3
 
 void
 netcat() {
@@ -25,7 +27,7 @@ netcat() {
         }
         res = getchar_unlocked();
         if (res > 0) {
-            if (res == 4 || res == 3) {
+            if (res == CtrlC || res == CtrlD) {
                 printf("Exiting...\n");
                 exit();
             }
