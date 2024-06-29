@@ -34,9 +34,9 @@ umain(int argc, char** argv) {
             /* Try add PATH*/
             char cmd[BUFSIZ];
             strcpy(cmd, PATH);
-            strcat(cmd, argv[0]);
+            strcat(cmd, argv[1]);
 
-            if ((env = spawn(cmd, (const char **)argv)) < 0) {
+            if ((env = spawn(cmd, (const char **)argv + 1)) < 0) {
                 printf("sh: spawn: %s: %i\n", cmd, env);
             }
         }
