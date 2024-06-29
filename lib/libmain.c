@@ -39,11 +39,6 @@ global_signal_handler(uint8_t sig_no, struct Trapframe *saved_tf) {
 }
 
 
-static void
-_exit(int sig_no) {
-    exit();
-}
-
 void
 libmain(int argc, char **argv) {
     /* Perform global constructor initialisation (e.g. asan)

@@ -45,3 +45,6 @@ unsigned int sleep(unsigned int seconds);
 int isatty(int fd);
 int execve(const char *pathname, char *const argv[],
            char *const envp[]);
+
+__attribute__((noreturn)) void
+_exit(int status);
