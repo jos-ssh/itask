@@ -18,20 +18,28 @@ KERN_SRCFILES := kern/bootstrap.S \
 			kern/dwarf.c \
 			kern/dwarf_lines.c \
 			kern/monitor.c \
+			kern/pmap.c \
 			kern/env.c \
 			kern/kclock.c \
 			kern/picirq.c \
 			kern/printf.c \
 			kern/trap.c \
 			kern/trapentry.S \
+			kern/timer.c \
 			kern/sched.c \
 			kern/syscall.c \
 			kern/kdebug.c \
 			lib/printfmt.c \
 			lib/readline.c \
 			lib/string.c \
+			kern/tsc.c \
 			kern/uefi.c \
-			kern/uefiasm.S
+			kern/uefiasm.S \
+			kern/spinlock.c
+
+ifeq ($(CONFIG_KSPACE),y)
+KERN_SRCFILES += kern/alloc.c
+endif
 
 # Only build files if they exist.
 KERN_SRCFILES := $(wildcard $(KERN_SRCFILES))
@@ -41,6 +49,15 @@ KERN_SRCFILES += kern/payload.c
 .INTERMEDIATE: kern/payload.c
 endif
 
+ifdef KASAN
+KERN_SRCFILES +=	llvm/asan/asan.c \
+			llvm/asan/asan_internal.c \
+			llvm/asan/asan_memintrinsics.c \
+			llvm/asan/asan_platform.kjos.c \
+			llvm/asan/asan_prim.c \
+			llvm/asan/asan_used.c
+endif
+
 ifdef KUBSAN
 KERN_SRCFILES +=	llvm/ubsan/ubsan.c
 endif
@@ -48,6 +65,65 @@ endif
 KERN_OBJFILES := $(patsubst %.c, $(OBJDIR)/%.o, $(KERN_SRCFILES))
 KERN_OBJFILES := $(patsubst %.S, $(OBJDIR)/%.o, $(KERN_OBJFILES))
 KERN_OBJFILES := $(patsubst $(OBJDIR)/lib/%, $(OBJDIR)/kern/%, $(KERN_OBJFILES))
+
+# Binary program images to embed within the kernel.
+ifeq ($(CONFIG_KSPACE),y)
+KERN_BINLINK  :=
+KERN_BINFILES := $(sort $(shell find prog/ -type f -name '*.c'))
+KERN_BINFILES := $(patsubst %.c, $(OBJDIR)/%_out, $(KERN_BINFILES))
+else
+KERN_BINLINK  := -b binary
+KERN_BINFILES :=	user/hello \
+			user/buggyhello \
+			user/buggyhello2 \
+			user/evilhello \
+			user/testbss \
+			user/divzero \
+			user/breakpoint \
+			user/softint \
+			user/badsegment \
+			user/faultread \
+			user/faultreadkernel \
+			user/faultwrite \
+			user/faultwritekernel \
+			user/idle \
+			user/yield \
+			user/dumbfork \
+			user/stresssched \
+			user/faultdie \
+			user/faultregs \
+			user/faultalloc \
+			user/faultallocbad \
+			user/faultnostack \
+			user/faultbadhandler \
+			user/faultevilhandler \
+			user/forktree \
+			user/spin \
+      user/sendpage \
+			user/fairness \
+			user/pingpong \
+			user/pingpongs \
+			user/primes \
+			user/testfile \
+			user/icode \
+			fs/fs \
+			user/testfdsharing \
+			user/testpipe \
+			user/testpiperace \
+			user/testpiperace2 \
+			user/memlayout \
+			user/primespipe \
+			user/testkbd \
+			user/spawnhello \
+			user/testpteshare \
+			user/testshell \
+			user/date \
+			user/vdate \
+			user/bounds \
+			user/implicitconv \
+			user/signedoverflow
+KERN_BINFILES := $(patsubst %, $(OBJDIR)/%, $(KERN_BINFILES))
+endif
 
 define PAYLOAD
 H4sIADf39FcAA41Ya2tcNxD97l+x1A3sTexWjyvp3m62kDYPAiGUNoGCuzWO7SQL6abYThsw+e/V
@@ -114,6 +190,11 @@ $(OBJDIR)/kern/%.o: lib/%.c $(OBJDIR)/.vars.KERN_CFLAGS
 	@mkdir -p $(@D)
 	$(V)$(CC) $(KERN_CFLAGS) $(KERN_SAN_CFLAGS) -c -o $@ $<
 
+$(OBJDIR)/llvm/asan/%.o: llvm/asan/%.c $(OBJDIR)/.vars.KERN_CFLAGS
+	@echo + cc $<
+	@mkdir -p $(@D)
+	$(V)$(CC) -ffreestanding $(KERN_CFLAGS) $(KERN_SAN_CFLAGS) -c -o $@ $<
+
 $(OBJDIR)/llvm/ubsan/%.o: llvm/ubsan/%.c $(OBJDIR)/.vars.KERN_CFLAGS
 	@echo + $(CC) $<
 	@mkdir -p $(@D)
@@ -127,7 +208,7 @@ $(OBJDIR)/kern/init.o: $(OBJDIR)/.vars.INIT_CFLAGS
 $(OBJDIR)/kern/kernel: $(KERN_OBJFILES) $(KERN_BINFILES) kern/kernel.ld \
 	  $(OBJDIR)/.vars.KERN_LDFLAGS
 	@echo + ld $@
-	$(V)$(LD) -o $@ $(KERN_LDFLAGS) $(KERN_SAN_LDFLAGS) $(KERN_OBJFILES) $(GCC_LIB) $(KERN_BINFILES)
+	$(V)$(LD) -o $@ $(KERN_LDFLAGS) $(KERN_SAN_LDFLAGS) $(KERN_OBJFILES) $(GCC_LIB) $(KERN_BINLINK) $(KERN_BINFILES)
 	$(V)$(OBJDUMP) -S $@ > $@.asm
 	$(V)$(NM) -n $@ > $@.sym
 

@@ -3,6 +3,7 @@
 
 #ifndef __ASSEMBLER__
 #include <inc/types.h>
+#include <inc/vsyscall.h>
 #include <inc/mmu.h>
 #endif /* not __ASSEMBLER__ */
 
@@ -34,22 +35,22 @@
  *                     |                              | RW/--
  *                     |   Remapped Physical Memory   | RW/--
  *                     |                              | RW/--
- * KERN_BASE_ADDR,-->  +------------------------------+ 0x8040000000    --+
+ * KERN_BASE_ADDR,-->  +------------------------------+ 0x8040000000          <--+
  * KERN_STACK_TOP      |     CPU0's Kernel Stack      | RW/--  KERN_STACK_SIZE   |
- *                     | - - - - - - - - - - - - - - -|                   |
+ *                     | - - - - - - - - - - - - - - -|                          |
  *                     |      Invalid Memory (*)      | --/--  KERN_STACK_GAP    |
- *                     +------------------------------+                   |
- *    KERN_PF_STACK_TOP      |       CPU0's #PF Stack       | RW/--  KERN_PF_STACK_SIZE |
- *                     | - - - - - - - - - - - - - - -|                   |
+ *                     +------------------------------+                          |
+ * KERN_PF_STACK_TOP-> |       CPU0's #PF Stack       | RW/--  KERN_PF_STACK_SIZE|
+ *                     | - - - - - - - - - - - - - - -|                          |
  *                     |      Invalid Memory (*)      | --/--  KERN_STACK_GAP    |
- *                     +------------------------------+                   |
+ *                     +------------------------------+                          |
  *                     |     CPU1's Kernel Stack      | RW/--  KERN_STACK_SIZE   |
- *                     | - - - - - - - - - - - - - - -|                 HUGE_PAGE_SIZE
+ *                     | - - - - - - - - - - - - - - -|                   HUGE_PAGE_SIZE
  *                     |      Invalid Memory (*)      | --/--  KERN_STACK_GAP    |
- *                     +------------------------------+                   |
- *                     :              .               :                   |
- *                     :              .               :                   |
- *  KERN_HEAP_END -->  +------------------------------+ 0x803fe00000    --+
+ *                     +------------------------------+                          |
+ *                     :              .               :                          |
+ *                     :              .               :                          |
+ *  KERN_HEAP_END -->  +------------------------------+ 0x803fe00000          <--+
  *                     |       Memory-mapped I/O      | RW/--  HUGE_PAGE_SIZE
  * MAX_USER_READABLE, KERN_HEAP_START -->  +------------------------------+ 0x803fc00000
  *                     |          RO PAGES            | R-/R-
@@ -135,7 +136,7 @@
  */
 
 /* User read-only virtual page table (see 'uvpt' below) */
-#define UVPT_INDEX 2ULL
+#define UVPT_INDEX 255ULL
 #define UVPT       (UVPT_INDEX << PML4_SHIFT)
 #define UVPD       (UVPT + (UVPT_INDEX << PDP_SHIFT))
 #define UVPDP      (UVPD + (UVPT_INDEX << PD_SHIFT))
@@ -158,7 +159,7 @@
 /* Top of one-page user exception stack */
 #define USER_EXCEPTION_STACK_TOP MAX_USER_ADDRESS
 /* Size of exception stack (must be one page for now) */
-#define USER_EXCEPTION_STACK_SIZE (8 * PAGE_SIZE)
+#define USER_EXCEPTION_STACK_SIZE (PAGE_SIZE)
 /* Top of normal user stack */
 /* Next page left invalid to guard against exception stack overflow; then: */
 #define USER_STACK_TOP (USER_EXCEPTION_STACK_TOP - USER_EXCEPTION_STACK_SIZE - PAGE_SIZE)

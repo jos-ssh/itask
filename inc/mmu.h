@@ -168,6 +168,8 @@
 #define FL_VIP       0x00100000 /* Virtual Interrupt Pending */
 #define FL_ID        0x00200000 /* ID flag */
 
+#define FL_SYSTEM (FL_TF | FL_IF | FL_IOPL_MASK | FL_NT | FL_RF | FL_VM | FL_AC | FL_VIF | FL_VIP | FL_ID)
+
 /* Page fault error codes */
 #define FEC_P 0x1  /* Page fault caused by protection violation */
 #define FEC_W 0x2  /* Page fault caused by a write */

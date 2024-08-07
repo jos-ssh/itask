@@ -9,6 +9,8 @@
 #include <inc/x86.h>
 
 #include <kern/console.h>
+#include <kern/picirq.h>
+#include <kern/pmap.h>
 
 #define COM1 0x3F8
 
@@ -243,11 +245,11 @@ fb_putc(int c) {
 
     /* Scoll up when we have reached the bottom of screen */
     if (crt_pos >= crt_size) {
-        memmove(crt_buf, crt_buf + uefi_stride * SYMBOL_SIZE,
-                uefi_stride * (uefi_vres - SYMBOL_SIZE) * sizeof(uint32_t));
+        nosan_memmove(crt_buf, crt_buf + uefi_stride * SYMBOL_SIZE,
+                      uefi_stride * (uefi_vres - SYMBOL_SIZE) * sizeof(uint32_t));
 
         size_t i = (uefi_vres - (uefi_vres % SYMBOL_SIZE) - SYMBOL_SIZE);
-        memset(crt_buf + i * uefi_stride, 0, uefi_stride * (uefi_vres - i) * sizeof(uint32_t));
+        nosan_memset(crt_buf + i * uefi_stride, 0, uefi_stride * (uefi_vres - i) * sizeof(uint32_t));
         crt_pos -= crt_cols;
     }
 }
@@ -309,6 +311,9 @@ serial_init(void) {
     serial_exists = (inb(COM1 + COM_LSR) != 0xFF);
     (void)inb(COM1 + COM_IIR);
     (void)inb(COM1 + COM_RX);
+
+    /* Enable serial interrupts */
+    if (serial_exists) pic_irq_unmask(IRQ_SERIAL);
 }
 
 /* Parallel port output code */
@@ -477,7 +482,9 @@ kbd_intr(void) {
 
 static void
 kbd_init(void) {
-    /* nothing */
+    /* Drain the kbd buffer so that Bochs generates interrupts. */
+    kbd_intr();
+    pic_irq_unmask(IRQ_KBD);
 }
 
 /* General device-independent console code

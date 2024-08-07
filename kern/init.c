@@ -7,9 +7,50 @@
 #include <inc/memlayout.h>
 
 #include <kern/monitor.h>
+#include <kern/tsc.h>
 #include <kern/console.h>
+#include <kern/pmap.h>
+#include <kern/env.h>
+#include <kern/timer.h>
+#include <kern/trap.h>
+#include <kern/sched.h>
+#include <kern/picirq.h>
+#include <kern/kclock.h>
 #include <kern/kdebug.h>
 #include <kern/traceopt.h>
+
+void
+timers_init(void) {
+    timertab[0] = timer_rtc;
+    timertab[1] = timer_pit;
+    timertab[2] = timer_acpipm;
+    timertab[3] = timer_hpet0;
+    timertab[4] = timer_hpet1;
+
+    for (int i = 0; i < MAX_TIMERS; i++) {
+        if (timertab[i].timer_init) {
+            timertab[i].timer_init();
+            if (trace_init) cprintf("Initialized timer %s\n", timertab[i].timer_name);
+        }
+    }
+}
+
+void
+timers_schedule(const char *name) {
+    for (int i = 0; i < MAX_TIMERS; i++) {
+        if (timertab[i].timer_name && !strcmp(timertab[i].timer_name, name)) {
+            if (!timertab[i].enable_interrupts) {
+                panic("Timer %s does not support interrupts\n", name);
+            }
+
+            timer_for_schedule = &timertab[i];
+            timertab[i].enable_interrupts();
+            return;
+        }
+    }
+
+    panic("Timer %s does not exist\n", name);
+}
 
 pde_t *
 alloc_pd_early_boot(void) {
@@ -84,43 +125,68 @@ early_boot_pml4_init(void) {
 #endif
 }
 
-
-/* Test the stack backtrace function (lab 1 only) */
-void
-test_backtrace(int x) {
-    int mon_backtrace(int argc, char **argv, struct Trapframe *tf);
-
-    cprintf("entering test_backtrace %d\n", x);
-    if (x > 0)
-        test_backtrace(x - 1);
-    else
-        mon_backtrace(0, 0, 0);
-    cprintf("leaving test_backtrace %d\n", x);
-}
-
 void
 i386_init(void) {
-
     early_boot_pml4_init();
 
     /* Initialize the console.
      * Can't call cprintf until after we do this! */
     cons_init();
 
+    tsc_calibrate();
+
     if (trace_init) {
         cprintf("6828 decimal is %o octal!\n", 6828);
         cprintf("END: %p\n", end);
     }
 
+    /* Lab 6 memory management initialization functions */
+    init_memory();
+
     /* Framebuffer init should be done after memory init */
     fb_init();
     if (trace_init) cprintf("Framebuffer initialised\n");
 
-    /* Test the stack backtrace function (lab 1 only) */
-    test_backtrace(5);
+    /* User environment initialization functions */
+    env_init();
 
-    /* Drop into the kernel monitor. */
-    while (1) monitor(NULL);
+    pic_init();
+    timers_init();
+
+    /* Choose the timer used for scheduling: hpet or pit */
+    timers_schedule("hpet0");
+
+#if 0 /* CONFIG_KSPACE */
+    /* Touch all you want */
+#ifndef MON_ONLY
+    ENV_CREATE_KERNEL_TYPE(prog_test1);
+    ENV_CREATE_KERNEL_TYPE(prog_test2);
+    ENV_CREATE_KERNEL_TYPE(prog_test3);
+    ENV_CREATE_KERNEL_TYPE(prog_test4);
+    ENV_CREATE_KERNEL_TYPE(prog_test5);
+    ENV_CREATE_KERNEL_TYPE(prog_test6);
+#endif
+#else
+
+
+#if LAB >= 10
+    ENV_CREATE(fs_fs, ENV_TYPE_FS);
+#endif
+
+#if defined(TEST)
+    /* Don't touch -- used by grading script! */
+    ENV_CREATE(TEST, ENV_TYPE_USER);
+#else
+    /* Touch all you want. */
+    ENV_CREATE(user_vdate, ENV_TYPE_USER);
+#endif /* TEST* */
+#endif
+
+    /* Should not be necessary - drains keyboard because interrupt has given up. */
+    kbd_intr();
+
+    /* Schedule and run the first user environment! */
+    sched_yield();
 }
 
 /* Variable panicstr contains argument to first call to panic; used as flag
