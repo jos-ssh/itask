@@ -1,0 +1,29 @@
+# JOS SSH server
+
+- User-space kernel module architecture (#1 #13 #20, @MeerkatBoss)
+  - Unified interface over JOS IPC for all modules
+  - Kernel module processes are identified by `ENV_TYPE_KERNEL` env type
+  - Root module (`initd`)
+    - Parent of all modules
+    - Used by other modules to spawn user processes
+  - `SYS_ipc_recv_from` syscall can now be used to receive IPC messages from specific sender
+- ACPI kernel module (#4, @MeerkatBoss)
+  - Manage ACPI tables in userspace
+  - `SYS_map_physical_region` is now a privileged syscall, that can only be used by kernel modules and file systems
+- PCI kernel module (#8, @MeerkatBoss)
+  - Manage PCI devices from userspace
+- Signal module (#22 #26, @MeerkatBoss @egorSharapov @ArsenySamoylov)
+  - Implement sending POSIX-like signals `SIGALRM` and `SIGKILL` to processes via `signald` kernel module
+- Login shell (@egorSharapov @ArsenySamoylov)
+- File system improvements
+  - Fsformat script improvements (#29, @egorSharapov)
+  - Separate `bin/` directory for user programs (#3, @ArsenySamoylov)
+  - File access rights (#19, @egorSharapov)
+  - Directory support (#23, @SimonaytesYan)
+  - User home directory (@ArsenySamoylov @SimonaytesYan)
+- Network stack support
+  - Virtio driver (#10, @foxidokun)
+  - UNIX-like userspace socket (#10, @foxidokun @egorSharapov)
+  - POSIX-like userspace `select` (#10, @MeerkatBoss)
+- Tinyssh fork for JOS (@ArsenySamoylov @egorSharapov)
+  - Separate repo [here](https://github.com/ArsenySamoylov/jos-tinyssh/tree/e7672bda663f7b9962fdd6442d249fad7c36628f)
